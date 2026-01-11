@@ -1,0 +1,211 @@
+# ============================================
+# FICHIER: requirements.txt
+# ============================================
+Flask==3.0.0
+Flask-CORS==4.0.0
+psycopg2-binary==2.9.9
+reportlab==4.0.7
+python-dotenv==1.0.0
+gunicorn==21.2.0
+
+# ============================================
+# FICHIER: .env (Configuration)
+# ============================================
+DATABASE_URL=postgresql://user:password@host.supabase.co:5432/postgres
+FLASK_ENV=production
+SECRET_KEY=votre_cle_secrete_ici
+
+# ============================================
+# FICHIER: Procfile (Pour Render/Heroku)
+# ============================================
+web: gunicorn app:app
+
+# ============================================
+# STRUCTURE DU PROJET
+# ============================================
+anapath/
+├── app.py                  # Backend Flask
+├── requirements.txt        # Dépendances Python
+├── .env                    # Configuration (à ne pas commit)
+├── .gitignore             # Fichiers à ignorer
+├── Procfile               # Pour déploiement
+├── README.md              # Documentation
+└── frontend/
+    ├── index.html         # Page principale
+    ├── params.html        # Page paramètres
+    ├── selection.html     # Sélection utilisateur
+    └── assets/
+        └── logo.png       # Logo du labo
+
+# ============================================
+# CONFIGURATION SUPABASE
+# ============================================
+
+# 1. Créer un projet sur supabase.com
+# 2. Obtenir l'URL de connexion PostgreSQL :
+#    Settings > Database > Connection String (URI)
+# 3. Format : postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+
+# Tables SQL à exécuter dans Supabase SQL Editor :
+
+CREATE TABLE IF NOT EXISTS utilisateurs (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    numero INTEGER UNIQUE,
+    nom VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    statut VARCHAR(50) DEFAULT 'utilisateur',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_utilisateurs_user_id ON utilisateurs(user_id);
+
+CREATE TABLE IF NOT EXISTS patients (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    nom VARCHAR(255) NOT NULL,
+    age INTEGER,
+    sexe VARCHAR(1),
+    telephone VARCHAR(50),
+    adresse TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_patients_user_id ON patients(user_id);
+
+CREATE TABLE IF NOT EXISTS medecins (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    nom VARCHAR(255) NOT NULL,
+    specialite VARCHAR(255),
+    service VARCHAR(255),
+    telephone VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_medecins_user_id ON medecins(user_id);
+
+CREATE TABLE IF NOT EXISTS comptes_rendus (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    numero_enregistrement VARCHAR(100) UNIQUE NOT NULL,
+    date_compte_rendu DATE NOT NULL,
+    medecin_id INTEGER REFERENCES medecins(id),
+    service_hospitalier VARCHAR(255),
+    patient_id INTEGER REFERENCES patients(id),
+    nature_prelevement TEXT,
+    date_prelevement DATE,
+    renseignements_cliniques TEXT,
+    macroscopie TEXT,
+    microscopie TEXT,
+    conclusion TEXT,
+    statut VARCHAR(50) DEFAULT 'en_cours',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_comptes_rendus_user_id ON comptes_rendus(user_id);
+CREATE INDEX idx_comptes_rendus_statut ON comptes_rendus(statut);
+
+# ============================================
+# DÉPLOIEMENT SUR RENDER.COM
+# ============================================
+
+# 1. Créer compte sur render.com
+# 2. New > Web Service
+# 3. Connect GitHub repository
+# 4. Configuration:
+#    - Name: anapath-api
+#    - Environment: Python 3
+#    - Build Command: pip install -r requirements.txt
+#    - Start Command: gunicorn app:app
+# 5. Environment Variables:
+#    - DATABASE_URL: [URL Supabase]
+#    - FLASK_ENV: production
+# 6. Deploy!
+
+# ============================================
+# CONFIGURATION FRONTEND
+# ============================================
+
+# Dans index.html, params.html, selection.html :
+# Remplacer "YOUR_FLASK_API_URL" par l'URL de votre API déployée
+# Exemple: https://anapath-api.onrender.com
+
+const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 
+                     'https://anapath-api.onrender.com';
+
+# ============================================
+# TESTS LOCAUX
+# ============================================
+
+# Terminal 1 - Backend:
+cd anapath
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+
+# Terminal 2 - Frontend:
+# Ouvrir index.html avec Live Server (VS Code)
+# ou
+python -m http.server 8000
+
+# Accéder à http://localhost:8000
+
+# ============================================
+# SÉCURITÉ
+# ============================================
+
+# .gitignore:
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+*.db
+*.log
+.DS_Store
+
+# À NE JAMAIS COMMITER:
+# - .env (contient DATABASE_URL)
+# - Mots de passe en clair
+# - Clés API
+
+# ============================================
+# FONCTIONNALITÉS IMPLÉMENTÉES
+# ============================================
+
+✅ Gestion Patients (CRUD complet)
+✅ Gestion Médecins demandeurs (CRUD)
+✅ Comptes rendus cyto-pathologiques (CRUD)
+✅ Multi-utilisateurs avec authentification
+✅ Système de permissions (admin/utilisateur)
+✅ Génération PDF des comptes rendus
+✅ Recherche et filtres
+✅ Dashboard avec KPI
+✅ Responsive design
+✅ Mode hors-ligne (localStorage)
+✅ Thème adapté au laboratoire médical
+
+# ============================================
+# AMÉLIORATIONS FUTURES
+# ============================================
+
+🔜 Signatures électroniques
+🔜 Import/Export Excel
+🔜 Historique des modifications
+🔜 Notifications email
+🔜 Statistiques avancées
+🔜 Intégration scanner documents
+🔜 Backup automatique
+🔜 API REST documentation (Swagger)
+
+# ============================================
+# SUPPORT
+# ============================================
+
+Pour toute question:
+- Email: support@anapath.dz
+- GitHub: https://github.com/votre-repo/anapath
+- Documentation: https://docs.anapath.dz
