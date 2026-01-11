@@ -3,9 +3,7 @@
 # ============================================
 Flask==3.0.0
 Flask-CORS==4.0.0
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.11     # ← ou ==2.9.11 pour être précis
 reportlab==4.0.7
 python-dotenv==1.0.0
 gunicorn==21.2.0
-
-
