@@ -367,9 +367,124 @@
     <span id="toastMessage"></span>
   </div>
 
+  <!-- Modal Formulaire Compte Rendu -->
+  <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 hidden overflow-y-auto">
+    <div class="bg-white rounded-lg p-6 w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-semibold">Compte Rendu Cyto-Pathologique</h2>
+        <button onclick="closeReportModal()" class="text-gray-600 hover:text-gray-800">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <form id="reportForm" class="space-y-4">
+        <input type="hidden" id="reportId">
+        
+        <!-- En-tête -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div>
+            <label class="block text-sm font-medium mb-1">N° Enregistrement*</label>
+            <input type="text" id="reportNumero" class="w-full px-3 py-2 border rounded-md" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Date Compte Rendu*</label>
+            <input type="date" id="reportDateCR" class="w-full px-3 py-2 border rounded-md" required>
+          </div>
+        </div>
+
+        <!-- Médecin et Patient -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Médecin Demandeur*</label>
+            <select id="reportMedecin" class="w-full px-3 py-2 border rounded-md" required>
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Service Hospitalier</label>
+            <input type="text" id="reportService" class="w-full px-3 py-2 border rounded-md">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Patient*</label>
+            <select id="reportPatient" class="w-full px-3 py-2 border rounded-md" required>
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Âge</label>
+            <input type="number" id="reportAge" class="w-full px-3 py-2 border rounded-md" readonly>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Sexe</label>
+            <input type="text" id="reportSexe" class="w-full px-3 py-2 border rounded-md" readonly>
+          </div>
+        </div>
+
+        <!-- Prélèvement -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-1">Nature/Siège du Prélèvement*</label>
+            <input type="text" id="reportNature" class="w-full px-3 py-2 border rounded-md" placeholder="Ex: Nodule thyroïdien" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Date Prélèvement*</label>
+            <input type="date" id="reportDatePrelevement" class="w-full px-3 py-2 border rounded-md" required>
+          </div>
+        </div>
+
+        <!-- Renseignements Cliniques -->
+        <div>
+          <label class="block text-sm font-medium mb-1">Renseignements Cliniques Fournis</label>
+          <textarea id="reportRenseignements" rows="3" class="w-full px-3 py-2 border rounded-md" placeholder="Antécédents, symptômes..."></textarea>
+        </div>
+
+        <!-- MACROSCOPIE -->
+        <div class="border-t pt-4">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600">MACROSCOPIE</h3>
+          <textarea id="reportMacro" rows="4" class="w-full px-3 py-2 border rounded-md" placeholder="Description macroscopique..."></textarea>
+        </div>
+
+        <!-- MICROSCOPIE -->
+        <div class="border-t pt-4">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600">MICROSCOPIE</h3>
+          <textarea id="reportMicro" rows="6" class="w-full px-3 py-2 border rounded-md" placeholder="Étude cytologique..."></textarea>
+        </div>
+
+        <!-- CONCLUSION -->
+        <div class="border-t pt-4">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600">CONCLUSION</h3>
+          <textarea id="reportConclusion" rows="4" class="w-full px-3 py-2 border rounded-md" placeholder="Diagnostic et recommandations..."></textarea>
+        </div>
+
+        <!-- Statut -->
+        <div>
+          <label class="block text-sm font-medium mb-1">Statut*</label>
+          <select id="reportStatut" class="w-full px-3 py-2 border rounded-md" required>
+            <option value="en_cours">En cours</option>
+            <option value="terminé">Terminé</option>
+            <option value="validé">Validé</option>
+          </select>
+        </div>
+
+        <!-- Boutons -->
+        <div class="flex justify-end space-x-3 pt-4 border-t">
+          <button type="button" onclick="closeReportModal()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600">
+            Annuler
+          </button>
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700">
+            <i class="fas fa-save mr-2"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     // Configuration API
-    const API_BASE_URL = 'YOUR_FLASK_API_URL'; // À remplacer par l'URL de votre API Flask
+    const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'YOUR_FLASK_API_URL';
     let currentUser = null;
 
     // Fonctions utilitaires
@@ -393,7 +508,6 @@
       chevron.classList.toggle('fa-chevron-down');
       chevron.classList.toggle('fa-chevron-up');
       
-      // Charger les données si la section s'ouvre
       if (!content.classList.contains('hidden')) {
         if (sectionId === 'patientsSection') loadPatients();
         if (sectionId === 'medecinsSection') loadMedecins();
@@ -405,13 +519,11 @@
     }
 
     function togglePatientForm() {
-      const form = document.getElementById('patientForm');
-      form.classList.toggle('open');
+      document.getElementById('patientForm').classList.toggle('open');
     }
 
     function toggleMedecinForm() {
-      const form = document.getElementById('medecinForm');
-      form.classList.toggle('open');
+      document.getElementById('medecinForm').classList.toggle('open');
     }
 
     // Authentification
@@ -424,44 +536,32 @@
         return;
       }
       
-      try {
-        const response = await fetch(`${API_BASE_URL}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-          currentUser = data;
-          localStorage.setItem('anapathUser', JSON.stringify(data));
-          document.getElementById('userDisplay').textContent = email;
-          document.getElementById('userDisplay').classList.remove('hidden');
-          document.getElementById('loginButton').innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i>Déconnexion';
-          toggleLogin();
-          showToast('Connexion réussie');
-          loadDashboard();
-        } else {
-          showToast(data.error || 'Erreur de connexion', true);
-        }
-      } catch (error) {
-        showToast('Erreur de connexion: ' + error.message, true);
-      }
+      const userId = btoa(`${email.toLowerCase()}:${password}`);
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('userEmail', email);
+      currentUser = { email, userId };
+      
+      document.getElementById('userDisplay').textContent = email;
+      document.getElementById('userDisplay').classList.remove('hidden');
+      document.getElementById('loginButton').innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i>Déconnexion';
+      toggleLogin();
+      showToast('Connexion réussie');
+      loadDashboard();
     }
 
-    // Chargement des données
+    // Chargement dashboard
     async function loadDashboard() {
       loadPatients();
       loadMedecins();
       loadReports();
-      updateKPI();
     }
 
+    // CRUD Patients
     async function loadPatients() {
       try {
+        const userId = localStorage.getItem('userId');
         const response = await fetch(`${API_BASE_URL}/patients`, {
-          headers: { 'Authorization': `Bearer ${currentUser?.token}` }
+          headers: { 'X-User-ID': userId }
         });
         const patients = await response.json();
         
@@ -474,7 +574,7 @@
             <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
             <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
             <td class="px-6 py-4 text-sm">
-              <button onclick="editPatient(${p.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+              <button onclick='editPatient(${JSON.stringify(p)})' class="text-blue-600 hover:text-blue-800 mr-2">
                 <i class="fas fa-edit"></i>
               </button>
               <button onclick="deletePatient(${p.id})" class="text-red-600 hover:text-red-800">
@@ -486,15 +586,92 @@
         
         document.getElementById('patientCount').textContent = patients.length;
         document.getElementById('totalPatients').textContent = patients.length;
+        
+        // Remplir select dans formulaire compte rendu
+        const select = document.getElementById('reportPatient');
+        select.innerHTML = '<option value="">Sélectionner...</option>' + 
+          patients.map(p => `<option value="${p.id}" data-age="${p.age}" data-sexe="${p.sexe}">${p.nom}</option>`).join('');
       } catch (error) {
-        showToast('Erreur de chargement des patients', true);
+        showToast('Erreur chargement patients', true);
       }
     }
 
+    async function savePatient() {
+      const id = document.getElementById('patientId').value;
+      const data = {
+        nom: document.getElementById('patientNom').value,
+        age: document.getElementById('patientAge').value,
+        sexe: document.getElementById('patientSexe').value,
+        telephone: document.getElementById('patientTel').value,
+        adresse: document.getElementById('patientAdresse').value
+      };
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const url = id ? `${API_BASE_URL}/patients/${id}` : `${API_BASE_URL}/patients`;
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+          body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+          showToast(id ? 'Patient modifié' : 'Patient ajouté');
+          togglePatientForm();
+          loadPatients();
+          resetPatientForm();
+        }
+      } catch (error) {
+        showToast('Erreur sauvegarde patient', true);
+      }
+    }
+
+    function editPatient(patient) {
+      document.getElementById('patientId').value = patient.id;
+      document.getElementById('patientNom').value = patient.nom;
+      document.getElementById('patientAge').value = patient.age || '';
+      document.getElementById('patientSexe').value = patient.sexe || '';
+      document.getElementById('patientTel').value = patient.telephone || '';
+      document.getElementById('patientAdresse').value = patient.adresse || '';
+      document.getElementById('patientForm').classList.add('open');
+    }
+
+    async function deletePatient(id) {
+      if (!confirm('Supprimer ce patient ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (response.ok) {
+          showToast('Patient supprimé');
+          loadPatients();
+        }
+      } catch (error) {
+        showToast('Erreur suppression patient', true);
+      }
+    }
+
+    function resetPatientForm() {
+      document.getElementById('patientId').value = '';
+      document.getElementById('patientNom').value = '';
+      document.getElementById('patientAge').value = '';
+      document.getElementById('patientSexe').value = '';
+      document.getElementById('patientTel').value = '';
+      document.getElementById('patientAdresse').value = '';
+    }
+
+    // CRUD Médecins
     async function loadMedecins() {
       try {
+        const userId = localStorage.getItem('userId');
         const response = await fetch(`${API_BASE_URL}/medecins`, {
-          headers: { 'Authorization': `Bearer ${currentUser?.token}` }
+          headers: { 'X-User-ID': userId }
         });
         const medecins = await response.json();
         
@@ -506,7 +683,7 @@
             <td class="px-6 py-4 text-sm">${m.service || '-'}</td>
             <td class="px-6 py-4 text-sm">${m.telephone || '-'}</td>
             <td class="px-6 py-4 text-sm">
-              <button onclick="editMedecin(${m.id})" class="text-blue-600 hover:text-blue-800 mr-2">
+              <button onclick='editMedecin(${JSON.stringify(m)})' class="text-blue-600 hover:text-blue-800 mr-2">
                 <i class="fas fa-edit"></i>
               </button>
               <button onclick="deleteMedecin(${m.id})" class="text-red-600 hover:text-red-800">
@@ -518,30 +695,309 @@
         
         document.getElementById('medecinCount').textContent = medecins.length;
         document.getElementById('totalMedecins').textContent = medecins.length;
+        
+        // Remplir select
+        const select = document.getElementById('reportMedecin');
+        select.innerHTML = '<option value="">Sélectionner...</option>' + 
+          medecins.map(m => `<option value="${m.id}">${m.nom} - ${m.specialite || ''}</option>`).join('');
       } catch (error) {
-        showToast('Erreur de chargement des médecins', true);
+        showToast('Erreur chargement médecins', true);
       }
     }
 
+    async function saveMedecin() {
+      const id = document.getElementById('medecinId').value;
+      const data = {
+        nom: document.getElementById('medecinNom').value,
+        specialite: document.getElementById('medecinSpecialite').value,
+        service: document.getElementById('medecinService').value,
+        telephone: document.getElementById('medecinTel').value
+      };
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const url = id ? `${API_BASE_URL}/medecins/${id}` : `${API_BASE_URL}/medecins`;
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+          body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+          showToast(id ? 'Médecin modifié' : 'Médecin ajouté');
+          toggleMedecinForm();
+          loadMedecins();
+          resetMedecinForm();
+        }
+      } catch (error) {
+        showToast('Erreur sauvegarde médecin', true);
+      }
+    }
+
+    function editMedecin(medecin) {
+      document.getElementById('medecinId').value = medecin.id;
+      document.getElementById('medecinNom').value = medecin.nom;
+      document.getElementById('medecinSpecialite').value = medecin.specialite || '';
+      document.getElementById('medecinService').value = medecin.service || '';
+      document.getElementById('medecinTel').value = medecin.telephone || '';
+      document.getElementById('medecinForm').classList.add('open');
+    }
+
+    async function deleteMedecin(id) {
+      if (!confirm('Supprimer ce médecin ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/medecins/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (response.ok) {
+          showToast('Médecin supprimé');
+          loadMedecins();
+        }
+      } catch (error) {
+        showToast('Erreur suppression médecin', true);
+      }
+    }
+
+    function resetMedecinForm() {
+      document.getElementById('medecinId').value = '';
+      document.getElementById('medecinNom').value = '';
+      document.getElementById('medecinSpecialite').value = '';
+      document.getElementById('medecinService').value = '';
+      document.getElementById('medecinTel').value = '';
+    }
+
+    // Comptes Rendus
     async function loadReports() {
       try {
+        const userId = localStorage.getItem('userId');
         const response = await fetch(`${API_BASE_URL}/comptes-rendus`, {
-          headers: { 'Authorization': `Bearer ${currentUser?.token}` }
+          headers: { 'X-User-ID': userId }
         });
         const reports = await response.json();
         
         const tbody = document.getElementById('reportsList');
         tbody.innerHTML = reports.map(r => `
           <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4 text-sm">${r.numero_enregistrement}</td>
+            <td class="px-6 py-4 text-sm font-medium">${r.numero_enregistrement}</td>
             <td class="px-6 py-4 text-sm">${r.patient_nom}</td>
             <td class="px-6 py-4 text-sm">${r.medecin_nom}</td>
             <td class="px-6 py-4 text-sm">${new Date(r.date_prelevement).toLocaleDateString('fr-FR')}</td>
             <td class="px-6 py-4 text-sm">
-              <span class="px-2 py-1 rounded text-xs ${r.statut === 'terminé' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+              <span class="px-2 py-1 rounded text-xs ${r.statut === 'terminé' ? 'bg-green-100 text-green-800' : r.statut === 'validé' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}">
                 ${r.statut}
               </span>
             </td>
             <td class="px-6 py-4 text-sm">
-              <button onclick="viewReport(${r.id})" class="text-indigo-600 hover:text-indigo-800 mr-2">
-                <i class
+              <button onclick='viewReport(${r.id})' class="text-indigo-600 hover:text-indigo-800 mr-2" title="Voir">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button onclick='editReport(${r.id})' class="text-blue-600 hover:text-blue-800 mr-2" title="Modifier">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="printReport(${r.id})" class="text-green-600 hover:text-green-800 mr-2" title="Imprimer">
+                <i class="fas fa-print"></i>
+              </button>
+              <button onclick="deleteReport(${r.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+        
+        document.getElementById('totalReports').textContent = reports.length;
+        document.getElementById('pendingReports').textContent = reports.filter(r => r.statut === 'en_cours').length;
+      } catch (error) {
+        showToast('Erreur chargement comptes rendus', true);
+      }
+    }
+
+    function openNewReport() {
+      resetReportForm();
+      document.getElementById('reportModal').classList.remove('hidden');
+      document.getElementById('reportDateCR').valueAsDate = new Date();
+      document.getElementById('reportDatePrelevement').valueAsDate = new Date();
+    }
+
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.add('hidden');
+      resetReportForm();
+    }
+
+    function resetReportForm() {
+      document.getElementById('reportForm').reset();
+      document.getElementById('reportId').value = '';
+    }
+
+    // Auto-remplir âge et sexe quand patient sélectionné
+    document.getElementById('reportPatient')?.addEventListener('change', function() {
+      const option = this.options[this.selectedIndex];
+      document.getElementById('reportAge').value = option.dataset.age || '';
+      document.getElementById('reportSexe').value = option.dataset.sexe || '';
+    });
+
+    // Soumettre formulaire compte rendu
+    document.getElementById('reportForm')?.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      await saveReport();
+    });
+
+    async function saveReport() {
+      const id = document.getElementById('reportId').value;
+      const data = {
+        numero_enregistrement: document.getElementById('reportNumero').value,
+        date_compte_rendu: document.getElementById('reportDateCR').value,
+        medecin_id: document.getElementById('reportMedecin').value,
+        service_hospitalier: document.getElementById('reportService').value,
+        patient_id: document.getElementById('reportPatient').value,
+        nature_prelevement: document.getElementById('reportNature').value,
+        date_prelevement: document.getElementById('reportDatePrelevement').value,
+        renseignements_cliniques: document.getElementById('reportRenseignements').value,
+        macroscopie: document.getElementById('reportMacro').value,
+        microscopie: document.getElementById('reportMicro').value,
+        conclusion: document.getElementById('reportConclusion').value,
+        statut: document.getElementById('reportStatut').value
+      };
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const url = id ? `${API_BASE_URL}/comptes-rendus/${id}` : `${API_BASE_URL}/comptes-rendus`;
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+          body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+          showToast(id ? 'Compte rendu modifié' : 'Compte rendu créé');
+          closeReportModal();
+          loadReports();
+        }
+      } catch (error) {
+        showToast('Erreur sauvegarde compte rendu', true);
+      }
+    }
+
+    async function viewReport(id) {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/comptes-rendus/${id}`, {
+          headers: { 'X-User-ID': userId }
+        });
+        const report = await response.json();
+        
+        // Remplir le formulaire en mode lecture
+        document.getElementById('reportId').value = report.id;
+        document.getElementById('reportNumero').value = report.numero_enregistrement;
+        document.getElementById('reportDateCR').value = report.date_compte_rendu;
+        document.getElementById('reportMedecin').value = report.medecin_id;
+        document.getElementById('reportService').value = report.service_hospitalier || '';
+        document.getElementById('reportPatient').value = report.patient_id;
+        document.getElementById('reportAge').value = report.patient_age || '';
+        document.getElementById('reportSexe').value = report.patient_sexe || '';
+        document.getElementById('reportNature').value = report.nature_prelevement;
+        document.getElementById('reportDatePrelevement').value = report.date_prelevement;
+        document.getElementById('reportRenseignements').value = report.renseignements_cliniques || '';
+        document.getElementById('reportMacro').value = report.macroscopie || '';
+        document.getElementById('reportMicro').value = report.microscopie || '';
+        document.getElementById('reportConclusion').value = report.conclusion || '';
+        document.getElementById('reportStatut').value = report.statut;
+        
+        document.getElementById('reportModal').classList.remove('hidden');
+      } catch (error) {
+        showToast('Erreur chargement compte rendu', true);
+      }
+    }
+
+    async function editReport(id) {
+      await viewReport(id);
+    }
+
+    async function deleteReport(id) {
+      if (!confirm('Supprimer ce compte rendu ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/comptes-rendus/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (response.ok) {
+          showToast('Compte rendu supprimé');
+          loadReports();
+        }
+      } catch (error) {
+        showToast('Erreur suppression', true);
+      }
+    }
+
+    function printReport(id) {
+      window.open(`${API_BASE_URL}/comptes-rendus/${id}/print`, '_blank');
+    }
+
+    function searchReports() {
+      const term = prompt('Rechercher (patient, médecin, numéro)');
+      if (!term) return;
+      
+      const rows = document.querySelectorAll('#reportsList tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term.toLowerCase()) ? '' : 'none';
+      });
+    }
+
+    // Recherche patients
+    document.getElementById('searchPatient')?.addEventListener('input', function(e) {
+      const term = e.target.value.toLowerCase();
+      const rows = document.querySelectorAll('#patientsList tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+
+    // Recherche médecins
+    document.getElementById('searchMedecin')?.addEventListener('input', function(e) {
+      const term = e.target.value.toLowerCase();
+      const rows = document.querySelectorAll('#medecinsList tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+      const userId = localStorage.getItem('userId');
+      const userEmail = localStorage.getItem('userEmail');
+      
+      if (userId && userEmail) {
+        currentUser = { userId, email: userEmail };
+        document.getElementById('userDisplay').textContent = userEmail;
+        document.getElementById('userDisplay').classList.remove('hidden');
+        document.getElementById('loginButton').innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i>Déconnexion';
+        loadDashboard();
+      } else {
+        document.getElementById('loginModal').classList.remove('hidden');
+      }
+      
+      // Bouton déconnexion
+      document.getElementById('loginButton')?.addEventListener('click', function() {
+        if (localStorage.getItem('userId')) {
+          localStorage.removeItem('userId');
+          localStorage.removeItem('userEmail');
+          location.reload();
+        } else {
+          toggleLogin();
+        }
+      });
+    });
+  </script>
