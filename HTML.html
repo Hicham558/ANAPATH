@@ -3,198 +3,132 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paramètres - ANAPATH</title>
+  <title>Sélection Utilisateur - ANAPATH</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    @keyframes smoothBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     
-    .nav-animated { animation: slideIn 0.6s ease-out; }
-    .card-animated { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
-    .card-animated:nth-child(1) { animation-delay: 0.1s; }
-    .card-animated:nth-child(2) { animation-delay: 0.2s; }
-    .card-animated:nth-child(3) { animation-delay: 0.3s; }
-    .card-animated:nth-child(4) { animation-delay: 0.4s; }
+    .animate-slide-in { animation: slideIn 0.5s ease-out; }
+    .animate-fade-in { animation: fadeIn 0.8s ease-out; }
+    .user-anim { animation: smoothBlink 1.5s infinite ease-in-out; }
     
-    .icon-button {
-      width: 96px;
-      height: 96px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-      animation: pulse 2s infinite ease-in-out;
+    .password-input-container {
+      position: relative;
+      display: inline-block;
+      width: 100%;
     }
     
-    .icon-button:hover {
-      transform: scale(1.1) translateY(-4px);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #6b7280;
+      transition: color 0.2s;
     }
     
-    .kpi-card {
-      transition: all 0.4s ease;
-    }
-    
-    .kpi-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    .password-toggle:hover {
+      color: #4f46e5;
     }
   </style>
 </head>
 <body class="bg-gray-100">
-  <nav class="bg-indigo-600 text-white p-4 fixed w-full top-0 z-10 shadow-md nav-animated">
+  <nav class="bg-indigo-600 text-white p-4 fixed w-full top-0 z-10 shadow-md animate-slide-in">
     <div class="container mx-auto flex justify-between items-center">
       <div class="flex flex-col">
         <h1 class="text-2xl font-bold flex items-center">
-          <i class="fas fa-microscope mr-2 text-blue-300 animate-pulse"></i> ANAPATH Paramètres
+          <i class="fas fa-microscope mr-2 text-blue-300 animate-pulse"></i> ANAPATH ELYOUSR
         </h1>
         <span id="userDisplay" class="text-xs mt-1 hidden text-indigo-100"></span>
       </div>
       <div class="flex gap-2 items-center">
         <a href="index.html" class="hover:text-indigo-200 transition flex items-center">
-          <i class="fas fa-home mr-1"></i>
+          <i class="fas fa-home mr-1"></i> Accueil
         </a>
-        <button id="logoutButton" onclick="logout()" class="bg-red-500 px-3 py-2 rounded-md hover:bg-red-600 transition">
-          <i class="fas fa-sign-out-alt mr-1"></i>Déconnexion
+        <button id="loginLogoutButton" onclick="loginLogout()" class="bg-red-500 px-3 py-2 rounded-md hover:bg-red-600 transition">
+          <i class="fas fa-sign-out-alt mr-1"></i>
         </button>
       </div>
     </div>
   </nav>
 
-  <main class="container mx-auto px-4 py-16 mt-16">
-    <!-- Configuration API -->
-    <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
-      <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i class="fas fa-server mr-2 text-indigo-600"></i> Configuration API
-      </h3>
-      <div class="space-y-4">
-        <div class="flex items-end space-x-2">
-          <div class="flex-1">
-            <label class="block text-sm font-medium text-gray-700 mb-2">URL de l'API</label>
-            <input id="apiBaseUrl" type="text" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="https://votre-api.supabase.co">
-          </div>
-          <button onclick="testConnection()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-            <i class="fas fa-plug mr-2"></i>Tester
-          </button>
-        </div>
-        
-        <div class="flex justify-center gap-6 mt-6">
-          <div class="flex flex-col items-center">
-            <button onclick="setLocalMode()" class="icon-button bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800">
-              <i class="fas fa-mobile text-4xl"></i>
-            </button>
-            <span class="mt-2 text-sm font-medium text-gray-700">Mode Local</span>
-          </div>
-          
-          <div class="flex flex-col items-center">
-            <button onclick="setCloudMode()" class="icon-button bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800">
-              <i class="fas fa-cloud text-4xl"></i>
-            </button>
-            <span class="mt-2 text-sm font-medium text-gray-700">Supabase Cloud</span>
-          </div>
-          
-          <div class="flex flex-col items-center">
-            <button onclick="setServerMode()" class="icon-button bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800">
-              <i class="fas fa-server text-4xl"></i>
-            </button>
-            <span class="mt-2 text-sm font-medium text-gray-700">Serveur Local</span>
-          </div>
-        </div>
+  <div class="container mx-auto px-4 pt-24">
+    <!-- Section Sélection Utilisateur -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden animate-fade-in max-w-2xl mx-auto">
+      <div class="p-6 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
+        <h2 class="text-2xl font-semibold flex items-center">
+          <i class="fas fa-user-md mr-2"></i> Sélection de l'Utilisateur
+        </h2>
+        <p class="text-sm mt-1 text-indigo-100">Choisissez l'utilisateur qui effectuera les analyses</p>
       </div>
-    </div>
+      
+      <div class="p-6">
+        <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+          <div class="flex items-start">
+            <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+            <div>
+              <p class="text-sm text-blue-700">
+                <strong>Utilisateur actuel:</strong>
+                <span id="currentUserName" class="user-anim ml-2 font-semibold">Non sélectionné</span>
+              </p>
+            </div>
+          </div>
+        </div>
 
-    <!-- Informations Laboratoire -->
-    <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
-      <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i class="fas fa-hospital mr-2 text-indigo-600"></i> Informations Laboratoire
-      </h3>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Nom du Laboratoire</label>
-          <input id="labName" type="text" value="ANAPATH ELYOUSR" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Médecin Responsable</label>
-          <input id="labDoctor" type="text" value="Dr. BENFOULA Amel épouse ERROUANE" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
-          <input id="labAddress" type="text" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
-            <input id="labPhone" type="tel" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-user mr-1 text-indigo-600"></i> Sélectionner un utilisateur
+            </label>
+            <div class="relative">
+              <select id="userSelect" class="block appearance-none w-full bg-white border-2 border-gray-300 hover:border-indigo-500 px-4 py-3 pr-10 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                <option value="0">-- Choisir un utilisateur --</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
+                <i class="fas fa-chevron-down"></i>
+              </div>
+            </div>
           </div>
+
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input id="labEmail" type="email" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-key mr-1 text-indigo-600"></i> Mot de passe
+            </label>
+            <div class="password-input-container">
+              <input type="password" id="userPassword" class="w-full px-4 py-3 pr-12 border-2 border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" placeholder="Entrez le mot de passe">
+              <i class="fas fa-eye password-toggle" id="togglePassword" onclick="togglePasswordVisibility()"></i>
+            </div>
+          </div>
+
+          <div class="pt-4 flex gap-3">
+            <button onclick="cancelSelection()" class="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition flex items-center justify-center">
+              <i class="fas fa-times mr-2"></i>Annuler
+            </button>
+            <button onclick="validateUser()" class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center">
+              <i class="fas fa-check mr-2"></i>Valider
+            </button>
           </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Logo du Laboratoire</label>
-          <input id="labLogo" type="file" accept="image/*" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg">
-          <img id="logoPreview" class="mt-3 max-w-[200px] rounded-lg shadow-md hidden" alt="Logo">
-        </div>
-      </div>
-    </div>
 
-    <!-- Préférences d'Impression -->
-    <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
-      <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i class="fas fa-print mr-2 text-indigo-600"></i> Préférences d'Impression
-      </h3>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Format Papier</label>
-          <select id="printFormat" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-            <option value="A4">A4</option>
-            <option value="Letter">Letter</option>
-          </select>
-        </div>
-        <div class="flex items-center">
-          <input id="printLogo" type="checkbox" checked class="w-5 h-5 text-indigo-600 border-gray-300 rounded">
-          <label for="printLogo" class="ml-3 text-sm font-medium text-gray-700">Inclure le logo</label>
-        </div>
-        <div class="flex items-center">
-          <input id="printWatermark" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded">
-          <label for="printWatermark" class="ml-3 text-sm font-medium text-gray-700">Filigrane "CONFIDENTIEL"</label>
-        </div>
-      </div>
-    </div>
-
-    <!-- Classifications -->
-    <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
-      <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i class="fas fa-list-ul mr-2 text-indigo-600"></i> Classifications Pré-définies
-      </h3>
-      <div class="space-y-3">
-        <div class="p-3 bg-gray-50 rounded-lg">
-          <h4 class="font-medium mb-2">Classification BETHESDA 2017</h4>
-          <div class="text-sm text-gray-600">
-            <p>• Catégorie I - Non diagnostique</p>
-            <p>• Catégorie II - Bénin</p>
-            <p>• Catégorie III - Atypie de signification indéterminée</p>
-            <p>• Catégorie IV - Néoplasme folliculaire</p>
-            <p>• Catégorie V - Suspect de malignité</p>
-            <p>• Catégorie VI - Malin</p>
+        <!-- Liste des utilisateurs disponibles -->
+        <div class="mt-8 pt-6 border-t">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+            <i class="fas fa-users mr-2 text-indigo-600"></i> Utilisateurs disponibles
+          </h3>
+          <div id="usersList" class="space-y-2">
+            <div class="text-center py-8 text-gray-500">
+              <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
+              <p>Chargement des utilisateurs...</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="flex justify-end gap-3">
-      <button onclick="resetSettings()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600">
-        <i class="fas fa-undo mr-2"></i>Réinitialiser
-      </button>
-      <button onclick="saveSettings()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700">
-        <i class="fas fa-save mr-2"></i>Enregistrer
-      </button>
-    </div>
-  </main>
+  </div>
 
   <div id="toast" class="fixed bottom-4 right-4 hidden">
     <div class="flex items-center px-6 py-3 rounded-md shadow-lg">
@@ -204,7 +138,7 @@
   </div>
 
   <script>
-    const DEFAULT_API = 'https://votre-api.supabase.co';
+    const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'YOUR_FLASK_API_URL';
 
     function showToast(message, isError = false) {
       const toast = document.getElementById('toast');
@@ -220,120 +154,186 @@
       setTimeout(() => toast.classList.add('hidden'), 3000);
     }
 
-    function setLocalMode() {
-      document.getElementById('apiBaseUrl').value = '/api';
-      localStorage.setItem('apiBaseUrl', '/api');
-      showToast('Mode local activé');
-    }
-
-    function setCloudMode() {
-      document.getElementById('apiBaseUrl').value = DEFAULT_API;
-      localStorage.setItem('apiBaseUrl', DEFAULT_API);
-      showToast('Mode cloud activé');
-    }
-
-    function setServerMode() {
-      const serverUrl = prompt('URL serveur local (ex: http://192.168.1.10:5000)');
-      if (serverUrl) {
-        document.getElementById('apiBaseUrl').value = serverUrl;
-        localStorage.setItem('apiBaseUrl', serverUrl);
-        showToast('Serveur local configuré');
+    function togglePasswordVisibility() {
+      const input = document.getElementById('userPassword');
+      const icon = document.getElementById('togglePassword');
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
       }
     }
 
-    async function testConnection() {
-      const url = document.getElementById('apiBaseUrl').value;
+    async function loadUsers() {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        showToast('Veuillez vous connecter', true);
+        setTimeout(() => window.location.href = 'index.html', 1500);
+        return;
+      }
+
       try {
-        const response = await fetch(`${url}/`, { method: 'GET' });
-        if (response.ok) {
-          showToast('✅ Connexion réussie');
-        } else {
-          showToast('❌ Erreur de connexion', true);
+        const response = await fetch(`${API_BASE_URL}/liste_utilisateurs`, {
+          headers: { 'X-User-ID': userId }
+        });
+
+        if (!response.ok) {
+          throw new Error('Erreur de chargement');
         }
+
+        const users = await response.json();
+        const select = document.getElementById('userSelect');
+        const listDiv = document.getElementById('usersList');
+
+        // Remplir le select
+        select.innerHTML = '<option value="0">-- Choisir un utilisateur --</option>';
+        users.forEach(user => {
+          const option = document.createElement('option');
+          option.value = user.numero;
+          option.textContent = user.nom;
+          option.dataset.statut = user.statut;
+          select.appendChild(option);
+        });
+
+        // Afficher la liste
+        listDiv.innerHTML = users.map(user => `
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center mr-3">
+                <i class="fas fa-user-md text-indigo-600"></i>
+              </div>
+              <div>
+                <p class="font-medium text-gray-800">${user.nom}</p>
+                <p class="text-xs text-gray-500">
+                  <span class="px-2 py-0.5 rounded ${user.statut === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}">
+                    ${user.statut === 'admin' ? 'Administrateur' : 'Utilisateur'}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <button onclick="quickSelect('${user.numero}', '${user.nom}')" class="text-indigo-600 hover:text-indigo-800">
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        `).join('');
+
       } catch (error) {
-        showToast('❌ Impossible de se connecter', true);
+        showToast('Erreur de chargement des utilisateurs', true);
+        document.getElementById('usersList').innerHTML = `
+          <div class="text-center py-8 text-red-500">
+            <i class="fas fa-exclamation-triangle text-3xl mb-2"></i>
+            <p>Erreur de chargement</p>
+          </div>
+        `;
       }
     }
 
-    function saveSettings() {
-      const settings = {
-        apiBaseUrl: document.getElementById('apiBaseUrl').value,
-        labName: document.getElementById('labName').value,
-        labDoctor: document.getElementById('labDoctor').value,
-        labAddress: document.getElementById('labAddress').value,
-        labPhone: document.getElementById('labPhone').value,
-        labEmail: document.getElementById('labEmail').value,
-        printFormat: document.getElementById('printFormat').value,
-        printLogo: document.getElementById('printLogo').checked,
-        printWatermark: document.getElementById('printWatermark').checked
-      };
-      
-      localStorage.setItem('anapathSettings', JSON.stringify(settings));
-      localStorage.setItem('apiBaseUrl', settings.apiBaseUrl);
-      showToast('Paramètres sauvegardés');
+    function quickSelect(numero, nom) {
+      document.getElementById('userSelect').value = numero;
+      document.getElementById('currentUserName').textContent = nom;
+      document.getElementById('userPassword').focus();
     }
 
-    function loadSettings() {
-      const settings = JSON.parse(localStorage.getItem('anapathSettings') || '{}');
-      
-      document.getElementById('apiBaseUrl').value = settings.apiBaseUrl || DEFAULT_API;
-      document.getElementById('labName').value = settings.labName || 'ANAPATH ELYOUSR';
-      document.getElementById('labDoctor').value = settings.labDoctor || 'Dr. BENFOULA Amel épouse ERROUANE';
-      document.getElementById('labAddress').value = settings.labAddress || '';
-      document.getElementById('labPhone').value = settings.labPhone || '';
-      document.getElementById('labEmail').value = settings.labEmail || '';
-      document.getElementById('printFormat').value = settings.printFormat || 'A4';
-      document.getElementById('printLogo').checked = settings.printLogo !== false;
-      document.getElementById('printWatermark').checked = settings.printWatermark || false;
-    }
+    async function validateUser() {
+      const userNum = document.getElementById('userSelect').value;
+      const password = document.getElementById('userPassword').value;
 
-    function resetSettings() {
-      if (confirm('Réinitialiser tous les paramètres ?')) {
-        localStorage.removeItem('anapathSettings');
-        loadSettings();
-        showToast('Paramètres réinitialisés');
+      if (userNum === '0') {
+        showToast('Veuillez sélectionner un utilisateur', true);
+        return;
+      }
+
+      if (!password) {
+        showToast('Veuillez entrer le mot de passe', true);
+        return;
+      }
+
+      try {
+        const userId = localStorage.getItem('userId');
+        const selectedOption = document.getElementById('userSelect').options[document.getElementById('userSelect').selectedIndex];
+        const userName = selectedOption.text;
+
+        const response = await fetch(`${API_BASE_URL}/valider_utilisateur`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          body: JSON.stringify({
+            nom: userName,
+            password2: password
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.erreur || 'Validation échouée');
+        }
+
+        const result = await response.json();
+        
+        // Stocker l'utilisateur sélectionné
+        localStorage.setItem('selectedUser', JSON.stringify({
+          numero: userNum,
+          nom: userName,
+          statut: selectedOption.dataset.statut
+        }));
+        localStorage.setItem('userPassword', password);
+
+        showToast(`✅ Utilisateur ${userName} validé`);
+        setTimeout(() => window.location.href = 'index.html', 1000);
+
+      } catch (error) {
+        showToast(error.message, true);
       }
     }
 
-    function logout() {
+    function cancelSelection() {
+      if (confirm('Annuler la sélection ?')) {
+        window.location.href = 'index.html';
+      }
+    }
+
+    function loginLogout() {
       localStorage.removeItem('userId');
       localStorage.removeItem('userEmail');
+      localStorage.removeItem('selectedUser');
+      localStorage.removeItem('userPassword');
       window.location.href = 'index.html';
     }
-
-    // Logo upload
-    document.getElementById('labLogo')?.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const preview = document.getElementById('logoPreview');
-          preview.src = reader.result;
-          preview.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    // Auto-save on change
-    document.querySelectorAll('input, select').forEach(el => {
-      el.addEventListener('change', () => {
-        setTimeout(saveSettings, 300);
-      });
-    });
 
     document.addEventListener('DOMContentLoaded', () => {
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
-      
+
       if (!userId || !userEmail) {
-        window.location.href = 'index.html';
+        showToast('Veuillez vous connecter', true);
+        setTimeout(() => window.location.href = 'index.html', 1500);
         return;
       }
-      
+
       document.getElementById('userDisplay').textContent = userEmail;
       document.getElementById('userDisplay').classList.remove('hidden');
-      loadSettings();
+
+      // Vérifier si un utilisateur est déjà sélectionné
+      const selectedUser = localStorage.getItem('selectedUser');
+      if (selectedUser) {
+        const user = JSON.parse(selectedUser);
+        document.getElementById('currentUserName').textContent = user.nom;
+        document.getElementById('userSelect').value = user.numero;
+      }
+
+      loadUsers();
+
+      // Enter pour valider
+      document.getElementById('userPassword').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') validateUser();
+      });
     });
   </script>
 </body>
