@@ -11,9 +11,9 @@ gunicorn==21.2.0
 # ============================================
 # FICHIER: .env (Configuration)
 # ============================================
-DATABASE_URL=postgresql://user:password@host.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:B0FeyUxDnYXPWlsm@db.gatiajeraagssxmpaxyo.supabase.co:5432/postgres
 FLASK_ENV=production
-SECRET_KEY=votre_cle_secrete_ici
+SECRET_KEY=B0FeyUxDnYXPWlsm
 
 # ============================================
 # FICHIER: Procfile (Pour Render/Heroku)
