@@ -12,34 +12,34 @@ app = Flask(__name__)
 CORS(app)
 
 # ================================================
-# CONFIGURATION DB - STRICTEMENT OBLIGATOIRE
+# CONFIGURATION DATABASE (strict, obligatoire sur Render)
 # ================================================
 try:
     DATABASE_URL = os.environ['DATABASE_URL']
     print("DATABASE_URL chargée depuis les variables d'environnement Render")
 except KeyError:
-    print("ERREUR FATALE : DATABASE_URL n'est PAS définie dans les variables d'environnement !")
-    raise ValueError("DATABASE_URL manquante - impossible de démarrer l'application")
+    print("ERREUR FATALE : DATABASE_URL ABSENTE dans les variables d'environnement !")
+    raise ValueError("DATABASE_URL manquante → impossible de démarrer l'application")
 
 def get_db():
-    """Connexion PostgreSQL avec logs détaillés"""
+    """Connexion PostgreSQL avec logs"""
     try:
-        print("Tentative de connexion à PostgreSQL...")
+        print("Tentative de connexion PostgreSQL...")
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         print("Connexion PostgreSQL réussie !")
         return conn
     except Exception as e:
         print(f"ERREUR CRITIQUE CONNEXION DB : {str(e)}")
-        print(f"URL utilisée (cachée) : {DATABASE_URL.split('@')[0]}...")  # masque mot de passe
+        print(f"URL utilisée (cachée) : {DATABASE_URL.split('@')[0]}...")
         raise
 
 def init_db():
-    """Initialisation des tables - à appeler une seule fois (migration ou script séparé recommandé)"""
+    """Initialisation des tables (à appeler une seule fois)"""
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        print("Initialisation des tables en cours...")
+        print("Initialisation tables en cours...")
         
         # Table utilisateurs
         cur.execute('''
@@ -104,7 +104,7 @@ def init_db():
         ''')
         
         conn.commit()
-        print("Initialisation des tables terminée (ou tables déjà existantes)")
+        print("Tables initialisées (ou déjà existantes)")
     except Exception as e:
         print(f"ERREUR INIT DB : {str(e)}")
         raise
@@ -113,11 +113,11 @@ def init_db():
         if 'conn' in locals(): conn.close()
 
 # ================================================
-# ROUTES UTILISATEURS (avec gestion d'erreurs complète)
+# ROUTES UTILISATEURS
 # ================================================
 @app.route('/liste_utilisateurs', methods=['GET'])
 def liste_utilisateurs():
-    print("Requête reçue : /liste_utilisateurs")
+    print("Requête : /liste_utilisateurs")
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         print("401 : X-User-ID manquant")
@@ -128,10 +128,10 @@ def liste_utilisateurs():
         cur = conn.cursor()
         cur.execute('SELECT numero, nom, statut FROM utilisateurs WHERE user_id = %s', (user_id,))
         users = cur.fetchall()
-        print(f"Utilisateurs trouvés pour {user_id} : {len(users)}")
+        print(f"Utilisateurs trouvés : {len(users)}")
         return jsonify([dict(u) for u in users])
     except Exception as e:
-        print(f"ERREUR dans /liste_utilisateurs : {str(e)}")
+        print(f"ERREUR /liste_utilisateurs : {str(e)}")
         return jsonify({'erreur': 'Erreur interne serveur'}), 500
     finally:
         if 'cur' in locals(): cur.close()
@@ -139,7 +139,7 @@ def liste_utilisateurs():
 
 @app.route('/ajouter_utilisateur', methods=['POST'])
 def ajouter_utilisateur():
-    print("Requête reçue : /ajouter_utilisateur")
+    print("Requête : /ajouter_utilisateur")
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         print("401 : X-User-ID manquant")
@@ -147,7 +147,7 @@ def ajouter_utilisateur():
     
     data = request.json
     if not data or 'nom' not in data:
-        return jsonify({'erreur': 'Données invalides (nom requis)'}), 400
+        return jsonify({'erreur': 'Données invalides (nom obligatoire)'}), 400
     
     try:
         conn = get_db()
@@ -165,24 +165,120 @@ def ajouter_utilisateur():
         
         new_user = cur.fetchone()
         conn.commit()
-        print(f"Nouvel utilisateur ajouté : {new_user['nom']}")
+        print(f"Utilisateur ajouté : {new_user['nom']}")
         return jsonify(dict(new_user))
     except Exception as e:
-        print(f"ERREUR dans /ajouter_utilisateur : {str(e)}")
+        print(f"ERREUR /ajouter_utilisateur : {str(e)}")
         conn.rollback() if 'conn' in locals() else None
         return jsonify({'erreur': 'Erreur interne serveur'}), 500
     finally:
         if 'cur' in locals(): cur.close()
         if 'conn' in locals(): conn.close()
 
-# (Tu peux appliquer le même pattern à toutes les autres routes utilisateurs)
+@app.route('/valider_utilisateur', methods=['POST'])
+def valider_utilisateur():
+    print("Requête : /valider_utilisateur")
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        print("401 : X-User-ID manquant")
+        return jsonify({'erreur': 'Non autorisé'}), 401
+    
+    data = request.json
+    if not data or 'nom' not in data or 'password2' not in data:
+        return jsonify({'erreur': 'Données invalides'}), 400
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT numero, nom, statut
+            FROM utilisateurs
+            WHERE user_id = %s AND nom = %s AND password = %s
+        ''', (user_id, data['nom'], data['password2']))
+        user = cur.fetchone()
+        
+        if not user:
+            print("Identifiants invalides")
+            return jsonify({'erreur': 'Identifiants invalides'}), 401
+        
+        print("Utilisateur validé")
+        return jsonify({'utilisateur': dict(user)})
+    except Exception as e:
+        print(f"ERREUR /valider_utilisateur : {str(e)}")
+        return jsonify({'erreur': 'Erreur interne serveur'}), 500
+    finally:
+        if 'cur' in locals(): cur.close()
+        if 'conn' in locals(): conn.close()
+
+@app.route('/modifier_utilisateur/<int:numero>', methods=['PUT'])
+def modifier_utilisateur(numero):
+    print(f"Requête : /modifier_utilisateur/{numero}")
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        print("401 : X-User-ID manquant")
+        return jsonify({'erreur': 'Non autorisé'}), 401
+    
+    data = request.json
+    if not data or 'nom' not in data:
+        return jsonify({'erreur': 'Nom obligatoire'}), 400
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if 'password2' in data and data['password2']:
+            cur.execute('''
+                UPDATE utilisateurs
+                SET nom = %s, password = %s, statut = %s
+                WHERE user_id = %s AND numero = %s
+            ''', (data['nom'], data['password2'], data.get('statue', 'utilisateur'), user_id, numero))
+        else:
+            cur.execute('''
+                UPDATE utilisateurs
+                SET nom = %s, statut = %s
+                WHERE user_id = %s AND numero = %s
+            ''', (data['nom'], data.get('statue', 'utilisateur'), user_id, numero))
+        
+        conn.commit()
+        print(f"Utilisateur {numero} modifié")
+        return jsonify({'message': 'Utilisateur modifié'})
+    except Exception as e:
+        print(f"ERREUR /modifier_utilisateur : {str(e)}")
+        conn.rollback() if 'conn' in locals() else None
+        return jsonify({'erreur': 'Erreur interne serveur'}), 500
+    finally:
+        if 'cur' in locals(): cur.close()
+        if 'conn' in locals(): conn.close()
+
+@app.route('/supprimer_utilisateur/<int:numero>', methods=['DELETE'])
+def supprimer_utilisateur(numero):
+    print(f"Requête : /supprimer_utilisateur/{numero}")
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        print("401 : X-User-ID manquant")
+        return jsonify({'erreur': 'Non autorisé'}), 401
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM utilisateurs WHERE user_id = %s AND numero = %s', (user_id, numero))
+        conn.commit()
+        print(f"Utilisateur {numero} supprimé")
+        return jsonify({'message': 'Utilisateur supprimé'})
+    except Exception as e:
+        print(f"ERREUR /supprimer_utilisateur : {str(e)}")
+        conn.rollback() if 'conn' in locals() else None
+        return jsonify({'erreur': 'Erreur interne serveur'}), 500
+    finally:
+        if 'cur' in locals(): cur.close()
+        if 'conn' in locals(): conn.close()
 
 # ================================================
 # PATIENTS
 # ================================================
 @app.route('/patients', methods=['GET', 'POST'])
 def patients():
-    print("Requête reçue : /patients")
+    print("Requête : /patients")
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         print("401 : X-User-ID manquant")
@@ -193,7 +289,7 @@ def patients():
         cur = conn.cursor()
         
         if request.method == 'GET':
-            print("GET patients pour user_id:", user_id)
+            print(f"GET patients pour user_id = {user_id}")
             cur.execute('''
                 SELECT id, nom, age, sexe, telephone, adresse, created_at
                 FROM patients
@@ -205,10 +301,10 @@ def patients():
             return jsonify([dict(p) for p in patients_list])
         
         elif request.method == 'POST':
-            print("POST patient - création")
             data = request.json
+            print("POST patient - données:", data)
             if not data or 'nom' not in data:
-                return jsonify({'erreur': 'Données invalides (nom requis)'}), 400
+                return jsonify({'erreur': 'Nom obligatoire'}), 400
             
             cur.execute('''
                 INSERT INTO patients (user_id, nom, age, sexe, telephone, adresse)
@@ -219,12 +315,53 @@ def patients():
             
             new_patient = cur.fetchone()
             conn.commit()
-            print(f"Nouveau patient créé, ID: {new_patient['id']}")
+            print(f"Patient créé - ID: {new_patient['id']}")
             return jsonify(dict(new_patient)), 201
     except Exception as e:
-        print(f"ERREUR dans /patients : {str(e)}")
+        print(f"ERREUR /patients : {str(e)}")
         conn.rollback() if 'conn' in locals() else None
-        return jsonify({'erreur': 'Erreur interne serveur'}), 500
+        return jsonify({'erreur': 'Erreur serveur interne'}), 500
+    finally:
+        if 'cur' in locals(): cur.close()
+        if 'conn' in locals(): conn.close()
+
+@app.route('/patients/<int:id>', methods=['PUT', 'DELETE'])
+def patient_detail(id):
+    print(f"Requête : /patients/{id}")
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        print("401 : X-User-ID manquant")
+        return jsonify({'erreur': 'Non autorisé'}), 401
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.method == 'PUT':
+            data = request.json
+            print("PUT patient - données:", data)
+            if not data or 'nom' not in data:
+                return jsonify({'erreur': 'Nom obligatoire'}), 400
+            
+            cur.execute('''
+                UPDATE patients
+                SET nom = %s, age = %s, sexe = %s, telephone = %s, adresse = %s
+                WHERE user_id = %s AND id = %s
+            ''', (data['nom'], data.get('age'), data.get('sexe'),
+                  data.get('telephone'), data.get('adresse'), user_id, id))
+            conn.commit()
+            print(f"Patient {id} modifié")
+            return jsonify({'message': 'Patient modifié'})
+        
+        elif request.method == 'DELETE':
+            cur.execute('DELETE FROM patients WHERE user_id = %s AND id = %s', (user_id, id))
+            conn.commit()
+            print(f"Patient {id} supprimé")
+            return jsonify({'message': 'Patient supprimé'})
+    except Exception as e:
+        print(f"ERREUR /patients/{id} : {str(e)}")
+        conn.rollback() if 'conn' in locals() else None
+        return jsonify({'erreur': 'Erreur serveur interne'}), 500
     finally:
         if 'cur' in locals(): cur.close()
         if 'conn' in locals(): conn.close()
@@ -234,7 +371,7 @@ def patients():
 # ================================================
 @app.route('/medecins', methods=['GET', 'POST'])
 def medecins():
-    print("Requête reçue : /medecins")
+    print("Requête : /medecins")
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         print("401 : X-User-ID manquant")
@@ -245,7 +382,7 @@ def medecins():
         cur = conn.cursor()
         
         if request.method == 'GET':
-            print("GET medecins pour user_id:", user_id)
+            print(f"GET medecins pour user_id = {user_id}")
             cur.execute('''
                 SELECT id, nom, specialite, service, telephone, created_at
                 FROM medecins
@@ -257,10 +394,10 @@ def medecins():
             return jsonify([dict(m) for m in medecins_list])
         
         elif request.method == 'POST':
-            print("POST medecin - création")
             data = request.json
+            print("POST medecin - données:", data)
             if not data or 'nom' not in data:
-                return jsonify({'erreur': 'Données invalides (nom requis)'}), 400
+                return jsonify({'erreur': 'Nom obligatoire'}), 400
             
             cur.execute('''
                 INSERT INTO medecins (user_id, nom, specialite, service, telephone)
@@ -271,12 +408,53 @@ def medecins():
             
             new_medecin = cur.fetchone()
             conn.commit()
-            print(f"Nouveau médecin créé, ID: {new_medecin['id']}")
+            print(f"Médecin créé - ID: {new_medecin['id']}")
             return jsonify(dict(new_medecin)), 201
     except Exception as e:
-        print(f"ERREUR dans /medecins : {str(e)}")
+        print(f"ERREUR /medecins : {str(e)}")
         conn.rollback() if 'conn' in locals() else None
-        return jsonify({'erreur': 'Erreur interne serveur'}), 500
+        return jsonify({'erreur': 'Erreur serveur interne'}), 500
+    finally:
+        if 'cur' in locals(): cur.close()
+        if 'conn' in locals(): conn.close()
+
+@app.route('/medecins/<int:id>', methods=['PUT', 'DELETE'])
+def medecin_detail(id):
+    print(f"Requête : /medecins/{id}")
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        print("401 : X-User-ID manquant")
+        return jsonify({'erreur': 'Non autorisé'}), 401
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.method == 'PUT':
+            data = request.json
+            print("PUT medecin - données:", data)
+            if not data or 'nom' not in data:
+                return jsonify({'erreur': 'Nom obligatoire'}), 400
+            
+            cur.execute('''
+                UPDATE medecins
+                SET nom = %s, specialite = %s, service = %s, telephone = %s
+                WHERE user_id = %s AND id = %s
+            ''', (data['nom'], data.get('specialite'), data.get('service'),
+                  data.get('telephone'), user_id, id))
+            conn.commit()
+            print(f"Médecin {id} modifié")
+            return jsonify({'message': 'Médecin modifié'})
+        
+        elif request.method == 'DELETE':
+            cur.execute('DELETE FROM medecins WHERE user_id = %s AND id = %s', (user_id, id))
+            conn.commit()
+            print(f"Médecin {id} supprimé")
+            return jsonify({'message': 'Médecin supprimé'})
+    except Exception as e:
+        print(f"ERREUR /medecins/{id} : {str(e)}")
+        conn.rollback() if 'conn' in locals() else None
+        return jsonify({'erreur': 'Erreur serveur interne'}), 500
     finally:
         if 'cur' in locals(): cur.close()
         if 'conn' in locals(): conn.close()
@@ -286,7 +464,7 @@ def medecins():
 # ================================================
 @app.route('/comptes-rendus', methods=['GET', 'POST'])
 def comptes_rendus():
-    print("Requête reçue : /comptes-rendus")
+    print("Requête : /comptes-rendus")
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         print("401 : X-User-ID manquant")
@@ -297,7 +475,7 @@ def comptes_rendus():
         cur = conn.cursor()
         
         if request.method == 'GET':
-            print("GET comptes rendus pour user_id:", user_id)
+            print(f"GET comptes-rendus pour user_id = {user_id}")
             cur.execute('''
                 SELECT cr.*,
                        p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
@@ -309,15 +487,15 @@ def comptes_rendus():
                 ORDER BY cr.created_at DESC
             ''', (user_id,))
             reports = cur.fetchall()
-            print(f"Comptes rendus trouvés : {len(reports)}")
+            print(f"Comptes-rendus trouvés : {len(reports)}")
             return jsonify([dict(r) for r in reports])
         
         elif request.method == 'POST':
-            print("POST compte rendu - création")
             data = request.json
-            required_fields = ['numero_enregistrement', 'date_compte_rendu', 'medecin_id', 'patient_id', 'nature_prelevement', 'date_prelevement']
-            if not data or any(field not in data for field in required_fields):
-                return jsonify({'erreur': 'Données invalides (champs obligatoires manquants)'}), 400
+            print("POST compte-rendu - données:", data)
+            required = ['numero_enregistrement', 'date_compte_rendu', 'medecin_id', 'patient_id', 'nature_prelevement', 'date_prelevement']
+            if not data or any(k not in data for k in required):
+                return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
             
             cur.execute('''
                 INSERT INTO comptes_rendus (
@@ -338,22 +516,91 @@ def comptes_rendus():
             
             new_report = cur.fetchone()
             conn.commit()
-            print(f"Nouveau compte rendu créé, ID: {new_report['id']}")
+            print(f"Compte-rendu créé - ID: {new_report['id']}")
             return jsonify(dict(new_report)), 201
     except Exception as e:
-        print(f"ERREUR dans /comptes-rendus : {str(e)}")
+        print(f"ERREUR /comptes-rendus : {str(e)}")
         conn.rollback() if 'conn' in locals() else None
-        return jsonify({'erreur': 'Erreur interne serveur'}), 500
+        return jsonify({'erreur': 'Erreur serveur interne'}), 500
     finally:
         if 'cur' in locals(): cur.close()
         if 'conn' in locals(): conn.close()
 
-# ================================================
-# ROUTE PDF (inchangée mais protégée)
-# ================================================
+@app.route('/comptes-rendus/<int:id>', methods=['GET', 'PUT', 'DELETE'])
+def compte_rendu_detail(id):
+    print(f"Requête : /comptes-rendus/{id}")
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        print("401 : X-User-ID manquant")
+        return jsonify({'erreur': 'Non autorisé'}), 401
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.method == 'GET':
+            cur.execute('''
+                SELECT cr.*,
+                       p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
+                       m.nom as medecin_nom
+                FROM comptes_rendus cr
+                LEFT JOIN patients p ON cr.patient_id = p.id
+                LEFT JOIN medecins m ON cr.medecin_id = m.id
+                WHERE cr.user_id = %s AND cr.id = %s
+            ''', (user_id, id))
+            report = cur.fetchone()
+            
+            if not report:
+                print(f"Compte rendu {id} non trouvé")
+                return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
+            
+            print(f"Compte rendu {id} chargé")
+            return jsonify(dict(report))
+        
+        elif request.method == 'PUT':
+            data = request.json
+            print("PUT compte-rendu - données:", data)
+            required = ['numero_enregistrement', 'date_compte_rendu', 'medecin_id', 'patient_id', 'nature_prelevement', 'date_prelevement']
+            if not data or any(k not in data for k in required):
+                return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
+            
+            cur.execute('''
+                UPDATE comptes_rendus SET
+                    numero_enregistrement = %s, date_compte_rendu = %s,
+                    medecin_id = %s, service_hospitalier = %s, patient_id = %s,
+                    nature_prelevement = %s, date_prelevement = %s,
+                    renseignements_cliniques = %s,
+                    macroscopie = %s, microscopie = %s, conclusion = %s,
+                    statut = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s AND id = %s
+            ''', (
+                data['numero_enregistrement'], data['date_compte_rendu'],
+                data['medecin_id'], data.get('service_hospitalier'), data['patient_id'],
+                data['nature_prelevement'], data['date_prelevement'],
+                data.get('renseignements_cliniques'),
+                data.get('macroscopie'), data.get('microscopie'),
+                data.get('conclusion'), data.get('statut'), user_id, id
+            ))
+            conn.commit()
+            print(f"Compte rendu {id} modifié")
+            return jsonify({'message': 'Compte rendu modifié'})
+        
+        elif request.method == 'DELETE':
+            cur.execute('DELETE FROM comptes_rendus WHERE user_id = %s AND id = %s', (user_id, id))
+            conn.commit()
+            print(f"Compte rendu {id} supprimé")
+            return jsonify({'message': 'Compte rendu supprimé'})
+    except Exception as e:
+        print(f"ERREUR /comptes-rendus/{id} : {str(e)}")
+        conn.rollback() if 'conn' in locals() else None
+        return jsonify({'erreur': 'Erreur serveur interne'}), 500
+    finally:
+        if 'cur' in locals(): cur.close()
+        if 'conn' in locals(): conn.close()
+
 @app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
 def print_compte_rendu(id):
-    print(f"Requête reçue : /comptes-rendus/{id}/print")
+    print(f"Requête : /comptes-rendus/{id}/print")
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         print("401 : X-User-ID manquant")
@@ -374,7 +621,7 @@ def print_compte_rendu(id):
         report = cur.fetchone()
         
         if not report:
-            print(f"Compte rendu {id} non trouvé pour user {user_id}")
+            print(f"Compte rendu {id} non trouvé")
             return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
         
         print(f"Génération PDF pour compte rendu {id}")
@@ -407,8 +654,6 @@ def print_compte_rendu(id):
         y -= 15
         p.drawString(50, y, f"Médecin: {report['medecin_nom']}")
         
-        # ... Tu peux compléter ici avec macroscopie, microscopie, etc.
-        
         p.save()
         buffer.seek(0)
         
@@ -416,18 +661,18 @@ def print_compte_rendu(id):
                          download_name=f"CR_{report['numero_enregistrement']}.pdf",
                          mimetype='application/pdf')
     except Exception as e:
-        print(f"ERREUR dans /print : {str(e)}")
+        print(f"ERREUR /print : {str(e)}")
         return jsonify({'erreur': 'Erreur génération PDF'}), 500
     finally:
         if 'cur' in locals(): cur.close()
         if 'conn' in locals(): conn.close()
 
 # ================================================
-# ROUTE RACINE (test serveur)
+# ROUTE RACINE
 # ================================================
 @app.route('/', methods=['GET'])
 def home():
-    print("Requête reçue : / (home)")
+    print("Requête racine : /")
     return "API ANAPATH - Backend fonctionnel"
 
 # ================================================
