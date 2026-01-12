@@ -1557,7 +1557,7 @@
     // ────────────────────────────────────────────
     // RECHERCHE
     // ────────────────────────────────────────────
-  async function performSearch() {
+async function performSearch() {
   const type = document.getElementById('searchType').value;
   const term = document.getElementById('searchTerm').value.trim();
   
@@ -1598,23 +1598,52 @@
     } else {
       container.innerHTML = `
         <div class="bg-gray-50 p-4 rounded-lg">
-          <h4 class="font-medium mb-3">${results.length} résultat(s) trouvé(s)</h4>
-          <div id="searchResultsList" class="space-y-2 max-h-60 overflow-y-auto">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="font-medium">${results.length} résultat(s) trouvé(s)</h4>
+            <button onclick="clearSearch()" class="text-gray-600 hover:text-gray-800 text-sm">
+              <i class="fas fa-times mr-1"></i> Effacer
+            </button>
+          </div>
+          <div id="searchResultsList" class="space-y-3 max-h-60 overflow-y-auto">
             ${results.map(r => `
-              <div class="bg-white p-3 rounded border hover:bg-gray-50 search-result-item">
+              <div class="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all search-result-item">
                 <div class="flex justify-between items-start">
-                  <div>
-                    <p class="font-medium">${r.numero_enregistrement || r.nom}</p>
-                    <p class="text-sm text-gray-600">
-                      ${r.patient_nom || r.medecin_nom || r.utilisateur_nom || r.telephone || ''}
-                      ${r.date_prelevement ? ` (${r.date_prelevement})` : ''}
-                    </p>
+                  <div class="flex-1">
+                    <div class="flex items-start gap-3">
+                      <div class="mt-1">
+                        <i class="fas ${isPatientSearch ? 'fa-user-injured text-blue-500' : 'fa-file-medical text-green-500'}"></i>
+                      </div>
+                      <div class="flex-1">
+                        <p class="font-medium text-gray-900">${r.numero_enregistrement || r.nom}</p>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                          ${r.patient_nom ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Patient: ${r.patient_nom}</span>` : ''}
+                          ${r.medecin_nom ? `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Médecin: ${r.medecin_nom}</span>` : ''}
+                          ${r.date_prelevement ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">${r.date_prelevement}</span>` : ''}
+                          ${r.statut ? `<span class="status-badge status-${r.statut}">${r.statut}</span>` : ''}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <button class="view-search-result text-blue-600 text-sm hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition"
-                    data-result-id="${r.id || r.numero_enregistrement}"
-                    data-result-type="${isPatientSearch ? 'patient' : 'report'}">
-                    Voir
-                  </button>
+                  <div class="flex gap-2 ml-4">
+                    ${r.id ? `
+                      <button class="view-search-result flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
+                        data-result-id="${r.id}"
+                        data-result-type="${isPatientSearch ? 'patient' : 'report'}"
+                        data-action="view"
+                        title="Voir le détail">
+                        <i class="fas fa-eye"></i>
+                        <span class="text-xs">Voir</span>
+                      </button>
+                      <button class="edit-search-result flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
+                        data-result-id="${r.id}"
+                        data-result-type="${isPatientSearch ? 'patient' : 'report'}"
+                        data-action="edit"
+                        title="Éditer">
+                        <i class="fas fa-edit"></i>
+                        <span class="text-xs">Éditer</span>
+                      </button>
+                    ` : ''}
+                  </div>
                 </div>
               </div>
             `).join('')}
@@ -1631,6 +1660,12 @@
   }
 }
 
+// Fonction pour effacer la recherche
+function clearSearch() {
+  document.getElementById('searchTerm').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  showToast('Recherche effacée', 'success');
+}
 // Fonction pour attacher les écouteurs d'événements aux résultats de recherche
 function attachSearchResultListeners() {
   const viewButtons = document.querySelectorAll('.view-search-result');
@@ -1689,7 +1724,52 @@ function attachSearchResultListeners() {
     });
   });
 }
+// Fonction pour voir rapidement un compte rendu (mode lecture seule rapide)
+function quickViewReport(reportId) {
+  const report = allReports.find(r => r.id == reportId);
+  if (report) {
+    // Ouvrir en mode vue rapide (sans désactiver les champs)
+    editReport(report);
+    
+    // Ajouter une classe spéciale pour le mode rapide
+    const modal = document.getElementById('reportModal');
+    modal.classList.add('quick-view-mode');
+    
+    // Changer le titre
+    const title = modal.querySelector('h2');
+    if (title) {
+      title.innerHTML = '<i class="fas fa-eye mr-2"></i>Visualisation Rapide';
+    }
+    
+    // Changer le bouton
+    const submitBtn = modal.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.innerHTML = '<i class="fas fa-edit mr-2"></i>Passer en Édition';
+      submitBtn.onclick = function() {
+        // Passer en mode édition
+        modal.classList.remove('quick-view-mode');
+        title.innerHTML = 'Compte Rendu Cyto-Pathologique';
+        submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Enregistrer';
+        submitBtn.type = 'submit';
+        
+        // Réactiver tous les champs
+        const form = document.getElementById('reportForm');
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => input.disabled = false);
+      };
+      submitBtn.type = 'button';
+    }
+  }
+}
 
+// Fonction pour éditer rapidement
+function quickEditReport(reportId) {
+  const report = allReports.find(r => r.id == reportId);
+  if (report) {
+    editReport(report);
+    showToast('Mode édition activé. Vous pouvez modifier le compte rendu.', 'success');
+  }
+}
     // ────────────────────────────────────────────
     // INITIALISATION
     // ────────────────────────────────────────────
