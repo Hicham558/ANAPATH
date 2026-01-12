@@ -9,42 +9,109 @@ from reportlab.pdfgen import canvas
 from io import BytesIO
 import traceback
 import textwrap
+import time
+import logging
+
+# ================================================
+# CONFIGURATION LOGGING
+# ================================================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {
-    "origins": ["https://hicham558.github.io", "http://localhost:*", "*"],  # ton domaine GH Pages + localhost
+    "origins": ["https://hicham558.github.io", "http://localhost:*", "*"],
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "allow_headers": ["Content-Type", "X-User-ID", "Authorization"],
     "supports_credentials": True,
-    "max_age": 86400  # cache preflight 24h
+    "max_age": 86400
 }})
 
 # ================================================
-# CONFIGURATION
+# MIDDLEWARE POUR PERFORMANCE
+# ================================================
+@app.before_request
+def start_timer():
+    """Démarre un timer pour chaque requête"""
+    request.start_time = time.time()
+    logger.info(f"▶️ {request.method} {request.path}")
+
+@app.after_request
+def log_request(response):
+    """Log le temps de réponse"""
+    if hasattr(request, 'start_time'):
+        duration = time.time() - request.start_time
+        logger.info(f"✅ {request.method} {request.path} - {response.status_code} - {duration:.2f}s")
+        
+        # Warning si la requête prend trop de temps
+        if duration > 20:
+            logger.warning(f"⚠️ Requête lente: {duration:.2f}s pour {request.path}")
+    
+    return response
+
+# ================================================
+# CONFIGURATION BASE DE DONNÉES OPTIMISÉE
 # ================================================
 try:
     DATABASE_URL = os.environ['DATABASE_URL']
-    print("? DATABASE_URL chargée depuis environnement")
+    logger.info("✅ DATABASE_URL chargée depuis environnement")
 except KeyError:
-    print("? DATABASE_URL absente - Mode développement local")
+    logger.info("🔧 DATABASE_URL absente - Mode développement local")
     DATABASE_URL = "postgresql://localhost/anapath"
 
 def get_db():
-    """Connexion PostgreSQL avec gestion d'erreur"""
+    """Connexion PostgreSQL optimisée pour Render"""
     try:
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(
+            DATABASE_URL,
+            cursor_factory=RealDictCursor,
+            connect_timeout=5,           # Timeout de connexion court
+            keepalives=1,                # Active keepalive
+            keepalives_idle=30,          # 30s d'inactivité avant keepalive
+            keepalives_interval=10,      # Envoie keepalive toutes les 10s
+            keepalives_count=3           # 3 tentatives max
+        )
         return conn
     except Exception as e:
-        print(f"? ERREUR CONNEXION DB: {str(e)}")
+        logger.error(f"❌ ERREUR CONNEXION DB: {str(e)}")
         raise
 
+# ================================================
+# DÉCORATEUR POUR GESTION AUTOMATIQUE DB
+# ================================================
+def with_db_connection(func):
+    """Décorateur pour gérer automatiquement les connexions DB"""
+    def wrapper(*args, **kwargs):
+        conn = None
+        cur = None
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            return func(conn, cur, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"❌ Erreur dans {func.__name__}: {str(e)}")
+            raise
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+    wrapper.__name__ = func.__name__
+    return wrapper
+
+# ================================================
+# INITIALISATION DE LA BASE DE DONNÉES
+# ================================================
 def init_db():
-    """Initialisation des tables"""
+    """Initialisation optimisée des tables"""
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        print("?? Initialisation des tables...")
+        logger.info("🔄 Initialisation des tables...")
         
         # Utilisateurs
         cur.execute('''
@@ -111,11 +178,27 @@ def init_db():
             )
         ''')
         
+        # Index pour améliorer les performances
+        cur.execute('''
+            CREATE INDEX IF NOT EXISTS idx_comptes_rendus_user_id 
+            ON comptes_rendus(user_id)
+        ''')
+        
+        cur.execute('''
+            CREATE INDEX IF NOT EXISTS idx_patients_user_id 
+            ON patients(user_id)
+        ''')
+        
+        cur.execute('''
+            CREATE INDEX IF NOT EXISTS idx_medecins_user_id 
+            ON medecins(user_id)
+        ''')
+        
         conn.commit()
-        print("? Tables initialisées")
+        logger.info("✅ Tables initialisées avec succès")
         
     except Exception as e:
-        print(f"? ERREUR INIT DB: {str(e)}")
+        logger.error(f"❌ ERREUR INIT DB: {str(e)}")
         traceback.print_exc()
     finally:
         if 'cur' in locals():
@@ -129,7 +212,7 @@ def init_db():
 @app.errorhandler(Exception)
 def handle_error(e):
     """Gestion centralisée des erreurs"""
-    print(f"? ERREUR: {str(e)}")
+    logger.error(f"❌ ERREUR: {str(e)}")
     traceback.print_exc()
     return jsonify({
         'erreur': str(e),
@@ -137,15 +220,49 @@ def handle_error(e):
     }), 500
 
 # ================================================
-# ROUTES
+# ENDPOINTS DE SANTÉ (pour Render)
 # ================================================
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({
         'service': 'ANAPATH API',
         'version': '1.0.0',
-        'status': 'operational'
+        'status': 'operational',
+        'timestamp': datetime.now().isoformat()
     })
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Endpoint de santé simple pour Render"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat()
+    }), 200
+
+@app.route('/health/db', methods=['GET'])
+def health_db():
+    """Vérifie rapidement la connexion à la DB"""
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('SELECT 1 as test')
+        result = cur.fetchone()
+        return jsonify({
+            'database': 'connected',
+            'test': result['test']
+        })
+    except Exception as e:
+        return jsonify({
+            'database': 'error',
+            'message': str(e)
+        }), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 @app.route('/test-db', methods=['GET'])
 def test_db():
@@ -168,38 +285,31 @@ def test_db():
         }), 500
 
 # ================================================
-# UTILISATEURS
+# UTILISATEURS (avec décorateur)
 # ================================================
 @app.route('/liste_utilisateurs', methods=['GET'])
-def liste_utilisateurs():
+@with_db_connection
+def liste_utilisateurs(conn, cur):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
         cur.execute(
             'SELECT numero, nom, statut FROM utilisateurs WHERE user_id = %s ORDER BY numero',
             (user_id,)
         )
         users = cur.fetchall()
+        logger.info(f"📋 Liste utilisateurs: {len(users)} trouvés")
         return jsonify([dict(u) for u in users])
     
     except Exception as e:
-        print(f"? Erreur liste_utilisateurs: {str(e)}")
+        logger.error(f"❌ Erreur liste_utilisateurs: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 @app.route('/ajouter_utilisateur', methods=['POST'])
-def ajouter_utilisateur():
+@with_db_connection
+def ajouter_utilisateur(conn, cur):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
@@ -208,26 +318,20 @@ def ajouter_utilisateur():
     if not data or 'nom' not in data or 'password2' not in data:
         return jsonify({'erreur': 'Nom et mot de passe obligatoires'}), 400
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
+        logger.info(f"➕ Ajout utilisateur: {data['nom']}")
         
-        # Version optimisée : utiliser nextval pour obtenir l'ID d'avance
-        # D'abord obtenir le prochain ID de la séquence
         cur.execute("SELECT nextval('utilisateurs_id_seq') as next_id")
         next_id = cur.fetchone()['next_id']
         
-        # Insérer avec id ET numero définis explicitement
         cur.execute('''
             INSERT INTO utilisateurs (id, user_id, numero, nom, password, statut)
             VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id, numero, nom, statut
         ''', (
-            next_id,           # id (explicitement défini)
+            next_id,
             user_id,
-            next_id,           # numero = id
+            next_id,
             data['nom'],
             data['password2'],
             data.get('statut', 'utilisateur')
@@ -235,22 +339,18 @@ def ajouter_utilisateur():
         
         new_user = cur.fetchone()
         conn.commit()
+        
+        logger.info(f"✅ Utilisateur créé: ID={new_user['id']}, Nom={new_user['nom']}")
         return jsonify(dict(new_user)), 201
     
     except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"❌ Erreur ajouter_utilisateur: {str(e)}")
+        conn.rollback()
+        logger.error(f"❌ Erreur ajouter_utilisateur: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 @app.route('/valider_utilisateur', methods=['POST'])
-def valider_utilisateur():
+@with_db_connection
+def valider_utilisateur(conn, cur):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
@@ -259,11 +359,7 @@ def valider_utilisateur():
     if not data or 'nom' not in data or 'password2' not in data:
         return jsonify({'erreur': 'Nom et mot de passe obligatoires'}), 400
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
         cur.execute('''
             SELECT numero, nom, statut
             FROM utilisateurs
@@ -272,43 +368,37 @@ def valider_utilisateur():
         
         user = cur.fetchone()
         if not user:
+            logger.warning(f"❌ Validation échouée pour: {data['nom']}")
             return jsonify({'erreur': 'Identifiants invalides'}), 401
         
+        logger.info(f"✅ Utilisateur validé: {user['nom']}")
         return jsonify({'utilisateur': dict(user)})
     
     except Exception as e:
-        print(f"? Erreur valider_utilisateur: {str(e)}")
+        logger.error(f"❌ Erreur valider_utilisateur: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 # ================================================
-# PATIENTS
+# PATIENTS (avec décorateur)
 # ================================================
 @app.route('/patients', methods=['GET', 'POST'])
-def patients():
+@with_db_connection
+def patients(conn, cur):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        
         if request.method == 'GET':
             cur.execute('''
                 SELECT id, nom, age, sexe, telephone, adresse, created_at
                 FROM patients
                 WHERE user_id = %s
                 ORDER BY created_at DESC
+                LIMIT 100  # Limite pour éviter les timeouts
             ''', (user_id,))
             patients_list = cur.fetchall()
+            logger.info(f"📋 Liste patients: {len(patients_list)} trouvés")
             return jsonify([dict(p) for p in patients_list])
         
         elif request.method == 'POST':
@@ -331,32 +421,24 @@ def patients():
             
             new_patient = cur.fetchone()
             conn.commit()
+            
+            logger.info(f"✅ Patient créé: {new_patient['nom']}")
             return jsonify(dict(new_patient)), 201
     
     except Exception as e:
-        if conn:
+        if request.method == 'POST':
             conn.rollback()
-        print(f"? Erreur patients: {str(e)}")
+        logger.error(f"❌ Erreur patients: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 @app.route('/patients/<int:id>', methods=['PUT', 'DELETE'])
-def patient_detail(id):
+@with_db_connection
+def patient_detail(conn, cur, id):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        
         if request.method == 'PUT':
             data = request.json
             if not data or 'nom' not in data:
@@ -376,48 +458,44 @@ def patient_detail(id):
                 id
             ))
             conn.commit()
+            
+            logger.info(f"✏️ Patient modifié: ID={id}")
             return jsonify({'message': 'Patient modifié'})
         
         elif request.method == 'DELETE':
             cur.execute('DELETE FROM patients WHERE user_id = %s AND id = %s', (user_id, id))
             conn.commit()
+            
+            logger.info(f"🗑️ Patient supprimé: ID={id}")
             return jsonify({'message': 'Patient supprimé'})
     
     except Exception as e:
-        if conn:
+        if request.method == 'PUT':
             conn.rollback()
-        print(f"? Erreur patient_detail: {str(e)}")
+        logger.error(f"❌ Erreur patient_detail: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 # ================================================
-# MÉDECINS
+# MÉDECINS (avec décorateur)
 # ================================================
 @app.route('/medecins', methods=['GET', 'POST'])
-def medecins():
+@with_db_connection
+def medecins(conn, cur):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        
         if request.method == 'GET':
             cur.execute('''
                 SELECT id, nom, specialite, service, telephone, created_at
                 FROM medecins
                 WHERE user_id = %s
                 ORDER BY created_at DESC
+                LIMIT 100  # Limite pour éviter les timeouts
             ''', (user_id,))
             medecins_list = cur.fetchall()
+            logger.info(f"📋 Liste médecins: {len(medecins_list)} trouvés")
             return jsonify([dict(m) for m in medecins_list])
         
         elif request.method == 'POST':
@@ -439,32 +517,24 @@ def medecins():
             
             new_medecin = cur.fetchone()
             conn.commit()
+            
+            logger.info(f"✅ Médecin créé: {new_medecin['nom']}")
             return jsonify(dict(new_medecin)), 201
     
     except Exception as e:
-        if conn:
+        if request.method == 'POST':
             conn.rollback()
-        print(f"? Erreur medecins: {str(e)}")
+        logger.error(f"❌ Erreur medecins: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 @app.route('/medecins/<int:id>', methods=['PUT', 'DELETE'])
-def medecin_detail(id):
+@with_db_connection
+def medecin_detail(conn, cur, id):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        
         if request.method == 'PUT':
             data = request.json
             if not data or 'nom' not in data:
@@ -483,46 +553,40 @@ def medecin_detail(id):
                 id
             ))
             conn.commit()
+            
+            logger.info(f"✏️ Médecin modifié: ID={id}")
             return jsonify({'message': 'Médecin modifié'})
         
         elif request.method == 'DELETE':
             cur.execute('DELETE FROM medecins WHERE user_id = %s AND id = %s', (user_id, id))
             conn.commit()
+            
+            logger.info(f"🗑️ Médecin supprimé: ID={id}")
             return jsonify({'message': 'Médecin supprimé'})
     
     except Exception as e:
-        if conn:
+        if request.method == 'PUT':
             conn.rollback()
-        print(f"? Erreur medecin_detail: {str(e)}")
+        logger.error(f"❌ Erreur medecin_detail: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 # ================================================
-# COMPTES RENDUS
+# COMPTES RENDUS (avec décorateur et optimisations)
 # ================================================
-
 @app.route('/comptes-rendus', methods=['GET', 'POST'])
-def comptes_rendus():
+@with_db_connection
+def comptes_rendus(conn, cur):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        
         if request.method == 'GET':
+            # Version optimisée avec LIMIT pour éviter les timeouts
             cur.execute('''
-                SELECT cr.*,
-                       p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
-                       m.nom as medecin_nom,
+                SELECT cr.id, cr.numero_enregistrement, cr.date_compte_rendu,
+                       cr.statut, cr.date_prelevement, cr.created_at,
+                       p.nom as patient_nom, m.nom as medecin_nom,
                        u.nom as utilisateur_nom
                 FROM comptes_rendus cr
                 LEFT JOIN patients p ON cr.patient_id = p.id
@@ -530,8 +594,11 @@ def comptes_rendus():
                 LEFT JOIN utilisateurs u ON cr.utilisateur_id = u.numero AND cr.user_id = u.user_id
                 WHERE cr.user_id = %s
                 ORDER BY cr.created_at DESC
+                LIMIT 50  # Limite importante pour éviter les timeouts
             ''', (user_id,))
+            
             reports = cur.fetchall()
+            logger.info(f"📋 Liste comptes rendus: {len(reports)} trouvés")
             return jsonify([dict(r) for r in reports])
         
         elif request.method == 'POST':
@@ -542,8 +609,9 @@ def comptes_rendus():
             if not data or any(k not in data for k in required):
                 return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
             
-            # Récupérer utilisateur_id depuis les données ou depuis le header
             utilisateur_id = data.get('utilisateur_id')
+            
+            logger.info(f"➕ Création compte rendu: {data['numero_enregistrement']}")
             
             cur.execute('''
                 INSERT INTO comptes_rendus (
@@ -572,32 +640,24 @@ def comptes_rendus():
             
             new_report = cur.fetchone()
             conn.commit()
+            
+            logger.info(f"✅ Compte rendu créé: ID={new_report['id']}")
             return jsonify(dict(new_report)), 201
     
     except Exception as e:
-        if conn:
+        if request.method == 'POST':
             conn.rollback()
-        print(f"❌ Erreur comptes_rendus: {str(e)}")
+        logger.error(f"❌ Erreur comptes_rendus: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 @app.route('/comptes-rendus/<int:id>', methods=['GET', 'PUT', 'DELETE'])
-def compte_rendu_detail(id):
+@with_db_connection
+def compte_rendu_detail(conn, cur, id):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        
         if request.method == 'GET':
             cur.execute('''
                 SELECT cr.*,
@@ -613,8 +673,10 @@ def compte_rendu_detail(id):
             
             report = cur.fetchone()
             if not report:
+                logger.warning(f"❌ Compte rendu non trouvé: ID={id}")
                 return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
             
+            logger.info(f"📄 Détails compte rendu: ID={id}")
             return jsonify(dict(report))
         
         elif request.method == 'PUT':
@@ -624,6 +686,8 @@ def compte_rendu_detail(id):
             
             if not data or any(k not in data for k in required):
                 return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
+            
+            logger.info(f"✏️ Modification compte rendu: ID={id}")
             
             cur.execute('''
                 UPDATE comptes_rendus SET
@@ -653,34 +717,31 @@ def compte_rendu_detail(id):
                 id
             ))
             conn.commit()
+            
+            logger.info(f"✅ Compte rendu modifié: ID={id}")
             return jsonify({'message': 'Compte rendu modifié'})
         
         elif request.method == 'DELETE':
             cur.execute('DELETE FROM comptes_rendus WHERE user_id = %s AND id = %s', (user_id, id))
             conn.commit()
+            
+            logger.info(f"🗑️ Compte rendu supprimé: ID={id}")
             return jsonify({'message': 'Compte rendu supprimé'})
     
     except Exception as e:
-        if conn:
+        if request.method in ['PUT', 'POST']:
             conn.rollback()
-        print(f"❌ Erreur compte_rendu_detail: {str(e)}")
+        logger.error(f"❌ Erreur compte_rendu_detail: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 @app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
 def print_compte_rendu(id):
     user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
     
-    print(f"[PRINT DEBUG] Demande pour CR ID: {id}")
-    print(f"[PRINT DEBUG] user_id utilisé: {user_id}")
+    logger.info(f"🖨️ Demande impression CR ID: {id}, user_id: {user_id}")
     
     if not user_id:
-        print("[PRINT ERROR] user_id manquant")
+        logger.error("❌ X-User-ID manquant pour impression")
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
     conn = None
@@ -704,10 +765,10 @@ def print_compte_rendu(id):
         report = cur.fetchone()
         
         if not report:
-            print(f"[PRINT] Compte rendu {id} non trouvé")
+            logger.error(f"❌ Compte rendu {id} non trouvé pour impression")
             return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
         
-        print(f"[PRINT] Génération PDF pour CR {id}")
+        logger.info(f"📄 Génération PDF pour CR {id}")
         
         # Génération PDF
         buffer = BytesIO()
@@ -754,7 +815,7 @@ def print_compte_rendu(id):
         y -= 15
         p.drawString(50, y, f"Nature/Siège du prélèvement : {report['nature_prelevement'] or 'Non renseigné'}")
         
-        # Sections du rapport (Renseignements, Macroscopie, etc.)
+        # Sections du rapport
         def add_section(title, content):
             nonlocal y
             y -= 30
@@ -780,7 +841,7 @@ def print_compte_rendu(id):
         p.save()
         buffer.seek(0)
         
-        print(f"[PRINT SUCCESS] PDF généré pour CR {id}")
+        logger.info(f"✅ PDF généré avec succès pour CR {id}")
         
         return send_file(
             buffer,
@@ -790,7 +851,7 @@ def print_compte_rendu(id):
         )
     
     except Exception as e:
-        print(f"[PRINT ERROR] {str(e)}")
+        logger.error(f"❌ Erreur impression: {str(e)}")
         return jsonify({'erreur': f'Erreur serveur: {str(e)}'}), 500
     
     finally:
@@ -803,10 +864,11 @@ def print_compte_rendu(id):
 # DÉMARRAGE
 # ================================================
 if __name__ == '__main__':
-    print("?? Démarrage ANAPATH API...")
+    logger.info("🚀 Démarrage ANAPATH API...")
     try:
         init_db()
     except Exception as e:
-        print(f"?? Avertissement init_db: {str(e)}")
+        logger.warning(f"⚠️ Avertissement init_db: {str(e)}")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Mode production pour Render
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
