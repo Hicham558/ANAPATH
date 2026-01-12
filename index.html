@@ -1625,24 +1625,21 @@ async function performSearch() {
                     </div>
                   </div>
                   <div class="flex gap-2 ml-4">
-                    ${r.id ? `
-                      <button class="view-search-result flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
-                        data-result-id="${r.id}"
-                        data-result-type="${isPatientSearch ? 'patient' : 'report'}"
-                        data-action="view"
-                        title="Voir le détail">
-                        <i class="fas fa-eye"></i>
-                        <span class="text-xs">Voir</span>
-                      </button>
-                      <button class="edit-search-result flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
-                        data-result-id="${r.id}"
-                        data-result-type="${isPatientSearch ? 'patient' : 'report'}"
-                        data-action="edit"
-                        title="Éditer">
-                        <i class="fas fa-edit"></i>
-                        <span class="text-xs">Éditer</span>
-                      </button>
-                    ` : ''}
+                
+${r.id ? `
+  <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'view')" 
+    class="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
+    title="Voir le détail">
+    <i class="fas fa-eye"></i>
+    <span class="text-xs">Voir</span>
+  </button>
+  <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'edit')" 
+    class="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
+    title="Éditer">
+    <i class="fas fa-edit"></i>
+    <span class="text-xs">Éditer</span>
+  </button>
+` : ''}
                   </div>
                 </div>
               </div>
@@ -1659,7 +1656,32 @@ async function performSearch() {
     showToast('Erreur lors de la recherche', 'error');
   }
 }
-
+// Fonction pour gérer les résultats de recherche
+function handleSearchResult(resultId, resultType, action) {
+  if (resultType === 'report') {
+    const report = allReports.find(r => r.id == resultId);
+    if (report) {
+      if (action === 'view') {
+        viewReport(report);
+      } else if (action === 'edit') {
+        editReport(report);
+      }
+      document.getElementById('searchSection').classList.add('hidden');
+    }
+  } else if (resultType === 'patient') {
+    const patient = allPatients.find(p => p.id == resultId);
+    if (patient) {
+      if (action === 'view') {
+        showToast(`Patient: ${patient.nom}`, 'success');
+      } else if (action === 'edit') {
+        if (document.getElementById('patientsContent').classList.contains('hidden')) {
+          toggleSection('patientsSection');
+        }
+        setTimeout(() => editPatient(patient), 300);
+      }
+    }
+  }
+}
 // Fonction pour effacer la recherche
 function clearSearch() {
   document.getElementById('searchTerm').value = '';
