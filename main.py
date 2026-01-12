@@ -10,7 +10,26 @@ from io import BytesIO
 import traceback
 
 app = Flask(__name__)
-CORS(app)
+# Configuration CORS complète et permissive (à sécuriser plus tard)
+CORS(app, resources={
+    r"/*": {
+        "origins": ["https://hicham558.github.io", "http://localhost:5500", "*"],  # ajoute ton domaine GitHub Pages + localhost
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "X-User-ID", "Authorization"],
+        "supports_credentials": True
+    }
+})
+
+# Optionnel : gère explicitement les requêtes OPTIONS pour toutes les routes
+@app.before_request
+def handle_options():
+    if request.method == "OPTIONS":
+        response = app.make_response("")
+        response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-User-ID"
+        response.headers["Access-Control-Max-Age"] = "86400"  # cache 24h
+        return response, 200
 
 # ================================================
 # CONFIGURATION
