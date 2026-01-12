@@ -10,35 +10,16 @@ from io import BytesIO
 import traceback
 
 app = Flask(__name__)
-# Configuration CORS complète et permissive (à sécuriser plus tard)
-CORS(app, resources={
-    r"/*": {
-        "origins": ["https://hicham558.github.io", "http://localhost:5500", "*"],  # ajoute ton domaine GitHub Pages + localhost
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "X-User-ID", "Authorization"],
-        "supports_credentials": True
-    }
-})
-
-# Optionnel : gère explicitement les requêtes OPTIONS pour toutes les routes
-@app.before_request
-def handle_options():
-    if request.method == "OPTIONS":
-        response = app.make_response("")
-        response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-User-ID"
-        response.headers["Access-Control-Max-Age"] = "86400"  # cache 24h
-        return response, 200
+CORS(app)
 
 # ================================================
 # CONFIGURATION
 # ================================================
 try:
     DATABASE_URL = os.environ['DATABASE_URL']
-    print("✅ DATABASE_URL chargée depuis environnement")
+    print("? DATABASE_URL chargée depuis environnement")
 except KeyError:
-    print("❌ DATABASE_URL absente - Mode développement local")
+    print("? DATABASE_URL absente - Mode développement local")
     DATABASE_URL = "postgresql://localhost/anapath"
 
 def get_db():
@@ -47,7 +28,7 @@ def get_db():
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
-        print(f"❌ ERREUR CONNEXION DB: {str(e)}")
+        print(f"? ERREUR CONNEXION DB: {str(e)}")
         raise
 
 def init_db():
@@ -56,7 +37,7 @@ def init_db():
         conn = get_db()
         cur = conn.cursor()
         
-        print("📊 Initialisation des tables...")
+        print("?? Initialisation des tables...")
         
         # Utilisateurs
         cur.execute('''
@@ -123,10 +104,10 @@ def init_db():
         ''')
         
         conn.commit()
-        print("✅ Tables initialisées")
+        print("? Tables initialisées")
         
     except Exception as e:
-        print(f"❌ ERREUR INIT DB: {str(e)}")
+        print(f"? ERREUR INIT DB: {str(e)}")
         traceback.print_exc()
     finally:
         if 'cur' in locals():
@@ -140,7 +121,7 @@ def init_db():
 @app.errorhandler(Exception)
 def handle_error(e):
     """Gestion centralisée des erreurs"""
-    print(f"❌ ERREUR: {str(e)}")
+    print(f"? ERREUR: {str(e)}")
     traceback.print_exc()
     return jsonify({
         'erreur': str(e),
@@ -200,7 +181,7 @@ def liste_utilisateurs():
         return jsonify([dict(u) for u in users])
     
     except Exception as e:
-        print(f"❌ Erreur liste_utilisateurs: {str(e)}")
+        print(f"? Erreur liste_utilisateurs: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -244,7 +225,7 @@ def ajouter_utilisateur():
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"❌ Erreur ajouter_utilisateur: {str(e)}")
+        print(f"? Erreur ajouter_utilisateur: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -281,7 +262,7 @@ def valider_utilisateur():
         return jsonify({'utilisateur': dict(user)})
     
     except Exception as e:
-        print(f"❌ Erreur valider_utilisateur: {str(e)}")
+        print(f"? Erreur valider_utilisateur: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -340,7 +321,7 @@ def patients():
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"❌ Erreur patients: {str(e)}")
+        print(f"? Erreur patients: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -390,7 +371,7 @@ def patient_detail(id):
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"❌ Erreur patient_detail: {str(e)}")
+        print(f"? Erreur patient_detail: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -448,7 +429,7 @@ def medecins():
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"❌ Erreur medecins: {str(e)}")
+        print(f"? Erreur medecins: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -497,7 +478,7 @@ def medecin_detail(id):
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"❌ Erreur medecin_detail: {str(e)}")
+        print(f"? Erreur medecin_detail: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -509,6 +490,79 @@ def medecin_detail(id):
 # ================================================
 # COMPTES RENDUS
 # ================================================
+@app.route('/comptes-rendus', methods=['GET', 'POST'])
+def comptes_rendus():
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.method == 'GET':
+            cur.execute('''
+                SELECT cr.*,
+                       p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
+                       m.nom as medecin_nom
+                FROM comptes_rendus cr
+                LEFT JOIN patients p ON cr.patient_id = p.id
+                LEFT JOIN medecins m ON cr.medecin_id = m.id
+                WHERE cr.user_id = %s
+                ORDER BY cr.created_at DESC
+            ''', (user_id,))
+            reports = cur.fetchall()
+            return jsonify([dict(r) for r in reports])
+        
+        elif request.method == 'POST':
+            data = request.json
+            required = ['numero_enregistrement', 'date_compte_rendu', 'medecin_id', 
+                       'patient_id', 'nature_prelevement', 'date_prelevement']
+            
+            if not data or any(k not in data for k in required):
+                return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
+            
+            cur.execute('''
+                INSERT INTO comptes_rendus (
+                    user_id, numero_enregistrement, date_compte_rendu,
+                    medecin_id, service_hospitalier, patient_id,
+                    nature_prelevement, date_prelevement, renseignements_cliniques,
+                    macroscopie, microscopie, conclusion, statut
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (
+                user_id,
+                data['numero_enregistrement'],
+                data['date_compte_rendu'],
+                data['medecin_id'],
+                data.get('service_hospitalier'),
+                data['patient_id'],
+                data['nature_prelevement'],
+                data['date_prelevement'],
+                data.get('renseignements_cliniques'),
+                data.get('macroscopie'),
+                data.get('microscopie'),
+                data.get('conclusion'),
+                data.get('statut', 'en_cours')
+            ))
+            
+            new_report = cur.fetchone()
+            conn.commit()
+            return jsonify(dict(new_report)), 201
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"? Erreur comptes_rendus: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 @app.route('/comptes-rendus/<int:id>', methods=['GET', 'PUT', 'DELETE'])
 def compte_rendu_detail(id):
@@ -583,7 +637,7 @@ def compte_rendu_detail(id):
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"❌ Erreur compte_rendu_detail: {str(e)}")
+        print(f"? Erreur compte_rendu_detail: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -594,24 +648,15 @@ def compte_rendu_detail(id):
 
 @app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
 def print_compte_rendu(id):
-    """
-    Génère et renvoie le PDF du compte rendu.
-    Accepte user_id via header X-User-ID ou via query param ?user_id=...
-    """
-    # Récupération user_id (header prioritaire, puis param GET)
-    user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
-    
-    print(f"DEBUG PRINT - ID demandé: {id} | user_id reçu: {user_id}")
-    
+    user_id = request.headers.get('X-User-ID')
     if not user_id:
-        print("Erreur 401: user_id manquant")
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
+    conn = None
+    cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
-        
-        # Requête pour récupérer le compte rendu + jointures
         cur.execute('''
             SELECT cr.*,
                    p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
@@ -623,113 +668,31 @@ def print_compte_rendu(id):
         ''', (user_id, id))
         
         report = cur.fetchone()
-        
         if not report:
-            print(f"Compte rendu {id} non trouvé pour user {user_id}")
             return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
         
-        print(f"Compte rendu {id} chargé pour impression")
-        
-        # Génération PDF
+        # Génération PDF simple
         buffer = BytesIO()
         p = canvas.Canvas(buffer, pagesize=A4)
         width, height = A4
         
-        # En-tête du document
         p.setFont("Helvetica-Bold", 16)
         p.drawString(50, height - 50, "ANAPATH ELYOUSR")
         p.setFont("Helvetica", 10)
-        p.drawString(50, height - 70, "Laboratoire d'Anatomie & Cytologie Pathologiques")
-        p.drawString(50, height - 85, "Dr. BENFOULA Amel épouse ERROUANE")
+        p.drawString(50, height - 70, "Dr. BENFOULA Amel épouse ERROUANE")
         
-        # Titre
         y = height - 120
-        p.setFont("Helvetica-Bold", 14)
-        p.drawString(50, y, "COMPTE RENDU CYTO-PATHOLOGIQUE")
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, f"Compte Rendu N° {report['numero_enregistrement']}")
         
-        # Informations principales
         y -= 30
         p.setFont("Helvetica", 10)
-        p.drawString(50, y, f"N° Enregistrement : {report['numero_enregistrement']}")
+        p.drawString(50, y, f"Patient: {report['patient_nom']}")
         y -= 15
-        p.drawString(50, y, f"Date du compte rendu : {report['date_compte_rendu']}")
+        p.drawString(50, y, f"Médecin: {report['medecin_nom']}")
         
-        y -= 30
-        p.drawString(50, y, f"Patient : {report['patient_nom']}")
-        y -= 15
-        p.drawString(50, y, f"Âge : {report['patient_age'] or '-'} | Sexe : {report['patient_sexe'] or '-'}")
-        
-        y -= 15
-        p.drawString(50, y, f"Médecin demandeur : {report['medecin_nom']}")
-        y -= 15
-        p.drawString(50, y, f"Service/Hôpital : {report.get('service_hospitalier', '-')}")
-        
-        y -= 30
-        p.drawString(50, y, f"Date du prélèvement : {report['date_prelevement']}")
-        y -= 15
-        p.drawString(50, y, f"Nature / Siège du prélèvement : {report['nature_prelevement']}")
-        
-        # Renseignements cliniques
-        y -= 30
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, y, "Renseignements Cliniques Fournis :")
-        y -= 20
-        p.setFont("Helvetica", 10)
-        renseignements = report.get('renseignements_cliniques', 'Non renseigné')
-        for line in textwrap.wrap(renseignements, width=90):
-            p.drawString(60, y, line)
-            y -= 15
-            if y < 100:
-                p.showPage()
-                y = height - 50
-        
-        # Macroscopie
-        y -= 20
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, y, "MACROSCOPIE :")
-        y -= 20
-        p.setFont("Helvetica", 10)
-        macro = report.get('macroscopie', 'Non renseigné')
-        for line in textwrap.wrap(macro, width=90):
-            p.drawString(60, y, line)
-            y -= 15
-            if y < 100:
-                p.showPage()
-                y = height - 50
-        
-        # Microscopie
-        y -= 20
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, y, "MICROSCOPIE :")
-        y -= 20
-        p.setFont("Helvetica", 10)
-        micro = report.get('microscopie', 'Non renseigné')
-        for line in textwrap.wrap(micro, width=90):
-            p.drawString(60, y, line)
-            y -= 15
-            if y < 100:
-                p.showPage()
-                y = height - 50
-        
-        # Conclusion
-        y -= 20
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, y, "CONCLUSION :")
-        y -= 20
-        p.setFont("Helvetica", 10)
-        conclusion = report.get('conclusion', 'Non renseigné')
-        for line in textwrap.wrap(conclusion, width=90):
-            p.drawString(60, y, line)
-            y -= 15
-            if y < 100:
-                p.showPage()
-                y = height - 50
-        
-        # Finalisation PDF
         p.save()
         buffer.seek(0)
-        
-        print("PDF généré avec succès")
         
         return send_file(
             buffer,
@@ -739,23 +702,23 @@ def print_compte_rendu(id):
         )
     
     except Exception as e:
-        print(f"ERREUR CRITIQUE dans print_compte_rendu ID {id} : {str(e)}")
-        return jsonify({'erreur': 'Erreur lors de la génération du PDF'}), 500
+        print(f"? Erreur print: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
     
     finally:
-        if 'cur' in locals():
+        if cur:
             cur.close()
-        if 'conn' in locals():
+        if conn:
             conn.close()
 
 # ================================================
 # DÉMARRAGE
 # ================================================
 if __name__ == '__main__':
-    print("🚀 Démarrage ANAPATH API...")
+    print("?? Démarrage ANAPATH API...")
     try:
         init_db()
     except Exception as e:
-        print(f"⚠️ Avertissement init_db: {str(e)}")
+        print(f"?? Avertissement init_db: {str(e)}")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
