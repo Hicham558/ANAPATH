@@ -1557,69 +1557,138 @@
     // ────────────────────────────────────────────
     // RECHERCHE
     // ────────────────────────────────────────────
-    async function performSearch() {
-      const type = document.getElementById('searchType').value;
-      const term = document.getElementById('searchTerm').value.trim();
-      
-      if (!term) {
-        return showToast('Veuillez entrer un terme de recherche', 'warning');
-      }
-      
-      try {
-        let results = [];
-        
-        if (type === 'numero') {
-          results = allReports.filter(r => 
-            r.numero_enregistrement.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'patient') {
-          results = allReports.filter(r => 
-            r.patient_nom && r.patient_nom.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'medecin') {
-          results = allReports.filter(r => 
-            r.medecin_nom && r.medecin_nom.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'utilisateur') {
-          results = allReports.filter(r => 
-            r.utilisateur_nom && r.utilisateur_nom.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'telephone') {
-          results = allPatients.filter(p => 
-            p.telephone && p.telephone.includes(term)
-          );
-        }
-        
-        const container = document.getElementById('searchResults');
-        if (results.length === 0) {
-          container.innerHTML = '<div class="text-center py-8 text-gray-500">Aucun résultat trouvé</div>';
-        } else {
-          container.innerHTML = `
-            <div class="bg-gray-50 p-4 rounded-lg">
-              <h4 class="font-medium mb-3">${results.length} résultat(s) trouvé(s)</h4>
-              <div class="space-y-2 max-h-60 overflow-y-auto">
-                ${results.map(r => `
-                  <div class="bg-white p-3 rounded border hover:bg-gray-50">
-                    <div class="flex justify-between items-start">
-                      <div>
-                        <p class="font-medium">${r.numero_enregistrement || r.nom}</p>
-                        <p class="text-sm text-gray-600">
-                          ${r.patient_nom || r.medecin_nom || r.utilisateur_nom || r.telephone || ''}
-                        </p>
-                      </div>
-                      ${r.id ? `<button onclick="viewReport(${JSON.stringify(r)})" class="text-blue-600 text-sm">Voir</button>` : ''}
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `;
-        }
-      } catch (err) {
-        console.error(err);
-        showToast('Erreur lors de la recherche', 'error');
-      }
+  async function performSearch() {
+  const type = document.getElementById('searchType').value;
+  const term = document.getElementById('searchTerm').value.trim();
+  
+  if (!term) {
+    return showToast('Veuillez entrer un terme de recherche', 'warning');
+  }
+  
+  try {
+    let results = [];
+    let isPatientSearch = false;
+    
+    if (type === 'numero') {
+      results = allReports.filter(r => 
+        r.numero_enregistrement.toLowerCase().includes(term.toLowerCase())
+      );
+    } else if (type === 'patient') {
+      results = allReports.filter(r => 
+        r.patient_nom && r.patient_nom.toLowerCase().includes(term.toLowerCase())
+      );
+    } else if (type === 'medecin') {
+      results = allReports.filter(r => 
+        r.medecin_nom && r.medecin_nom.toLowerCase().includes(term.toLowerCase())
+      );
+    } else if (type === 'utilisateur') {
+      results = allReports.filter(r => 
+        r.utilisateur_nom && r.utilisateur_nom.toLowerCase().includes(term.toLowerCase())
+      );
+    } else if (type === 'telephone') {
+      results = allPatients.filter(p => 
+        p.telephone && p.telephone.includes(term)
+      );
+      isPatientSearch = true;
     }
+    
+    const container = document.getElementById('searchResults');
+    if (results.length === 0) {
+      container.innerHTML = '<div class="text-center py-8 text-gray-500">Aucun résultat trouvé</div>';
+    } else {
+      container.innerHTML = `
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <h4 class="font-medium mb-3">${results.length} résultat(s) trouvé(s)</h4>
+          <div id="searchResultsList" class="space-y-2 max-h-60 overflow-y-auto">
+            ${results.map(r => `
+              <div class="bg-white p-3 rounded border hover:bg-gray-50 search-result-item">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="font-medium">${r.numero_enregistrement || r.nom}</p>
+                    <p class="text-sm text-gray-600">
+                      ${r.patient_nom || r.medecin_nom || r.utilisateur_nom || r.telephone || ''}
+                      ${r.date_prelevement ? ` (${r.date_prelevement})` : ''}
+                    </p>
+                  </div>
+                  <button class="view-search-result text-blue-600 text-sm hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition"
+                    data-result-id="${r.id || r.numero_enregistrement}"
+                    data-result-type="${isPatientSearch ? 'patient' : 'report'}">
+                    Voir
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      
+      // Ajouter les écouteurs d'événements
+      attachSearchResultListeners();
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Erreur lors de la recherche', 'error');
+  }
+}
+
+// Fonction pour attacher les écouteurs d'événements aux résultats de recherche
+function attachSearchResultListeners() {
+  const viewButtons = document.querySelectorAll('.view-search-result');
+  
+  viewButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const resultId = this.getAttribute('data-result-id');
+      const resultType = this.getAttribute('data-result-type');
+      
+      if (resultType === 'report') {
+        // Chercher le compte rendu
+        const report = allReports.find(r => r.id == resultId);
+        if (report) {
+          viewReport(report);
+          // Fermer le panneau de recherche
+          document.getElementById('searchSection').classList.add('hidden');
+        } else {
+          showToast('Compte rendu non trouvé', 'error');
+        }
+      } else if (resultType === 'patient') {
+        // Chercher le patient
+        const patient = allPatients.find(p => p.id == resultId);
+        if (patient) {
+          showToast(`Patient: ${patient.nom}`, 'success');
+          // Ouvrir la section patients et éditer
+          if (document.getElementById('patientsContent').classList.contains('hidden')) {
+            toggleSection('patientsSection');
+          }
+          // Petit délai pour laisser la section s'ouvrir
+          setTimeout(() => editPatient(patient), 300);
+        }
+      }
+    });
+  });
+  
+  // Ajouter aussi un événement de clic sur toute la ligne
+  const resultItems = document.querySelectorAll('.search-result-item');
+  resultItems.forEach(item => {
+    item.addEventListener('click', function(e) {
+      // Ne pas déclencher si on clique sur le bouton "Voir"
+      if (!e.target.closest('.view-search-result')) {
+        const button = this.querySelector('.view-search-result');
+        if (button) {
+          button.click();
+        }
+      }
+    });
+    
+    // Effet visuel au survol
+    item.addEventListener('mouseenter', function() {
+      this.style.backgroundColor = '#f9fafb';
+    });
+    
+    item.addEventListener('mouseleave', function() {
+      this.style.backgroundColor = '';
+    });
+  });
+}
 
     // ────────────────────────────────────────────
     // INITIALISATION
