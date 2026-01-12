@@ -651,15 +651,24 @@ def compte_rendu_detail(id):
 
 @app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
 def print_compte_rendu(id):
-    user_id = request.headers.get('X-User-ID')
+    """
+    Génère et renvoie le PDF du compte rendu.
+    Accepte user_id via header X-User-ID ou via query param ?user_id=...
+    """
+    # Récupération user_id (header prioritaire, puis param GET)
+    user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
+    
+    print(f"DEBUG PRINT - ID demandé: {id} | user_id reçu: {user_id}")
+    
     if not user_id:
+        print("Erreur 401: user_id manquant")
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
-    conn = None
-    cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
+        
+        # Requête pour récupérer le compte rendu + jointures
         cur.execute('''
             SELECT cr.*,
                    p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
@@ -671,31 +680,113 @@ def print_compte_rendu(id):
         ''', (user_id, id))
         
         report = cur.fetchone()
+        
         if not report:
+            print(f"Compte rendu {id} non trouvé pour user {user_id}")
             return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
         
-        # Génération PDF simple
+        print(f"Compte rendu {id} chargé pour impression")
+        
+        # Génération PDF
         buffer = BytesIO()
         p = canvas.Canvas(buffer, pagesize=A4)
         width, height = A4
         
+        # En-tête du document
         p.setFont("Helvetica-Bold", 16)
         p.drawString(50, height - 50, "ANAPATH ELYOUSR")
         p.setFont("Helvetica", 10)
-        p.drawString(50, height - 70, "Dr. BENFOULA Amel épouse ERROUANE")
+        p.drawString(50, height - 70, "Laboratoire d'Anatomie & Cytologie Pathologiques")
+        p.drawString(50, height - 85, "Dr. BENFOULA Amel épouse ERROUANE")
         
+        # Titre
         y = height - 120
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, y, f"Compte Rendu N° {report['numero_enregistrement']}")
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(50, y, "COMPTE RENDU CYTO-PATHOLOGIQUE")
         
+        # Informations principales
         y -= 30
         p.setFont("Helvetica", 10)
-        p.drawString(50, y, f"Patient: {report['patient_nom']}")
+        p.drawString(50, y, f"N° Enregistrement : {report['numero_enregistrement']}")
         y -= 15
-        p.drawString(50, y, f"Médecin: {report['medecin_nom']}")
+        p.drawString(50, y, f"Date du compte rendu : {report['date_compte_rendu']}")
         
+        y -= 30
+        p.drawString(50, y, f"Patient : {report['patient_nom']}")
+        y -= 15
+        p.drawString(50, y, f"Âge : {report['patient_age'] or '-'} | Sexe : {report['patient_sexe'] or '-'}")
+        
+        y -= 15
+        p.drawString(50, y, f"Médecin demandeur : {report['medecin_nom']}")
+        y -= 15
+        p.drawString(50, y, f"Service/Hôpital : {report.get('service_hospitalier', '-')}")
+        
+        y -= 30
+        p.drawString(50, y, f"Date du prélèvement : {report['date_prelevement']}")
+        y -= 15
+        p.drawString(50, y, f"Nature / Siège du prélèvement : {report['nature_prelevement']}")
+        
+        # Renseignements cliniques
+        y -= 30
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "Renseignements Cliniques Fournis :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        renseignements = report.get('renseignements_cliniques', 'Non renseigné')
+        for line in textwrap.wrap(renseignements, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        # Macroscopie
+        y -= 20
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "MACROSCOPIE :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        macro = report.get('macroscopie', 'Non renseigné')
+        for line in textwrap.wrap(macro, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        # Microscopie
+        y -= 20
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "MICROSCOPIE :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        micro = report.get('microscopie', 'Non renseigné')
+        for line in textwrap.wrap(micro, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        # Conclusion
+        y -= 20
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "CONCLUSION :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        conclusion = report.get('conclusion', 'Non renseigné')
+        for line in textwrap.wrap(conclusion, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        # Finalisation PDF
         p.save()
         buffer.seek(0)
+        
+        print("PDF généré avec succès")
         
         return send_file(
             buffer,
@@ -705,13 +796,13 @@ def print_compte_rendu(id):
         )
     
     except Exception as e:
-        print(f"❌ Erreur print: {str(e)}")
-        return jsonify({'erreur': str(e)}), 500
+        print(f"ERREUR CRITIQUE dans print_compte_rendu ID {id} : {str(e)}")
+        return jsonify({'erreur': 'Erreur lors de la génération du PDF'}), 500
     
     finally:
-        if cur:
+        if 'cur' in locals():
             cur.close()
-        if conn:
+        if 'conn' in locals():
             conn.close()
 
 # ================================================
