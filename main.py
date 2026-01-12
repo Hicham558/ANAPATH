@@ -490,9 +490,13 @@ def medecin_detail(id):
 # ================================================
 # COMPTES RENDUS
 # ================================================
-@app.route('/comptes-rendus', methods=['GET', 'POST'])
-def comptes_rendus():
-    user_id = request.headers.get('X-User-ID')
+@app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
+def print_compte_rendu(id):
+    # Essaie d'abord le header, sinon le paramètre GET
+    user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
+    
+    print("DEBUG PRINT - user_id reçu :", user_id)  # visible dans Render logs
+    
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
@@ -504,15 +508,14 @@ def comptes_rendus():
         
         if request.method == 'GET':
             cur.execute('''
-                SELECT cr.*,
-                       p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
-                       m.nom as medecin_nom
-                FROM comptes_rendus cr
-                LEFT JOIN patients p ON cr.patient_id = p.id
-                LEFT JOIN medecins m ON cr.medecin_id = m.id
-                WHERE cr.user_id = %s
-                ORDER BY cr.created_at DESC
-            ''', (user_id,))
+        SELECT cr.*,
+               p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
+               m.nom as medecin_nom
+        FROM comptes_rendus cr
+        LEFT JOIN patients p ON cr.patient_id = p.id
+        LEFT JOIN medecins m ON cr.medecin_id = m.id
+        WHERE cr.user_id = %s AND cr.id = %s
+    ''', (user_id, id))
             reports = cur.fetchall()
             return jsonify([dict(r) for r in reports])
         
