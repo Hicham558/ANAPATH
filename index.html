@@ -653,6 +653,20 @@
     let allMedecins = [];
     let allUtilisateurs = [];
 
+    function cleanupLocalStorage() {
+  const selectedUserStr = localStorage.getItem('selectedUtilisateur');
+  if (selectedUserStr) {
+    try {
+      const selectedUser = JSON.parse(selectedUserStr);
+      if (selectedUser.numero === "null") {
+        localStorage.removeItem('selectedUtilisateur');
+        console.log("Nettoyage : Suppression de l'utilisateur avec numero='null'");
+      }
+    } catch (e) {
+      // Ignorer les erreurs de parsing
+    }
+  }
+}
     // Initialiser l'affichage de l'utilisateur sélectionné
     function updateSelectedUserDisplay() {
       const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
@@ -1331,30 +1345,63 @@
       submitBtn.onclick = closeReportModal;
     }
 
-    async function saveReport() {
-      const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+  async function saveReport() {
+  // 1. Récupérer et valider l'utilisateur de manière robuste
+  const selectedUserStr = localStorage.getItem('selectedUtilisateur');
+  let utilisateur_id = null;
+  
+  if (selectedUserStr) {
+    try {
+      const selectedUser = JSON.parse(selectedUserStr);
       
-      if (!selectedUser.numero) {
-        showToast('Aucun utilisateur sélectionné ! Veuillez en sélectionner un.', 'error');
+      // Gestion spéciale pour la chaîne "null"
+      if (selectedUser.numero === "null") {
+        showToast('ERREUR : Utilisateur non valide. Veuillez en sélectionner un nouveau.', 'error');
+        // Rediriger vers la page de sélection
+        setTimeout(() => window.location.href = 'selection.html', 2000);
         return;
       }
       
-      const id = document.getElementById('reportId').value;
-      const data = {
-        numero_enregistrement: document.getElementById('reportNumero').value.trim(),
-        date_compte_rendu: document.getElementById('reportDateCR').value,
-        utilisateur_id: selectedUser.numero, // IMPORTANT : utiliser l'utilisateur sélectionné
-        medecin_id: document.getElementById('reportMedecin').value,
-        service_hospitalier: document.getElementById('reportService').value.trim(),
-        patient_id: document.getElementById('reportPatient').value,
-        nature_prelevement: document.getElementById('reportNature').value.trim(),
-        date_prelevement: document.getElementById('reportDatePrelevement').value,
-        renseignements_cliniques: document.getElementById('reportRenseignements').value.trim(),
-        macroscopie: document.getElementById('reportMacro').value.trim(),
-        microscopie: document.getElementById('reportMicro').value.trim(),
-        conclusion: document.getElementById('reportConclusion').value.trim(),
-        statut: document.getElementById('reportStatut').value
-      };
+      // Vérifier que le numéro existe et est un nombre valide
+      if (selectedUser && selectedUser.numero !== undefined && selectedUser.numero !== null) {
+        utilisateur_id = parseInt(selectedUser.numero, 10);
+        
+        // Si ce n'est pas un nombre valide
+        if (isNaN(utilisateur_id)) {
+          showToast('ERREUR : ID utilisateur invalide. Veuillez re-sélectionner un utilisateur.', 'error');
+          localStorage.removeItem('selectedUtilisateur'); // Nettoyer le mauvais stockage
+          setTimeout(() => window.location.href = 'selection.html', 2000);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Erreur de parsing de selectedUtilisateur :", e);
+    }
+  }
+  
+  // 2. Si aucun utilisateur n'est défini
+  if (utilisateur_id === null || utilisateur_id === undefined) {
+    showToast('Veuillez d\'abord sélectionner un utilisateur valide depuis la page de sélection.', 'error');
+    setTimeout(() => window.location.href = 'selection.html', 1500);
+    return;
+  }
+  
+  // 3. Construire les données avec l'ID utilisateur valide
+  const data = {
+    numero_enregistrement: document.getElementById('reportNumero').value.trim(),
+    date_compte_rendu: document.getElementById('reportDateCR').value,
+    utilisateur_id: utilisateur_id, // Ceci doit être un nombre maintenant
+    medecin_id: parseInt(document.getElementById('reportMedecin').value),
+    service_hospitalier: document.getElementById('reportService').value.trim(),
+    patient_id: parseInt(document.getElementById('reportPatient').value),
+    nature_prelevement: document.getElementById('reportNature').value.trim(),
+    date_prelevement: document.getElementById('reportDatePrelevement').value,
+    renseignements_cliniques: document.getElementById('reportRenseignements').value.trim(),
+    macroscopie: document.getElementById('reportMacro').value.trim(),
+    microscopie: document.getElementById('reportMicro').value.trim(),
+    conclusion: document.getElementById('reportConclusion').value.trim(),
+    statut: document.getElementById('reportStatut').value
+  };
       
       // Validation
       if (!data.numero_enregistrement || !data.date_compte_rendu || !data.medecin_id || 
@@ -1525,6 +1572,7 @@
     // INITIALISATION
     // ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
+        cleanupLocalStorage();
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
       
