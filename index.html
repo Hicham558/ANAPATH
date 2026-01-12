@@ -10,42 +10,42 @@
     @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-   
+    
     .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
     .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
     .animate-pulse { animation: pulse 2s infinite ease-in-out; }
-   
+    
     .table-container {
       max-height: 500px;
       overflow-y: auto;
     }
-   
+    
     .table-container thead {
       position: sticky;
       top: 0;
       background: #f9fafb;
       z-index: 1;
     }
-   
+    
     .kpi-card {
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-   
+    
     .kpi-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
     }
-   
-    #patientForm, #medecinForm, #utilisateurForm {
+    
+    #patientForm, #medecinForm {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.6s ease-out; /* fluidité augmentée */
+      transition: max-height 0.3s ease-out;
     }
-   
-    #patientForm.open, #medecinForm.open, #utilisateurForm.open {
-      max-height: 1400px; /* assez grand pour tous les champs + marge */
+    
+    #patientForm.open, #medecinForm.open {
+      max-height: 1000px;
     }
-   
+
     .toast {
       position: fixed;
       bottom: 20px;
@@ -57,7 +57,7 @@
       z-index: 1000;
       animation: slideIn 0.3s ease-out;
     }
-   
+    
     .toast.success { background: #10b981; }
     .toast.error { background: #ef4444; }
     .toast.show { display: flex; align-items: center; }
@@ -77,12 +77,15 @@
         </div>
       </div>
       <div class="flex gap-2 items-center">
-        <button onclick="toggleUtilisateurForm()" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs" title="Gestion utilisateurs">
-          <i class="fas fa-users-cog mr-1"></i>Utilisateurs
-        </button>
+        <a href="selection.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs" title="Sélection utilisateur">
+          <i class="fas fa-user-edit mr-1"></i>
+        </a>
+        <a href="params.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs" title="Paramètres">
+          <i class="fas fa-cog mr-1"></i>
+        </a>
         <span id="apiStatus" class="px-3 py-2 text-xs flex items-center bg-indigo-700 rounded-md">
           <i class="fas fa-database mr-1"></i>
-          <span>PostgreSQL - Supabase</span>
+          <span>PostgreSQL</span>
         </span>
         <button id="loginButton" onclick="toggleLogin()" class="bg-red-500 px-3 py-2 rounded-md hover:bg-red-600 transition text-xs">
           <i class="fas fa-sign-in-alt mr-1"></i>Connexion
@@ -132,6 +135,7 @@
           <i class="fas fa-user-injured text-4xl opacity-50"></i>
         </div>
       </div>
+      
       <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
@@ -141,6 +145,7 @@
           <i class="fas fa-file-medical text-4xl opacity-50"></i>
         </div>
       </div>
+      
       <div class="kpi-card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
@@ -150,6 +155,7 @@
           <i class="fas fa-user-md text-4xl opacity-50"></i>
         </div>
       </div>
+      
       <div class="kpi-card bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
@@ -186,71 +192,6 @@
       </div>
     </div>
 
-    <!-- Section Gestion Utilisateurs (CRUD) -->
-    <div id="utilisateursSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in">
-      <div class="p-6 flex justify-between items-center border-b cursor-pointer" onclick="toggleSection('utilisateursSection')">
-        <h2 class="text-xl font-semibold flex items-center">
-          <i class="fas fa-users-cog mr-2 text-indigo-500"></i> Gestion Utilisateurs
-          <span id="utilisateurCount" class="ml-2 text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">0</span>
-        </h2>
-        <i id="utilisateursChevron" class="fas fa-chevron-down text-gray-600"></i>
-      </div>
-      <div id="utilisateursContent" class="p-6 hidden">
-        <div class="mb-4 flex gap-2">
-          <input type="text" id="searchUtilisateur" placeholder="Rechercher un utilisateur..." class="flex-1 px-3 py-2 border rounded-md">
-          <button onclick="toggleUtilisateurForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-            <i class="fas fa-plus mr-2"></i>Ajouter Utilisateur
-          </button>
-        </div>
-       
-        <div id="utilisateurForm" class="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 class="font-medium mb-3">Nouvel Utilisateur</h3>
-          <input type="hidden" id="utilisateurNumero">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1">Nom *</label>
-              <input type="text" id="utilisateurNom" class="w-full px-3 py-2 border rounded-md" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Mot de passe *</label>
-              <input type="password" id="utilisateurPassword" class="w-full px-3 py-2 border rounded-md" required>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Statut</label>
-              <select id="utilisateurStatut" class="w-full px-3 py-2 border rounded-md">
-                <option value="utilisateur">Utilisateur</option>
-                <option value="admin">Administrateur</option>
-              </select>
-            </div>
-          </div>
-          <div class="flex justify-end space-x-3 mt-4">
-            <button onclick="toggleUtilisateurForm()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
-              Annuler
-            </button>
-            <button onclick="saveUtilisateur()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-              Enregistrer
-            </button>
-          </div>
-        </div>
-       
-        <div class="table-container">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Numéro</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="utilisateursList" class="bg-white divide-y divide-gray-200">
-              <tr><td colspan="4" class="text-center py-4 text-gray-500">Chargement...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
     <!-- Section Patients -->
     <div id="patientsSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in">
       <div class="p-6 flex justify-between items-center border-b cursor-pointer" onclick="toggleSection('patientsSection')">
@@ -267,7 +208,7 @@
             <i class="fas fa-plus mr-2"></i>Ajouter
           </button>
         </div>
-       
+        
         <div id="patientForm" class="mb-6 p-4 bg-gray-50 rounded-lg">
           <h3 class="font-medium mb-3">Nouveau Patient</h3>
           <input type="hidden" id="patientId">
@@ -306,7 +247,7 @@
             </button>
           </div>
         </div>
-       
+        
         <div class="table-container">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -343,7 +284,7 @@
             <i class="fas fa-plus mr-2"></i>Ajouter
           </button>
         </div>
-       
+        
         <div id="medecinForm" class="mb-6 p-4 bg-gray-50 rounded-lg">
           <h3 class="font-medium mb-3">Nouveau Médecin</h3>
           <input type="hidden" id="medecinId">
@@ -374,7 +315,7 @@
             </button>
           </div>
         </div>
-       
+        
         <div class="table-container">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -444,10 +385,10 @@
           <i class="fas fa-times text-2xl"></i>
         </button>
       </div>
-     
+      
       <form id="reportForm" class="space-y-4">
         <input type="hidden" id="reportId">
-       
+        
         <!-- En-tête -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
           <div>
@@ -459,6 +400,7 @@
             <input type="date" id="reportDateCR" class="w-full px-3 py-2 border rounded-md" required>
           </div>
         </div>
+
         <!-- Médecin et Patient -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -472,6 +414,7 @@
             <input type="text" id="reportService" class="w-full px-3 py-2 border rounded-md">
           </div>
         </div>
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">Patient*</label>
@@ -488,6 +431,7 @@
             <input type="text" id="reportSexe" class="w-full px-3 py-2 border rounded-md" readonly>
           </div>
         </div>
+
         <!-- Prélèvement -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
@@ -499,26 +443,31 @@
             <input type="date" id="reportDatePrelevement" class="w-full px-3 py-2 border rounded-md" required>
           </div>
         </div>
+
         <!-- Renseignements Cliniques -->
         <div>
           <label class="block text-sm font-medium mb-1">Renseignements Cliniques Fournis</label>
           <textarea id="reportRenseignements" rows="3" class="w-full px-3 py-2 border rounded-md" placeholder="Antécédents, symptômes..."></textarea>
         </div>
+
         <!-- MACROSCOPIE -->
         <div class="border-t pt-4">
           <h3 class="text-lg font-semibold mb-3 text-indigo-600">MACROSCOPIE</h3>
           <textarea id="reportMacro" rows="4" class="w-full px-3 py-2 border rounded-md" placeholder="Description macroscopique..."></textarea>
         </div>
+
         <!-- MICROSCOPIE -->
         <div class="border-t pt-4">
           <h3 class="text-lg font-semibold mb-3 text-indigo-600">MICROSCOPIE</h3>
           <textarea id="reportMicro" rows="6" class="w-full px-3 py-2 border rounded-md" placeholder="Étude cytologique..."></textarea>
         </div>
+
         <!-- CONCLUSION -->
         <div class="border-t pt-4">
           <h3 class="text-lg font-semibold mb-3 text-indigo-600">CONCLUSION</h3>
           <textarea id="reportConclusion" rows="4" class="w-full px-3 py-2 border rounded-md" placeholder="Diagnostic et recommandations..."></textarea>
         </div>
+
         <!-- Statut -->
         <div>
           <label class="block text-sm font-medium mb-1">Statut*</label>
@@ -528,6 +477,7 @@
             <option value="validé">Validé</option>
           </select>
         </div>
+
         <!-- Boutons -->
         <div class="flex justify-end space-x-3 pt-4 border-t">
           <button type="button" onclick="closeReportModal()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600">
@@ -542,20 +492,21 @@
   </div>
 
   <script>
-    // ================================================
-    // CONFIGURATION
-    // ================================================
-    const API_BASE_URL = 'https://anapath.onrender.com';
+    // Configuration API
+    const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
+    let currentUser = null;
 
-    // ================================================
-    // UTILITAIRES
-    // ================================================
+    // Fonctions utilitaires
     function showToast(message, isError = false) {
       const toast = document.getElementById('toast');
+      const icon = document.getElementById('toastIcon');
+      const msg = document.getElementById('toastMessage');
+      
       toast.className = `toast ${isError ? 'error' : 'success'} show`;
-      document.getElementById('toastIcon').className = `fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2`;
-      document.getElementById('toastMessage').textContent = message;
-      setTimeout(() => toast.classList.remove('show'), 5000);
+      icon.className = `fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2`;
+      msg.textContent = message;
+      
+      setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
     function toggleSection(sectionId) {
@@ -569,7 +520,6 @@
       if (!content.classList.contains('hidden')) {
         if (sectionId === 'patientsSection') loadPatients();
         if (sectionId === 'medecinsSection') loadMedecins();
-        if (sectionId === 'utilisateursSection') loadUtilisateurs();
       }
     }
 
@@ -577,40 +527,17 @@
       document.getElementById('loginModal').classList.toggle('hidden');
     }
 
-    function togglePatientForm() { document.getElementById('patientForm').classList.toggle('open'); }
-    function toggleMedecinForm() { document.getElementById('medecinForm').classList.toggle('open'); }
-    function toggleUtilisateurForm() { document.getElementById('utilisateurForm').classList.toggle('open'); }
-
-    function closeReportModal() {
-      document.getElementById('reportModal').classList.add('hidden');
-      document.getElementById('reportForm').reset();
-      document.getElementById('reportId').value = '';
+    function togglePatientForm() {
+      document.getElementById('patientForm').classList.toggle('open');
     }
 
-    // ================================================
-    // GESTION ERREURS API
-    // ================================================
-    async function handleApiResponse(response) {
-      if (!response.ok) {
-        let errorData;
-        try { errorData = await response.json(); } catch {}
-        showToast(errorData?.erreur || `Erreur ${response.status}`, true);
-        
-        if (response.status === 401) {
-          localStorage.removeItem('userId');
-          localStorage.removeItem('userEmail');
-          toggleLogin();
-        }
-        return false;
-      }
-      return true;
+    function toggleMedecinForm() {
+      document.getElementById('medecinForm').classList.toggle('open');
     }
 
-    // ================================================
-    // AUTHENTIFICATION
-    // ================================================
+    // Authentification
     async function login() {
-      const email = document.getElementById('userEmail').value.trim();
+      const email = document.getElementById('userEmail').value;
       const password = document.getElementById('userPassword').value;
       
       if (!email || !password) {
@@ -621,6 +548,7 @@
       const userId = btoa(`${email.toLowerCase()}:${password}`);
       localStorage.setItem('userId', userId);
       localStorage.setItem('userEmail', email);
+      currentUser = { email, userId };
       
       document.getElementById('userDisplay').textContent = email;
       document.getElementById('userDisplay').classList.remove('hidden');
@@ -630,131 +558,32 @@
       loadDashboard();
     }
 
-    // ================================================
-    // CRUD UTILISATEURS
-    // ================================================
-    async function loadUtilisateurs() {
-      try {
-        const userId = localStorage.getItem('userId');
-        if (!userId) throw new Error('Connexion requise');
-
-        const response = await fetch(`${API_BASE_URL}/liste_utilisateurs`, {
-          headers: { 'X-User-ID': userId }
-        });
-
-        if (!(await handleApiResponse(response))) return;
-
-        const utilisateurs = await response.json();
-        
-        document.getElementById('utilisateursList').innerHTML = utilisateurs.length ? utilisateurs.map(u => `
-          <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4 text-sm">${u.numero}</td>
-            <td class="px-6 py-4 text-sm">${u.nom}</td>
-            <td class="px-6 py-4 text-sm">${u.statut}</td>
-            <td class="px-6 py-4 text-sm space-x-3">
-              <button onclick='editUtilisateur(${JSON.stringify(u)})' class="text-blue-600 hover:text-blue-800">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button onclick="deleteUtilisateur(${u.numero})" class="text-red-600 hover:text-red-800">
-                <i class="fas fa-trash"></i>
-              </button>
-            </td>
-          </tr>
-        `).join('') : '<tr><td colspan="4" class="text-center py-8 text-gray-500">Aucun utilisateur enregistré</td></tr>';
-
-        document.getElementById('utilisateurCount').textContent = utilisateurs.length;
-      } catch (error) {
-        showToast('Erreur chargement utilisateurs : ' + error.message, true);
-      }
+    // Chargement dashboard
+    async function loadDashboard() {
+      loadPatients();
+      loadMedecins();
+      loadReports();
     }
 
-    async function saveUtilisateur() {
-      const numero = document.getElementById('utilisateurNumero').value;
-      const data = {
-        nom: document.getElementById('utilisateurNom').value.trim(),
-        password2: document.getElementById('utilisateurPassword').value,
-        statut: document.getElementById('utilisateurStatut').value
-      };
-
-      if (!data.nom || (!numero && !data.password2)) {
-        showToast('Nom et mot de passe obligatoires', true);
-        return;
-      }
-
-      try {
-        const userId = localStorage.getItem('userId');
-        const url = numero ? `${API_BASE_URL}/modifier_utilisateur/${numero}` : `${API_BASE_URL}/ajouter_utilisateur`;
-        const method = numero ? 'PUT' : 'POST';
-
-        const response = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
-          body: JSON.stringify(data)
-        });
-
-        if (!(await handleApiResponse(response))) return;
-
-        showToast(numero ? 'Utilisateur modifié' : 'Utilisateur ajouté');
-        toggleUtilisateurForm();
-        loadUtilisateurs();
-        document.getElementById('utilisateurForm').querySelectorAll('input,select').forEach(el => el.value = '');
-        document.getElementById('utilisateurNumero').value = '';
-      } catch (error) {
-        showToast('Erreur sauvegarde utilisateur : ' + error.message, true);
-      }
-    }
-
-    function editUtilisateur(u) {
-      document.getElementById('utilisateurNumero').value = u.numero;
-      document.getElementById('utilisateurNom').value = u.nom;
-      document.getElementById('utilisateurStatut').value = u.statut;
-      document.getElementById('utilisateurPassword').value = ''; // sécurité
-      toggleUtilisateurForm();
-    }
-
-    async function deleteUtilisateur(numero) {
-      if (!confirm('Supprimer cet utilisateur ?')) return;
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/supprimer_utilisateur/${numero}`, {
-          method: 'DELETE',
-          headers: { 'X-User-ID': userId }
-        });
-
-        if (!(await handleApiResponse(response))) return;
-
-        showToast('Utilisateur supprimé');
-        loadUtilisateurs();
-      } catch (error) {
-        showToast('Erreur suppression utilisateur', true);
-      }
-    }
-
-    // ================================================
-    // CRUD PATIENTS (exemple, reste identique)
-    // ================================================
+    // CRUD Patients
     async function loadPatients() {
       try {
         const userId = localStorage.getItem('userId');
-        if (!userId) throw new Error('Connexion requise');
-
         const response = await fetch(`${API_BASE_URL}/patients`, {
           headers: { 'X-User-ID': userId }
         });
-
-        if (!(await handleApiResponse(response))) return;
-
         const patients = await response.json();
         
-        document.getElementById('patientsList').innerHTML = patients.length ? patients.map(p => `
+        const tbody = document.getElementById('patientsList');
+        tbody.innerHTML = patients.map(p => `
           <tr class="hover:bg-gray-50">
             <td class="px-6 py-4 text-sm">${p.nom}</td>
             <td class="px-6 py-4 text-sm">${p.age || '-'}</td>
             <td class="px-6 py-4 text-sm">${p.sexe || '-'}</td>
             <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
             <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
-            <td class="px-6 py-4 text-sm space-x-3">
-              <button onclick='editPatient(${JSON.stringify(p)})' class="text-blue-600 hover:text-blue-800">
+            <td class="px-6 py-4 text-sm">
+              <button onclick='editPatient(${JSON.stringify(p)})' class="text-blue-600 hover:text-blue-800 mr-2">
                 <i class="fas fa-edit"></i>
               </button>
               <button onclick="deletePatient(${p.id})" class="text-red-600 hover:text-red-800">
@@ -762,53 +591,418 @@
               </button>
             </td>
           </tr>
-        `).join('') : '<tr><td colspan="6" class="text-center py-8 text-gray-500">Aucun patient enregistré</td></tr>';
-
+        `).join('');
+        
         document.getElementById('patientCount').textContent = patients.length;
         document.getElementById('totalPatients').textContent = patients.length;
-
+        
+        // Remplir select dans formulaire compte rendu
         const select = document.getElementById('reportPatient');
-        select.innerHTML = '<option value="">Sélectionner...</option>' +
+        select.innerHTML = '<option value="">Sélectionner...</option>' + 
           patients.map(p => `<option value="${p.id}" data-age="${p.age}" data-sexe="${p.sexe}">${p.nom}</option>`).join('');
       } catch (error) {
-        showToast('Erreur chargement patients : ' + error.message, true);
+        showToast('Erreur chargement patients', true);
       }
     }
 
-    // ... (les autres fonctions loadMedecins, savePatient, loadReports, saveReport, etc. restent identiques à ton code original, avec handleApiResponse ajouté si tu veux)
+    async function savePatient() {
+      const id = document.getElementById('patientId').value;
+      const data = {
+        nom: document.getElementById('patientNom').value,
+        age: document.getElementById('patientAge').value,
+        sexe: document.getElementById('patientSexe').value,
+        telephone: document.getElementById('patientTel').value,
+        adresse: document.getElementById('patientAdresse').value
+      };
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const url = id ? `${API_BASE_URL}/patients/${id}` : `${API_BASE_URL}/patients`;
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+          body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+          showToast(id ? 'Patient modifié' : 'Patient ajouté');
+          togglePatientForm();
+          loadPatients();
+          resetPatientForm();
+        }
+      } catch (error) {
+        showToast('Erreur sauvegarde patient', true);
+      }
+    }
 
-    // ================================================
-    // IMPRESSION PDF - avec user_id en query (backend doit accepter ?user_id=...)
-    // ================================================
+    function editPatient(patient) {
+      document.getElementById('patientId').value = patient.id;
+      document.getElementById('patientNom').value = patient.nom;
+      document.getElementById('patientAge').value = patient.age || '';
+      document.getElementById('patientSexe').value = patient.sexe || '';
+      document.getElementById('patientTel').value = patient.telephone || '';
+      document.getElementById('patientAdresse').value = patient.adresse || '';
+      document.getElementById('patientForm').classList.add('open');
+    }
+
+    async function deletePatient(id) {
+      if (!confirm('Supprimer ce patient ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (response.ok) {
+          showToast('Patient supprimé');
+          loadPatients();
+        }
+      } catch (error) {
+        showToast('Erreur suppression patient', true);
+      }
+    }
+
+    function resetPatientForm() {
+      document.getElementById('patientId').value = '';
+      document.getElementById('patientNom').value = '';
+      document.getElementById('patientAge').value = '';
+      document.getElementById('patientSexe').value = '';
+      document.getElementById('patientTel').value = '';
+      document.getElementById('patientAdresse').value = '';
+    }
+
+    // CRUD Médecins
+    async function loadMedecins() {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/medecins`, {
+          headers: { 'X-User-ID': userId }
+        });
+        const medecins = await response.json();
+        
+        const tbody = document.getElementById('medecinsList');
+        tbody.innerHTML = medecins.map(m => `
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm">${m.nom}</td>
+            <td class="px-6 py-4 text-sm">${m.specialite || '-'}</td>
+            <td class="px-6 py-4 text-sm">${m.service || '-'}</td>
+            <td class="px-6 py-4 text-sm">${m.telephone || '-'}</td>
+            <td class="px-6 py-4 text-sm">
+              <button onclick='editMedecin(${JSON.stringify(m)})' class="text-blue-600 hover:text-blue-800 mr-2">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="deleteMedecin(${m.id})" class="text-red-600 hover:text-red-800">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+        
+        document.getElementById('medecinCount').textContent = medecins.length;
+        document.getElementById('totalMedecins').textContent = medecins.length;
+        
+        // Remplir select
+        const select = document.getElementById('reportMedecin');
+        select.innerHTML = '<option value="">Sélectionner...</option>' + 
+          medecins.map(m => `<option value="${m.id}">${m.nom} - ${m.specialite || ''}</option>`).join('');
+      } catch (error) {
+        showToast('Erreur chargement médecins', true);
+      }
+    }
+
+    async function saveMedecin() {
+      const id = document.getElementById('medecinId').value;
+      const data = {
+        nom: document.getElementById('medecinNom').value,
+        specialite: document.getElementById('medecinSpecialite').value,
+        service: document.getElementById('medecinService').value,
+        telephone: document.getElementById('medecinTel').value
+      };
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const url = id ? `${API_BASE_URL}/medecins/${id}` : `${API_BASE_URL}/medecins`;
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+          body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+          showToast(id ? 'Médecin modifié' : 'Médecin ajouté');
+          toggleMedecinForm();
+          loadMedecins();
+          resetMedecinForm();
+        }
+      } catch (error) {
+        showToast('Erreur sauvegarde médecin', true);
+      }
+    }
+
+    function editMedecin(medecin) {
+      document.getElementById('medecinId').value = medecin.id;
+      document.getElementById('medecinNom').value = medecin.nom;
+      document.getElementById('medecinSpecialite').value = medecin.specialite || '';
+      document.getElementById('medecinService').value = medecin.service || '';
+      document.getElementById('medecinTel').value = medecin.telephone || '';
+      document.getElementById('medecinForm').classList.add('open');
+    }
+
+    async function deleteMedecin(id) {
+      if (!confirm('Supprimer ce médecin ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/medecins/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (response.ok) {
+          showToast('Médecin supprimé');
+          loadMedecins();
+        }
+      } catch (error) {
+        showToast('Erreur suppression médecin', true);
+      }
+    }
+
+    function resetMedecinForm() {
+      document.getElementById('medecinId').value = '';
+      document.getElementById('medecinNom').value = '';
+      document.getElementById('medecinSpecialite').value = '';
+      document.getElementById('medecinService').value = '';
+      document.getElementById('medecinTel').value = '';
+    }
+
+    // Comptes Rendus
+    async function loadReports() {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/comptes-rendus`, {
+          headers: { 'X-User-ID': userId }
+        });
+        const reports = await response.json();
+        
+        const tbody = document.getElementById('reportsList');
+        tbody.innerHTML = reports.map(r => `
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm font-medium">${r.numero_enregistrement}</td>
+            <td class="px-6 py-4 text-sm">${r.patient_nom}</td>
+            <td class="px-6 py-4 text-sm">${r.medecin_nom}</td>
+            <td class="px-6 py-4 text-sm">${new Date(r.date_prelevement).toLocaleDateString('fr-FR')}</td>
+            <td class="px-6 py-4 text-sm">
+              <span class="px-2 py-1 rounded text-xs ${r.statut === 'terminé' ? 'bg-green-100 text-green-800' : r.statut === 'validé' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}">
+                ${r.statut}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm">
+              <button onclick='viewReport(${r.id})' class="text-indigo-600 hover:text-indigo-800 mr-2" title="Voir">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button onclick='editReport(${r.id})' class="text-blue-600 hover:text-blue-800 mr-2" title="Modifier">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="printReport(${r.id})" class="text-green-600 hover:text-green-800 mr-2" title="Imprimer">
+                <i class="fas fa-print"></i>
+              </button>
+              <button onclick="deleteReport(${r.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+        
+        document.getElementById('totalReports').textContent = reports.length;
+        document.getElementById('pendingReports').textContent = reports.filter(r => r.statut === 'en_cours').length;
+      } catch (error) {
+        showToast('Erreur chargement comptes rendus', true);
+      }
+    }
+
+    function openNewReport() {
+      resetReportForm();
+      document.getElementById('reportModal').classList.remove('hidden');
+      document.getElementById('reportDateCR').valueAsDate = new Date();
+      document.getElementById('reportDatePrelevement').valueAsDate = new Date();
+    }
+
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.add('hidden');
+      resetReportForm();
+    }
+
+    function resetReportForm() {
+      document.getElementById('reportForm').reset();
+      document.getElementById('reportId').value = '';
+    }
+
+    // Auto-remplir âge et sexe quand patient sélectionné
+    document.getElementById('reportPatient')?.addEventListener('change', function() {
+      const option = this.options[this.selectedIndex];
+      document.getElementById('reportAge').value = option.dataset.age || '';
+      document.getElementById('reportSexe').value = option.dataset.sexe || '';
+    });
+
+    // Soumettre formulaire compte rendu
+    document.getElementById('reportForm')?.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      await saveReport();
+    });
+
+    async function saveReport() {
+      const id = document.getElementById('reportId').value;
+      const data = {
+        numero_enregistrement: document.getElementById('reportNumero').value,
+        date_compte_rendu: document.getElementById('reportDateCR').value,
+        medecin_id: document.getElementById('reportMedecin').value,
+        service_hospitalier: document.getElementById('reportService').value,
+        patient_id: document.getElementById('reportPatient').value,
+        nature_prelevement: document.getElementById('reportNature').value,
+        date_prelevement: document.getElementById('reportDatePrelevement').value,
+        renseignements_cliniques: document.getElementById('reportRenseignements').value,
+        macroscopie: document.getElementById('reportMacro').value,
+        microscopie: document.getElementById('reportMicro').value,
+        conclusion: document.getElementById('reportConclusion').value,
+        statut: document.getElementById('reportStatut').value
+      };
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const url = id ? `${API_BASE_URL}/comptes-rendus/${id}` : `${API_BASE_URL}/comptes-rendus`;
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
+          body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+          showToast(id ? 'Compte rendu modifié' : 'Compte rendu créé');
+          closeReportModal();
+          loadReports();
+        }
+      } catch (error) {
+        showToast('Erreur sauvegarde compte rendu', true);
+      }
+    }
+
+    async function viewReport(id) {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/comptes-rendus/${id}`, {
+          headers: { 'X-User-ID': userId }
+        });
+        const report = await response.json();
+        
+        // Remplir le formulaire en mode lecture
+        document.getElementById('reportId').value = report.id;
+        document.getElementById('reportNumero').value = report.numero_enregistrement;
+        document.getElementById('reportDateCR').value = report.date_compte_rendu;
+        document.getElementById('reportMedecin').value = report.medecin_id;
+        document.getElementById('reportService').value = report.service_hospitalier || '';
+        document.getElementById('reportPatient').value = report.patient_id;
+        document.getElementById('reportAge').value = report.patient_age || '';
+        document.getElementById('reportSexe').value = report.patient_sexe || '';
+        document.getElementById('reportNature').value = report.nature_prelevement;
+        document.getElementById('reportDatePrelevement').value = report.date_prelevement;
+        document.getElementById('reportRenseignements').value = report.renseignements_cliniques || '';
+        document.getElementById('reportMacro').value = report.macroscopie || '';
+        document.getElementById('reportMicro').value = report.microscopie || '';
+        document.getElementById('reportConclusion').value = report.conclusion || '';
+        document.getElementById('reportStatut').value = report.statut;
+        
+        document.getElementById('reportModal').classList.remove('hidden');
+      } catch (error) {
+        showToast('Erreur chargement compte rendu', true);
+      }
+    }
+
+    async function editReport(id) {
+      await viewReport(id);
+    }
+
+    async function deleteReport(id) {
+      if (!confirm('Supprimer ce compte rendu ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/comptes-rendus/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (response.ok) {
+          showToast('Compte rendu supprimé');
+          loadReports();
+        }
+      } catch (error) {
+        showToast('Erreur suppression', true);
+      }
+    }
+
     function printReport(id) {
-      const userId = localStorage.getItem('userId');
-      if (!userId) {
-        showToast('Connexion requise pour imprimer', true);
-        return;
-      }
-      // On passe userId en paramètre GET pour window.open
-      window.open(`${API_BASE_URL}/comptes-rendus/${id}/print?user_id=${encodeURIComponent(userId)}`, '_blank');
+      window.open(`${API_BASE_URL}/comptes-rendus/${id}/print`, '_blank');
     }
 
-    // ================================================
-    // INITIALISATION
-    // ================================================
+    function searchReports() {
+      const term = prompt('Rechercher (patient, médecin, numéro)');
+      if (!term) return;
+      
+      const rows = document.querySelectorAll('#reportsList tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term.toLowerCase()) ? '' : 'none';
+      });
+    }
+
+    // Recherche patients
+    document.getElementById('searchPatient')?.addEventListener('input', function(e) {
+      const term = e.target.value.toLowerCase();
+      const rows = document.querySelectorAll('#patientsList tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+
+    // Recherche médecins
+    document.getElementById('searchMedecin')?.addEventListener('input', function(e) {
+      const term = e.target.value.toLowerCase();
+      const rows = document.querySelectorAll('#medecinsList tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+
+    // Initialisation
     document.addEventListener('DOMContentLoaded', () => {
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
       
       if (userId && userEmail) {
+        currentUser = { userId, email: userEmail };
         document.getElementById('userDisplay').textContent = userEmail;
         document.getElementById('userDisplay').classList.remove('hidden');
         document.getElementById('loginButton').innerHTML = '<i class="fas fa-sign-out-alt mr-1"></i>Déconnexion';
-        loadDashboard(); // charge patients, medecins, reports + utilisateurs
+        loadDashboard();
       } else {
         document.getElementById('loginModal').classList.remove('hidden');
       }
-
-      document.getElementById('loginButton').addEventListener('click', () => {
+      
+      // Bouton déconnexion
+      document.getElementById('loginButton')?.addEventListener('click', function() {
         if (localStorage.getItem('userId')) {
-          localStorage.clear();
+          localStorage.removeItem('userId');
+          localStorage.removeItem('userEmail');
           location.reload();
         } else {
           toggleLogin();
@@ -816,5 +1010,3 @@
       });
     });
   </script>
-</body>
-</html>
