@@ -948,23 +948,9 @@
       }
     }
 
- function printReport(id) {
-  const userId = localStorage.getItem('userId');
-  
-  if (!userId) {
-    showToast('Veuillez vous connecter pour imprimer', true);
-    toggleLogin();
-    return;
-  }
-
-  // On ajoute le userId en paramètre GET
-  // Cela évite le 401 car le backend peut le récupérer via request.args
-  const printUrl = `${API_BASE_URL}/comptes-rendus/${id}/print?user_id=${encodeURIComponent(userId)}`;
-  
-  console.log("Ouverture impression :", printUrl); // pour debug
-  
-  window.open(printUrl, '_blank');
-}
+    function printReport(id) {
+      window.open(`${API_BASE_URL}/comptes-rendus/${id}/print`, '_blank');
+    }
 
     function searchReports() {
       const term = prompt('Rechercher (patient, médecin, numéro)');
