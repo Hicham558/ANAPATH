@@ -491,106 +491,78 @@ def medecin_detail(id):
 # ================================================
 # COMPTES RENDUS
 # ================================================
-@app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
-def print_compte_rendu(id):
-    # IMPORTANT : cette ligne doit être la première
-    user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
-    
-    # Debug obligatoire pour voir ce qui arrive
-    print(f"[PRINT DEBUG] ID demandé: {id}")
-    print(f"[PRINT DEBUG] Header X-User-ID: {request.headers.get('X-User-ID')}")
-    print(f"[PRINT DEBUG] Query param user_id: {request.args.get('user_id')}")
-    print(f"[PRINT DEBUG] user_id final utilisé: {user_id}")
-    
+@app.route('/comptes-rendus', methods=['GET', 'POST'])
+def comptes_rendus():
+    user_id = request.headers.get('X-User-ID')
     if not user_id:
-        print("[PRINT ERROR] user_id manquant (ni header ni param)")
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
+    conn = None
+    cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        cur.execute('''
-            SELECT cr.*,
-                   p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
-                   m.nom as medecin_nom
-            FROM comptes_rendus cr
-            LEFT JOIN patients p ON cr.patient_id = p.id
-            LEFT JOIN medecins m ON cr.medecin_id = m.id
-            WHERE cr.user_id = %s AND cr.id = %s
-        ''', (user_id, id))
+        if request.method == 'GET':
+            cur.execute('''
+                SELECT cr.*,
+                       p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
+                       m.nom as medecin_nom
+                FROM comptes_rendus cr
+                LEFT JOIN patients p ON cr.patient_id = p.id
+                LEFT JOIN medecins m ON cr.medecin_id = m.id
+                WHERE cr.user_id = %s
+                ORDER BY cr.created_at DESC
+            ''', (user_id,))
+            reports = cur.fetchall()
+            return jsonify([dict(r) for r in reports])
         
-        report = cur.fetchone()
-        
-        if not report:
-            print(f"[PRINT] Compte rendu {id} non trouvé pour user {user_id}")
-            return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
-        
-        # Génération PDF (version complète avec wrap)
-        buffer = BytesIO()
-        p = canvas.Canvas(buffer, pagesize=A4)
-        width, height = A4
-        
-        p.setFont("Helvetica-Bold", 16)
-        p.drawString(50, height - 50, "ANAPATH ELYOUSR")
-        p.setFont("Helvetica", 10)
-        p.drawString(50, height - 70, "Laboratoire d'Anatomie & Cytologie Pathologiques")
-        p.drawString(50, height - 85, "Dr. BENFOULA Amel épouse ERROUANE")
-        
-        y = height - 120
-        p.setFont("Helvetica-Bold", 14)
-        p.drawString(50, y, "COMPTE RENDU CYTO-PATHOLOGIQUE")
-        
-        y -= 30
-        p.setFont("Helvetica", 10)
-        p.drawString(50, y, f"N° Enregistrement : {report['numero_enregistrement']}")
-        y -= 15
-        p.drawString(50, y, f"Date : {report['date_compte_rendu']}")
-        
-        y -= 30
-        p.drawString(50, y, f"Patient : {report['patient_nom']}")
-        y -= 15
-        p.drawString(50, y, f"Âge : {report['patient_age'] or '-'} | Sexe : {report['patient_sexe'] or '-'}")
-        
-        y -= 15
-        p.drawString(50, y, f"Médecin : {report['medecin_nom']}")
-        
-        # Ajout des autres sections (macro, micro, conclusion) avec gestion des lignes longues
-        y -= 30
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, y, "MACROSCOPIE :")
-        y -= 20
-        p.setFont("Helvetica", 10)
-        macro = report.get('macroscopie', 'Non renseigné')
-        for line in textwrap.wrap(macro, width=90):
-            p.drawString(60, y, line)
-            y -= 15
-            if y < 100:
-                p.showPage()
-                y = height - 50
-        
-        # ... (tu peux ajouter microscopie et conclusion de la même façon)
-        
-        p.save()
-        buffer.seek(0)
-        
-        print("[PRINT] PDF généré avec succès")
-        
-        return send_file(
-            buffer,
-            as_attachment=True,
-            download_name=f"CR_{report['numero_enregistrement']}.pdf",
-            mimetype='application/pdf'
-        )
+        elif request.method == 'POST':
+            data = request.json
+            required = ['numero_enregistrement', 'date_compte_rendu', 'medecin_id', 
+                       'patient_id', 'nature_prelevement', 'date_prelevement']
+            
+            if not data or any(k not in data for k in required):
+                return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
+            
+            cur.execute('''
+                INSERT INTO comptes_rendus (
+                    user_id, numero_enregistrement, date_compte_rendu,
+                    medecin_id, service_hospitalier, patient_id,
+                    nature_prelevement, date_prelevement, renseignements_cliniques,
+                    macroscopie, microscopie, conclusion, statut
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (
+                user_id,
+                data['numero_enregistrement'],
+                data['date_compte_rendu'],
+                data['medecin_id'],
+                data.get('service_hospitalier'),
+                data['patient_id'],
+                data['nature_prelevement'],
+                data['date_prelevement'],
+                data.get('renseignements_cliniques'),
+                data.get('macroscopie'),
+                data.get('microscopie'),
+                data.get('conclusion'),
+                data.get('statut', 'en_cours')
+            ))
+            
+            new_report = cur.fetchone()
+            conn.commit()
+            return jsonify(dict(new_report)), 201
     
     except Exception as e:
-        print(f"[PRINT ERREUR CRITIQUE] ID {id} : {str(e)}")
-        return jsonify({'erreur': 'Erreur serveur lors de la génération du PDF'}), 500
+        if conn:
+            conn.rollback()
+        print(f"? Erreur comptes_rendus: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
     
     finally:
-        if 'cur' in locals():
+        if cur:
             cur.close()
-        if 'conn' in locals():
+        if conn:
             conn.close()
 
 @app.route('/comptes-rendus/<int:id>', methods=['GET', 'PUT', 'DELETE'])
@@ -675,7 +647,167 @@ def compte_rendu_detail(id):
         if conn:
             conn.close()
 
-
+@app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
+def print_compte_rendu(id):
+    """
+    Génère le PDF du compte rendu n°{id}.
+    Supporte user_id via header X-User-ID OU via query param ?user_id=...
+    """
+    # Lecture user_id : header prioritaire, puis param GET
+    user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
+    
+    # Logs ultra-détaillés pour debug (visibles dans Render Logs)
+    print(f"[PRINT DEBUG] Demande pour CR ID: {id}")
+    print(f"[PRINT DEBUG] Header X-User-ID reçu: {request.headers.get('X-User-ID')}")
+    print(f"[PRINT DEBUG] Query param user_id reçu: {request.args.get('user_id')}")
+    print(f"[PRINT DEBUG] user_id final utilisé: {user_id}")
+    print(f"[PRINT DEBUG] URL complète: {request.url}")
+    
+    if not user_id:
+        print("[PRINT ERROR] user_id manquant (ni header ni ?user_id)")
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT cr.*,
+                   p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
+                   m.nom as medecin_nom
+            FROM comptes_rendus cr
+            LEFT JOIN patients p ON cr.patient_id = p.id
+            LEFT JOIN medecins m ON cr.medecin_id = m.id
+            WHERE cr.user_id = %s AND cr.id = %s
+        ''', (user_id, id))
+        
+        report = cur.fetchone()
+        
+        if not report:
+            print(f"[PRINT] Compte rendu {id} non trouvé pour user {user_id}")
+            return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
+        
+        print(f"[PRINT] Compte rendu {id} chargé avec succès pour user {user_id}")
+        
+        # Génération PDF
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+        
+        # En-tête
+        p.setFont("Helvetica-Bold", 16)
+        p.drawString(50, height - 50, "ANAPATH ELYOUSR")
+        p.setFont("Helvetica", 10)
+        p.drawString(50, height - 70, "Laboratoire d'Anatomie & Cytologie Pathologiques")
+        p.drawString(50, height - 85, "Dr. BENFOULA Amel épouse ERROUANE")
+        
+        # Titre principal
+        y = height - 120
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(50, y, "COMPTE RENDU CYTO-PATHOLOGIQUE")
+        
+        # Infos principales
+        y -= 30
+        p.setFont("Helvetica", 10)
+        p.drawString(50, y, f"N° Enregistrement : {report['numero_enregistrement']}")
+        y -= 15
+        p.drawString(50, y, f"Date du compte rendu : {report['date_compte_rendu']}")
+        
+        y -= 30
+        p.drawString(50, y, f"Patient : {report['patient_nom'] or 'Non renseigné'}")
+        y -= 15
+        p.drawString(50, y, f"Âge : {report['patient_age'] or '-'} | Sexe : {report['patient_sexe'] or '-'}")
+        
+        y -= 15
+        p.drawString(50, y, f"Médecin demandeur : {report['medecin_nom'] or 'Non renseigné'}")
+        
+        y -= 15
+        p.drawString(50, y, f"Service/Hôpital : {report.get('service_hospitalier', '-')}")
+        
+        y -= 30
+        p.drawString(50, y, f"Date du prélèvement : {report['date_prelevement'] or '-'}")
+        y -= 15
+        p.drawString(50, y, f"Nature/Siège du prélèvement : {report['nature_prelevement'] or 'Non renseigné'}")
+        
+        # Renseignements cliniques
+        y -= 30
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "Renseignements Cliniques Fournis :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        renseignements = report.get('renseignements_cliniques', 'Non renseigné')
+        for line in textwrap.wrap(renseignements, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        # Macroscopie
+        y -= 30
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "MACROSCOPIE :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        macro = report.get('macroscopie', 'Non renseigné')
+        for line in textwrap.wrap(macro, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        # Microscopie
+        y -= 30
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "MICROSCOPIE :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        micro = report.get('microscopie', 'Non renseigné')
+        for line in textwrap.wrap(micro, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        # Conclusion
+        y -= 30
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "CONCLUSION :")
+        y -= 20
+        p.setFont("Helvetica", 10)
+        conclusion = report.get('conclusion', 'Non renseigné')
+        for line in textwrap.wrap(conclusion, width=90):
+            p.drawString(60, y, line)
+            y -= 15
+            if y < 100:
+                p.showPage()
+                y = height - 50
+        
+        p.save()
+        buffer.seek(0)
+        
+        print("[PRINT SUCCESS] PDF généré avec succès pour CR {id}")
+        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"CR_{report['numero_enregistrement'] or id}.pdf",
+            mimetype='application/pdf'
+        )
+    
+    except Exception as e:
+        print(f"[PRINT CRITICAL ERROR] ID {id} - {str(e)}")
+        return jsonify({'erreur': f'Erreur serveur: {str(e)}'}), 500
+    
+    finally:
+        if 'cur' in locals():
+            cur.close()
+        if 'conn' in locals():
+            conn.close()
 # ================================================
 # DÉMARRAGE
 # ================================================
