@@ -16,9 +16,14 @@ DATABASE_URL = os.environ.get('DATABASE_URL',
     'postgresql://user:password@host:5432/database')
 
 def get_db():
-    """Connexion à la base de données"""
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return conn
+    try:
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        print("Connexion PostgreSQL OK - DATABASE_URL utilisée")
+        return conn
+    except Exception as e:
+        print(f"ERREUR CRITIQUE CONNEXION DB: {str(e)}")
+        print(f"URL utilisée (cachée): {DATABASE_URL[:20]}...")  # pour debug sans mot de passe
+        raise  # relance l'exception pour avoir le traceback complet dans logs
 
 def init_db():
     """Initialisation des tables"""
