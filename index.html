@@ -1302,34 +1302,75 @@
       document.getElementById('currentReportUser').textContent = selectedUser.nom;
     }
 
-    function editReport(report) {
-      const selectedUser = updateSelectedUserDisplay();
-      
-      document.getElementById('reportId').value = report.id;
-      document.getElementById('reportNumero').value = report.numero_enregistrement;
-      document.getElementById('reportDateCR').value = report.date_compte_rendu;
-      document.getElementById('reportMedecin').value = report.medecin_id;
-      document.getElementById('reportService').value = report.service_hospitalier || '';
-      document.getElementById('reportPatient').value = report.patient_id;
-      document.getElementById('reportNature').value = report.nature_prelevement;
-      document.getElementById('reportDatePrelevement').value = report.date_prelevement;
-      document.getElementById('reportRenseignements').value = report.renseignements_cliniques || '';
-      document.getElementById('reportMacro').value = report.macroscopie || '';
-      document.getElementById('reportMicro').value = report.microscopie || '';
-      document.getElementById('reportConclusion').value = report.conclusion || '';
-      document.getElementById('reportStatut').value = report.statut;
-      
-      // Mettre à jour l'âge et le sexe
-      const patient = allPatients.find(p => p.id == report.patient_id);
-      if (patient) {
-        document.getElementById('reportAge').value = patient.age || '';
-        document.getElementById('reportSexe').value = patient.sexe === 'M' ? 'Masculin' : 
-                                                     patient.sexe === 'F' ? 'Féminin' : '';
+ function editReport(report) {
+  const selectedUser = updateSelectedUserDisplay();
+  
+  console.log('📋 Édition compte rendu:', report.id);
+  console.log('📅 date_compte_rendu:', report.date_compte_rendu);
+  console.log('📅 date_prelevement:', report.date_prelevement);
+  
+  document.getElementById('reportId').value = report.id;
+  document.getElementById('reportNumero').value = report.numero_enregistrement;
+  
+  // Fonction pour formater les dates
+  function formatDateForInput(dateString) {
+    if (!dateString) return '';
+    
+    try {
+      // Si la date est déjà au format YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
       }
       
-      document.getElementById('reportModal').classList.remove('hidden');
-      document.getElementById('currentReportUser').textContent = selectedUser.nom || report.utilisateur_nom || 'Non spécifié';
+      // Si c'est une date complète avec heure
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.warn('Date invalide:', dateString);
+        return '';
+      }
+      
+      // Formater en YYYY-MM-DD
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error('Erreur formatage date:', error, 'dateString:', dateString);
+      return '';
     }
+  }
+  
+  // Formater les dates
+  document.getElementById('reportDateCR').value = formatDateForInput(report.date_compte_rendu);
+  document.getElementById('reportDatePrelevement').value = formatDateForInput(report.date_prelevement);
+  
+  document.getElementById('reportMedecin').value = report.medecin_id;
+  document.getElementById('reportService').value = report.service_hospitalier || '';
+  document.getElementById('reportPatient').value = report.patient_id;
+  document.getElementById('reportNature').value = report.nature_prelevement;
+  document.getElementById('reportRenseignements').value = report.renseignements_cliniques || '';
+  document.getElementById('reportMacro').value = report.macroscopie || '';
+  document.getElementById('reportMicro').value = report.microscopie || '';
+  document.getElementById('reportConclusion').value = report.conclusion || '';
+  document.getElementById('reportStatut').value = report.statut;
+  
+  // Mettre à jour l'âge et le sexe
+  const patient = allPatients.find(p => p.id == report.patient_id);
+  if (patient) {
+    document.getElementById('reportAge').value = patient.age || '';
+    document.getElementById('reportSexe').value = patient.sexe === 'M' ? 'Masculin' : 
+                                                 patient.sexe === 'F' ? 'Féminin' : '';
+  } else {
+    document.getElementById('reportAge').value = '';
+    document.getElementById('reportSexe').value = '';
+  }
+  
+  document.getElementById('reportModal').classList.remove('hidden');
+  document.getElementById('currentReportUser').textContent = selectedUser.nom || report.utilisateur_nom || 'Non spécifié';
+  
+  console.log('✅ Formulaire rempli avec succès');
+}
 
     function viewReport(report) {
       // Ouvrir en mode lecture seule
