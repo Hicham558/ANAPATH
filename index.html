@@ -1345,7 +1345,7 @@
       submitBtn.onclick = closeReportModal;
     }
 
-  async function saveReport() {
+ async function saveReport() {
   // 1. Récupérer et valider l'utilisateur de manière robuste
   const selectedUserStr = localStorage.getItem('selectedUtilisateur');
   let utilisateur_id = null;
@@ -1353,14 +1353,6 @@
   if (selectedUserStr) {
     try {
       const selectedUser = JSON.parse(selectedUserStr);
-      
-      // Gestion spéciale pour la chaîne "null"
-      if (selectedUser.numero === "null") {
-        showToast('ERREUR : Utilisateur non valide. Veuillez en sélectionner un nouveau.', 'error');
-        // Rediriger vers la page de sélection
-        setTimeout(() => window.location.href = 'selection.html', 2000);
-        return;
-      }
       
       // Vérifier que le numéro existe et est un nombre valide
       if (selectedUser && selectedUser.numero !== undefined && selectedUser.numero !== null) {
@@ -1387,10 +1379,14 @@
   }
   
   // 3. Construire les données avec l'ID utilisateur valide
+  // CORRECTION : Récupérer l'ID du compte rendu si on est en mode édition
+  const reportIdElement = document.getElementById('reportId');
+  const reportId = reportIdElement ? reportIdElement.value : '';
+  
   const data = {
     numero_enregistrement: document.getElementById('reportNumero').value.trim(),
     date_compte_rendu: document.getElementById('reportDateCR').value,
-    utilisateur_id: utilisateur_id, // Ceci doit être un nombre maintenant
+    utilisateur_id: utilisateur_id,
     medecin_id: parseInt(document.getElementById('reportMedecin').value),
     service_hospitalier: document.getElementById('reportService').value.trim(),
     patient_id: parseInt(document.getElementById('reportPatient').value),
@@ -1402,38 +1398,54 @@
     conclusion: document.getElementById('reportConclusion').value.trim(),
     statut: document.getElementById('reportStatut').value
   };
-      
-      // Validation
-      if (!data.numero_enregistrement || !data.date_compte_rendu || !data.medecin_id || 
-          !data.patient_id || !data.nature_prelevement || !data.date_prelevement) {
-        return showToast('Veuillez remplir tous les champs obligatoires', 'error');
-      }
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const url = id ? `${API_BASE_URL}/comptes-rendus/${id}` : `${API_BASE_URL}/comptes-rendus`;
-        const method = id ? 'PUT' : 'POST';
-        
-        const res = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
-          body: JSON.stringify(data)
-        });
-        
-        if (res.ok) {
-          showToast(id ? 'Compte rendu modifié' : 'Compte rendu créé');
-          closeReportModal();
-          loadReports();
-        } else {
-          const err = await res.json();
-          throw new Error(err.erreur || 'Erreur lors de la sauvegarde');
-        }
-      } catch (err) {
-        console.error(err);
-        showToast(err.message, 'error');
-      }
+  
+  // Validation des champs obligatoires
+  if (!data.numero_enregistrement || !data.date_compte_rendu || !data.medecin_id || 
+      !data.patient_id || !data.nature_prelevement || !data.date_prelevement) {
+    return showToast('Veuillez remplir tous les champs obligatoires', 'error');
+  }
+  
+  try {
+    const userId = localStorage.getItem('userId');
+    
+    // CORRECTION : Déterminer l'URL et la méthode en fonction du mode
+    let url, method;
+    if (reportId && reportId !== '') {
+      // Mode édition
+      url = `${API_BASE_URL}/comptes-rendus/${reportId}`;
+      method = 'PUT';
+    } else {
+      // Mode création
+      url = `${API_BASE_URL}/comptes-rendus`;
+      method = 'POST';
     }
-
+    
+    console.log('Envoi des données:', { url, method, data });
+    
+    const res = await fetch(url, {
+      method: method,
+      headers: { 
+        'Content-Type': 'application/json', 
+        'X-User-ID': userId 
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (res.ok) {
+      const result = await res.json();
+      showToast(reportId ? 'Compte rendu modifié avec succès' : 'Compte rendu créé avec succès');
+      closeReportModal();
+      loadReports();
+    } else {
+      const err = await res.json();
+      console.error('Erreur serveur:', err);
+      throw new Error(err.erreur || 'Erreur lors de la sauvegarde');
+    }
+  } catch (err) {
+    console.error('Erreur sauvegarde:', err);
+    showToast(err.message, 'error');
+  }
+}
     function resetReportForm() {
       document.getElementById('reportForm').reset();
       document.getElementById('reportId').value = '';
