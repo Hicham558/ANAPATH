@@ -44,6 +44,7 @@
     .toast.show { display: flex; align-items: center; }
     .toast.success { background: #10b981; }
     .toast.error   { background: #ef4444; }
+    .toast.warning { background: #f59e0b; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -157,14 +158,21 @@
   <script>
     const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
 
-    function showToast(msg, error = false) {
+    function showToast(msg, type = 'success') {
       const t = document.getElementById('toast');
       const icon = document.getElementById('toastIcon');
       const text = document.getElementById('toastMessage');
 
       text.textContent = msg;
-      icon.className = error ? 'fas fa-exclamation-circle mr-3 text-lg' : 'fas fa-check-circle mr-3 text-lg';
-      t.className = `toast show ${error ? 'error' : 'success'}`;
+      t.className = `toast show ${type}`;
+      
+      if (type === 'error') {
+        icon.className = 'fas fa-exclamation-circle mr-3 text-lg';
+      } else if (type === 'warning') {
+        icon.className = 'fas fa-exclamation-triangle mr-3 text-lg';
+      } else {
+        icon.className = 'fas fa-check-circle mr-3 text-lg';
+      }
 
       setTimeout(() => t.classList.remove('show'), 3400);
     }
@@ -184,7 +192,7 @@
     async function loadUsers() {
       const userId = localStorage.getItem('userId');
       if (!userId) {
-        showToast('Veuillez vous connecter d’abord', true);
+        showToast('Veuillez vous connecter d’abord', 'error');
         setTimeout(() => location.href = 'index.html', 1800);
         return;
       }
@@ -193,17 +201,23 @@
         const r = await fetch(`${API_BASE_URL}/liste_utilisateurs`, {
           headers: { 'X-User-ID': userId }
         });
-        if (!r.ok) throw new Error(await r.text());
+        
+        if (!r.ok) {
+          const errorText = await r.text();
+          console.error('Erreur API:', errorText);
+          throw new Error('Impossible de charger la liste des utilisateurs');
+        }
 
         const users = await r.json();
 
         // Select
         const sel = document.getElementById('userSelect');
         sel.innerHTML = '<option value="0">-- Choisir un utilisateur --</option>';
+        
         users.forEach(u => {
           const opt = document.createElement('option');
           opt.value = u.numero;
-          opt.textContent = u.nom;
+          opt.textContent = `${u.nom} (${u.statut})`;
           opt.dataset.statut = u.statut;
           sel.appendChild(opt);
         });
@@ -222,9 +236,10 @@
                   <span class="text-xs px-2.5 py-0.5 rounded-full ${u.statut === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}">
                     ${u.statut === 'admin' ? 'Administrateur' : 'Utilisateur'}
                   </span>
+                  <p class="text-xs text-gray-500 mt-1">ID: ${u.numero}</p>
                 </div>
               </div>
-              <button onclick="quickSelect('${u.numero}', '${u.nom.replace(/'/g,"\\'")}')" class="text-indigo-600 hover:text-indigo-800 px-3 py-2 rounded hover:bg-indigo-100 transition">
+              <button onclick="quickSelect(${u.numero}, '${u.nom.replace(/'/g, "\\'")}')" class="text-indigo-600 hover:text-indigo-800 px-3 py-2 rounded hover:bg-indigo-100 transition">
                 <i class="fas fa-arrow-right"></i>
               </button>
             </div>
@@ -232,67 +247,112 @@
 
       } catch (err) {
         console.error(err);
-        showToast('Impossible de charger la liste des utilisateurs', true);
+        showToast('Impossible de charger la liste des utilisateurs', 'error');
         document.getElementById('usersList').innerHTML = `
           <div class="text-center py-10 text-red-600">
             <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
             <p>Erreur de chargement</p>
+            <p class="text-xs mt-2">${err.message}</p>
           </div>`;
       }
     }
 
-  function quickSelect(numero, nom) {
-  document.getElementById('userSelect').value = numero;
-  document.getElementById('currentUserName').textContent = nom;
-  document.getElementById('userPassword').focus();
-}
-
-   async function validateUser() {
-  const num = document.getElementById('userSelect').value;
-  const pwd = document.getElementById('userPassword').value.trim();
-
-  if (num === '0') return showToast('Sélectionnez un utilisateur', true);
-  if (!pwd) return showToast('Le mot de passe est requis', true);
-
-  try {
-    const userId = localStorage.getItem('userId');
-    const opt = document.getElementById('userSelect').selectedOptions[0];
-    const nom = opt.textContent;
-
-    const r = await fetch(`${API_BASE_URL}/valider_utilisateur`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId
-      },
-      body: JSON.stringify({ nom, password2: pwd })
-    });
-
-    if (!r.ok) {
-      const err = await r.json();
-      throw new Error(err.erreur || 'Validation échouée');
+    function quickSelect(numero, nom) {
+      const select = document.getElementById('userSelect');
+      const option = Array.from(select.options).find(opt => parseInt(opt.value) === numero);
+      
+      if (option) {
+        select.value = numero;
+        document.getElementById('currentUserName').textContent = nom;
+        document.getElementById('userPassword').focus();
+        showToast(`${nom} sélectionné`, 'success');
+      }
     }
 
-    // CORRECTION ICI : Convertir en nombre, ne pas stocker "null"
-    const numeroValue = num === '0' ? null : parseInt(num, 10);
-    
-    // Succès → stockage
-    localStorage.setItem('selectedUtilisateur', JSON.stringify({
-      numero: numeroValue, // Stocker un nombre ou null, pas la chaîne "null"
-      nom: nom,
-      statut: opt.dataset.statut
-    }));
+    async function validateUser() {
+      const num = document.getElementById('userSelect').value;
+      const pwd = document.getElementById('userPassword').value.trim();
 
-    showToast(`Utilisateur ${nom} validé avec succès ✓`, false);
-    setTimeout(() => location.href = 'index.html', 1200);
+      if (num === '0' || num === '') {
+        showToast('Sélectionnez un utilisateur', 'error');
+        return;
+      }
+      
+      if (!pwd) {
+        showToast('Le mot de passe est requis', 'error');
+        return;
+      }
 
-  } catch (err) {
-    showToast(err.message || 'Erreur lors de la validation', true);
-  }
-}
+      try {
+        const userId = localStorage.getItem('userId');
+        const select = document.getElementById('userSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        
+        if (!selectedOption) {
+          showToast('Utilisateur invalide', 'error');
+          return;
+        }
+
+        const nom = selectedOption.textContent.split(' (')[0]; // Enlever le statut entre parenthèses
+        const statut = selectedOption.dataset.statut;
+
+        // Validation auprès du serveur
+        const r = await fetch(`${API_BASE_URL}/valider_utilisateur`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          body: JSON.stringify({ 
+            nom: nom, 
+            password2: pwd 
+          })
+        });
+
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.erreur || 'Validation échouée');
+        }
+
+        // Convertir l'ID en nombre
+        const numeroValue = parseInt(num, 10);
+        
+        if (isNaN(numeroValue)) {
+          showToast('ID utilisateur invalide', 'error');
+          return;
+        }
+
+        // Stocker l'utilisateur sélectionné
+        const userData = {
+          numero: numeroValue,
+          nom: nom,
+          statut: statut || 'utilisateur'
+        };
+        
+        localStorage.setItem('selectedUtilisateur', JSON.stringify(userData));
+        
+        // Nettoyer les anciennes données si elles existent
+        localStorage.removeItem('selectedUser');
+        
+        console.log('Utilisateur stocké:', userData);
+        
+        showToast(`Utilisateur ${nom} validé avec succès ✓`, 'success');
+        
+        // Redirection vers la page principale
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1200);
+
+      } catch (err) {
+        console.error('Erreur validation:', err);
+        showToast(err.message || 'Erreur lors de la validation', 'error');
+      }
+    }
 
     function cancelSelection() {
       if (confirm('Quitter sans sélectionner ?')) {
+        // Nettoyer la sélection si l'utilisateur annule
+        localStorage.removeItem('selectedUtilisateur');
         location.href = 'index.html';
       }
     }
@@ -302,19 +362,20 @@
         localStorage.removeItem('userId');
         localStorage.removeItem('userEmail');
         localStorage.removeItem('selectedUtilisateur');
+        localStorage.removeItem('selectedUser');
         location.href = 'index.html';
       }
     }
 
     // ──────────────────────────────────────────────
-    // INIT
+    // INITIALISATION
     // ──────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-      const userId    = localStorage.getItem('userId');
+      const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
 
       if (!userId || !userEmail) {
-        showToast('Veuillez vous connecter d’abord', true);
+        showToast('Veuillez vous connecter d\'abord', 'error');
         setTimeout(() => location.href = 'index.html', 1800);
         return;
       }
@@ -325,11 +386,19 @@
       // Afficher utilisateur déjà sélectionné
       const sel = localStorage.getItem('selectedUtilisateur');
       if (sel) {
-        const u = JSON.parse(sel);
-        document.getElementById('currentUserName').textContent = u.nom;
-        document.getElementById('userSelect').value = u.numero;
+        try {
+          const u = JSON.parse(sel);
+          if (u && u.nom) {
+            document.getElementById('currentUserName').textContent = u.nom;
+            document.getElementById('userSelect').value = u.numero || '0';
+          }
+        } catch (e) {
+          console.error('Erreur parsing utilisateur:', e);
+          localStorage.removeItem('selectedUtilisateur');
+        }
       }
 
+      // Charger les utilisateurs
       loadUsers();
 
       // Toggle mot de passe
@@ -339,7 +408,40 @@
       document.getElementById('userPassword').addEventListener('keypress', e => {
         if (e.key === 'Enter') validateUser();
       });
+
+      // Nettoyage des anciennes données corrompues
+      cleanupOldData();
     });
+
+    // Fonction de nettoyage des anciennes données
+    function cleanupOldData() {
+      // Nettoyer selectedUser (ancien format)
+      const oldUser = localStorage.getItem('selectedUser');
+      if (oldUser) {
+        try {
+          const parsed = JSON.parse(oldUser);
+          if (parsed && (parsed.numero === "null" || parsed.numero === null)) {
+            localStorage.removeItem('selectedUser');
+          }
+        } catch (e) {
+          localStorage.removeItem('selectedUser');
+        }
+      }
+      
+      // Nettoyer selectedUtilisateur si corrompu
+      const currentUser = localStorage.getItem('selectedUtilisateur');
+      if (currentUser) {
+        try {
+          const parsed = JSON.parse(currentUser);
+          if (parsed && (parsed.numero === "null" || parsed.numero === null)) {
+            localStorage.removeItem('selectedUtilisateur');
+            showToast('Ancienne sélection invalide nettoyée', 'warning');
+          }
+        } catch (e) {
+          localStorage.removeItem('selectedUtilisateur');
+        }
+      }
+    }
   </script>
 </body>
 </html>
