@@ -11,7 +11,13 @@ import traceback
 import textwrap
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {
+    "origins": ["https://hicham558.github.io", "http://localhost:*", "*"],  # ton domaine GH Pages + localhost
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "X-User-ID", "Authorization"],
+    "supports_credentials": True,
+    "max_age": 86400  # cache preflight 24h
+}})
 
 # ================================================
 # CONFIGURATION
