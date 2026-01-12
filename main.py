@@ -214,16 +214,23 @@ def ajouter_utilisateur():
         conn = get_db()
         cur = conn.cursor()
         
-        # Insérer sans spécifier numero (SERIAL auto-increment)
+        # Version optimisée : utiliser nextval pour obtenir l'ID d'avance
+        # D'abord obtenir le prochain ID de la séquence
+        cur.execute("SELECT nextval('utilisateurs_id_seq') as next_id")
+        next_id = cur.fetchone()['next_id']
+        
+        # Insérer avec id ET numero définis explicitement
         cur.execute('''
-            INSERT INTO utilisateurs (user_id, nom, password, statut)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO utilisateurs (id, user_id, numero, nom, password, statut)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id, numero, nom, statut
         ''', (
+            next_id,           # id (explicitement défini)
             user_id,
+            next_id,           # numero = id
             data['nom'],
             data['password2'],
-            data.get('statue', 'utilisateur')
+            data.get('statut', 'utilisateur')
         ))
         
         new_user = cur.fetchone()
@@ -233,7 +240,7 @@ def ajouter_utilisateur():
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"? Erreur ajouter_utilisateur: {str(e)}")
+        print(f"❌ Erreur ajouter_utilisateur: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
