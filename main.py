@@ -309,7 +309,118 @@ def valider_utilisateur():
             cur.close()
         if conn:
             conn.close()
+# ================================================
+# MODIFIER UN UTILISATEUR
+# ================================================
+@app.route('/utilisateurs/<int:numero>', methods=['PUT'])
+def modifier_utilisateur(numero):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
 
+    data = request.json
+    if not data:
+        return jsonify({'erreur': 'Données manquantes'}), 400
+
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Champs modifiables
+        champs = []
+        valeurs = []
+
+        if 'nom' in data:
+            champs.append("nom = %s")
+            valeurs.append(data['nom'])
+        if 'password2' in data and data['password2']:  # on ne change le mdp que s'il est fourni
+            champs.append("password = %s")
+            valeurs.append(data['password2'])
+        if 'statut' in data:
+            champs.append("statut = %s")
+            valeurs.append(data['statut'])
+
+        if not champs:
+            return jsonify({'erreur': 'Aucun champ à modifier'}), 400
+
+        valeurs.append(user_id)
+        valeurs.append(numero)
+
+        query = f"""
+            UPDATE utilisateurs
+            SET {', '.join(champs)}
+            WHERE user_id = %s AND numero = %s
+            RETURNING numero, nom, statut
+        """
+
+        cur.execute(query, valeurs)
+        updated = cur.fetchone()
+
+        if not updated:
+            conn.rollback()
+            return jsonify({'erreur': 'Utilisateur non trouvé ou non autorisé'}), 404
+
+        conn.commit()
+        return jsonify(dict(updated))
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur modification utilisateur {numero}: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+# ================================================
+# SUPPRIMER UN UTILISATEUR
+# ================================================
+@app.route('/utilisateurs/<int:numero>', methods=['DELETE'])
+def supprimer_utilisateur(numero):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # On vérifie d'abord que l'utilisateur existe et appartient bien au user_id
+        cur.execute(
+            "SELECT numero FROM utilisateurs WHERE user_id = %s AND numero = %s",
+            (user_id, numero)
+        )
+        if not cur.fetchone():
+            return jsonify({'erreur': 'Utilisateur non trouvé ou non autorisé'}), 404
+
+        # Suppression
+        cur.execute(
+            "DELETE FROM utilisateurs WHERE user_id = %s AND numero = %s",
+            (user_id, numero)
+        )
+
+        conn.commit()
+        return jsonify({'message': f'Utilisateur #{numero} supprimé'})
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur suppression utilisateur {numero}: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 # ================================================
 # PATIENTS
 # ================================================
