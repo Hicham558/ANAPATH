@@ -94,6 +94,29 @@ CREATE TABLE IF NOT EXISTS comptes_rendus (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS templates (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(50) NOT NULL,           -- Code unique du template
+    user_id VARCHAR(255) NOT NULL,       -- Propriétaire du template
+    titre VARCHAR(255) NOT NULL,         -- Nom du template
+    
+    -- Les 4 champs qui remplissent le modal
+    renseignements_cliniques TEXT,
+    macroscopie TEXT,
+    microscopie TEXT,
+    conclusion TEXT,
+    
+    -- Métadonnées basiques
+    organe VARCHAR(100),                 -- Pour filtrer par organe
+    tags TEXT[],                         -- Pour recherche
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Un template unique par code et utilisateur
+    UNIQUE(user_id, code)
+);
+
 CREATE INDEX idx_comptes_rendus_user_id ON comptes_rendus(user_id);
 CREATE INDEX idx_comptes_rendus_statut ON comptes_rendus(statut);
 
