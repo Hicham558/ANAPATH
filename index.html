@@ -19,8 +19,21 @@
     .animate-pulse { animation: pulse 2s infinite ease-in-out; }
     .animate-blink { animation: blink 1.5s infinite; }
     
-    .table-container { max-height: 500px; overflow-y: auto; }
-    .table-container thead { position: sticky; top: 0; background: #f9fafb; z-index: 1; }
+    /* Correction pour les barres de défilement horizontales */
+    .table-container { 
+      max-height: 500px; 
+      overflow-y: auto; 
+      overflow-x: auto;
+    }
+    .table-container thead { 
+      position: sticky; 
+      top: 0; 
+      background: #f9fafb; 
+      z-index: 1; 
+    }
+    .table-container table {
+      min-width: 1000px; /* Force une largeur minimale pour le défilement horizontal */
+    }
     
     .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
     .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
@@ -63,6 +76,41 @@
     .status-en_cours { background-color: #fef3c7; color: #92400e; }
     .status-terminé { background-color: #d1fae5; color: #065f46; }
     .status-validé { background-color: #dbeafe; color: #1e40af; }
+    
+    /* Styles pour les templates */
+    .organe-badge {
+      background: #e0e7ff;
+      color: #4f46e5;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      display: inline-block;
+    }
+    
+    .tag-badge {
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      display: inline-block;
+    }
+    
+    .template-card {
+      transition: all 0.3s ease;
+      border-left: 4px solid #4f46e5;
+    }
+    .template-card:hover {
+      transform: translateX(5px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+    }
+    
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -88,8 +136,8 @@
       </div>
       <div class="flex gap-2 items-center">
         <a href="templates.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs flex items-center gap-1" title="Gérer les templates">
-        <i class="fas fa-file-alt"></i> Templates
-      </a> 
+          <i class="fas fa-file-alt"></i> Templates
+        </a> 
         <a href="selection.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs flex items-center gap-1" title="Changer d'utilisateur">
           <i class="fas fa-user-edit"></i> Changer
         </a>
@@ -583,7 +631,13 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
             <label class="block text-sm font-medium mb-1">Nature/Siège du Prélèvement*</label>
-            <input type="text" id="reportNature" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Ex: Nodule thyroïdien, Biopsie hépatique..." required>
+            <div class="flex gap-2">
+              <input type="text" id="reportNature" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Ex: Nodule thyroïdien, Biopsie hépatique..." required>
+              <!-- BOUTON TEMPLATE -->
+              <button type="button" onclick="openTemplateSelector()" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition flex items-center gap-1 whitespace-nowrap" title="Charger depuis un template">
+                <i class="fas fa-clone"></i> Template
+              </button>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Date Prélèvement*</label>
@@ -647,6 +701,66 @@
     </div>
   </div>
 
+  <!-- Modal Sélection Template -->
+  <div id="templateSelectorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto modal-content">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <h2 class="text-2xl font-semibold text-indigo-700">Sélectionner un Template</h2>
+        <button onclick="closeTemplateSelector()" class="text-gray-600 hover:text-gray-800 transition">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <!-- Filtres rapides -->
+      <div class="mb-6">
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="filterTemplatesByOrgane('')" class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm hover:bg-indigo-200 transition">
+            Tous
+          </button>
+          <button onclick="filterTemplatesByOrgane('thyroide')" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition">
+            Thyroïde
+          </button>
+          <button onclick="filterTemplatesByOrgane('sein')" class="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm hover:bg-pink-200 transition">
+            Sein
+          </button>
+          <button onclick="filterTemplatesByOrgane('prostate')" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition">
+            Prostate
+          </button>
+          <button onclick="filterTemplatesByOrgane('poumon')" class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 transition">
+            Poumon
+          </button>
+        </div>
+        
+        <div class="flex gap-2">
+          <input type="text" id="templateSearch" placeholder="Rechercher par code, titre, tag..." 
+                 class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                 onkeyup="searchTemplates()">
+          <button onclick="clearTemplateSearch()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Liste des templates -->
+      <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-2" id="templatesListContainer">
+        <div class="text-center py-8 text-gray-500">
+          <i class="fas fa-spinner fa-spin mr-2"></i> Chargement des templates...
+        </div>
+      </div>
+      
+      <div class="mt-6 pt-6 border-t flex justify-between items-center">
+        <div class="text-sm text-gray-600">
+          <span id="templatesCount">0</span> template(s) trouvé(s)
+        </div>
+        <div>
+          <button onclick="closeTemplateSelector()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition mr-2">
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Configuration API
     const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
@@ -655,21 +769,24 @@
     let allPatients = [];
     let allMedecins = [];
     let allUtilisateurs = [];
+    let allTemplates = [];
+    let filteredTemplates = [];
 
     function cleanupLocalStorage() {
-  const selectedUserStr = localStorage.getItem('selectedUtilisateur');
-  if (selectedUserStr) {
-    try {
-      const selectedUser = JSON.parse(selectedUserStr);
-      if (selectedUser.numero === "null") {
-        localStorage.removeItem('selectedUtilisateur');
-        console.log("Nettoyage : Suppression de l'utilisateur avec numero='null'");
+      const selectedUserStr = localStorage.getItem('selectedUtilisateur');
+      if (selectedUserStr) {
+        try {
+          const selectedUser = JSON.parse(selectedUserStr);
+          if (selectedUser.numero === "null") {
+            localStorage.removeItem('selectedUtilisateur');
+            console.log("Nettoyage : Suppression de l'utilisateur avec numero='null'");
+          }
+        } catch (e) {
+          // Ignorer les erreurs de parsing
+        }
       }
-    } catch (e) {
-      // Ignorer les erreurs de parsing
     }
-  }
-}
+    
     // Initialiser l'affichage de l'utilisateur sélectionné
     function updateSelectedUserDisplay() {
       const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
@@ -1305,75 +1422,75 @@
       document.getElementById('currentReportUser').textContent = selectedUser.nom;
     }
 
- function editReport(report) {
-  const selectedUser = updateSelectedUserDisplay();
-  
-  console.log('📋 Édition compte rendu:', report.id);
-  console.log('📅 date_compte_rendu:', report.date_compte_rendu);
-  console.log('📅 date_prelevement:', report.date_prelevement);
-  
-  document.getElementById('reportId').value = report.id;
-  document.getElementById('reportNumero').value = report.numero_enregistrement;
-  
-  // Fonction pour formater les dates
-  function formatDateForInput(dateString) {
-    if (!dateString) return '';
-    
-    try {
-      // Si la date est déjà au format YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        return dateString;
+    function editReport(report) {
+      const selectedUser = updateSelectedUserDisplay();
+      
+      console.log('📋 Édition compte rendu:', report.id);
+      console.log('📅 date_compte_rendu:', report.date_compte_rendu);
+      console.log('📅 date_prelevement:', report.date_prelevement);
+      
+      document.getElementById('reportId').value = report.id;
+      document.getElementById('reportNumero').value = report.numero_enregistrement;
+      
+      // Fonction pour formater les dates
+      function formatDateForInput(dateString) {
+        if (!dateString) return '';
+        
+        try {
+          // Si la date est déjà au format YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            return dateString;
+          }
+          
+          // Si c'est une date complète avec heure
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) {
+            console.warn('Date invalide:', dateString);
+            return '';
+          }
+          
+          // Formater en YYYY-MM-DD
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          
+          return `${year}-${month}-${day}`;
+        } catch (error) {
+          console.error('Erreur formatage date:', error, 'dateString:', dateString);
+          return '';
+        }
       }
       
-      // Si c'est une date complète avec heure
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        console.warn('Date invalide:', dateString);
-        return '';
+      // Formater les dates
+      document.getElementById('reportDateCR').value = formatDateForInput(report.date_compte_rendu);
+      document.getElementById('reportDatePrelevement').value = formatDateForInput(report.date_prelevement);
+      
+      document.getElementById('reportMedecin').value = report.medecin_id;
+      document.getElementById('reportService').value = report.service_hospitalier || '';
+      document.getElementById('reportPatient').value = report.patient_id;
+      document.getElementById('reportNature').value = report.nature_prelevement;
+      document.getElementById('reportRenseignements').value = report.renseignements_cliniques || '';
+      document.getElementById('reportMacro').value = report.macroscopie || '';
+      document.getElementById('reportMicro').value = report.microscopie || '';
+      document.getElementById('reportConclusion').value = report.conclusion || '';
+      document.getElementById('reportStatut').value = report.statut;
+      
+      // Mettre à jour l'âge et le sexe
+      const patient = allPatients.find(p => p.id == report.patient_id);
+      if (patient) {
+        document.getElementById('reportAge').value = patient.age || '';
+        document.getElementById('reportSexe').value = patient.sexe === 'M' ? 'Masculin' : 
+                                                     patient.sexe === 'F' ? 'Féminin' : '';
+      } else {
+        document.getElementById('reportAge').value = '';
+        document.getElementById('reportSexe').value = '';
       }
       
-      // Formater en YYYY-MM-DD
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      document.getElementById('reportModal').classList.remove('hidden');
+      document.getElementById('currentReportUser').textContent = selectedUser.nom || report.utilisateur_nom || 'Non spécifié';
       
-      return `${year}-${month}-${day}`;
-    } catch (error) {
-      console.error('Erreur formatage date:', error, 'dateString:', dateString);
-      return '';
+      console.log('✅ Formulaire rempli avec succès');
     }
-  }
-  
-  // Formater les dates
-  document.getElementById('reportDateCR').value = formatDateForInput(report.date_compte_rendu);
-  document.getElementById('reportDatePrelevement').value = formatDateForInput(report.date_prelevement);
-  
-  document.getElementById('reportMedecin').value = report.medecin_id;
-  document.getElementById('reportService').value = report.service_hospitalier || '';
-  document.getElementById('reportPatient').value = report.patient_id;
-  document.getElementById('reportNature').value = report.nature_prelevement;
-  document.getElementById('reportRenseignements').value = report.renseignements_cliniques || '';
-  document.getElementById('reportMacro').value = report.macroscopie || '';
-  document.getElementById('reportMicro').value = report.microscopie || '';
-  document.getElementById('reportConclusion').value = report.conclusion || '';
-  document.getElementById('reportStatut').value = report.statut;
-  
-  // Mettre à jour l'âge et le sexe
-  const patient = allPatients.find(p => p.id == report.patient_id);
-  if (patient) {
-    document.getElementById('reportAge').value = patient.age || '';
-    document.getElementById('reportSexe').value = patient.sexe === 'M' ? 'Masculin' : 
-                                                 patient.sexe === 'F' ? 'Féminin' : '';
-  } else {
-    document.getElementById('reportAge').value = '';
-    document.getElementById('reportSexe').value = '';
-  }
-  
-  document.getElementById('reportModal').classList.remove('hidden');
-  document.getElementById('currentReportUser').textContent = selectedUser.nom || report.utilisateur_nom || 'Non spécifié';
-  
-  console.log('✅ Formulaire rempli avec succès');
-}
 
     function viewReport(report) {
       // Ouvrir en mode lecture seule
@@ -1389,107 +1506,108 @@
       submitBtn.onclick = closeReportModal;
     }
 
- async function saveReport() {
-  // 1. Récupérer et valider l'utilisateur de manière robuste
-  const selectedUserStr = localStorage.getItem('selectedUtilisateur');
-  let utilisateur_id = null;
-  
-  if (selectedUserStr) {
-    try {
-      const selectedUser = JSON.parse(selectedUserStr);
+    async function saveReport() {
+      // 1. Récupérer et valider l'utilisateur de manière robuste
+      const selectedUserStr = localStorage.getItem('selectedUtilisateur');
+      let utilisateur_id = null;
       
-      // Vérifier que le numéro existe et est un nombre valide
-      if (selectedUser && selectedUser.numero !== undefined && selectedUser.numero !== null) {
-        utilisateur_id = parseInt(selectedUser.numero, 10);
-        
-        // Si ce n'est pas un nombre valide
-        if (isNaN(utilisateur_id)) {
-          showToast('ERREUR : ID utilisateur invalide. Veuillez re-sélectionner un utilisateur.', 'error');
-          localStorage.removeItem('selectedUtilisateur'); // Nettoyer le mauvais stockage
-          setTimeout(() => window.location.href = 'selection.html', 2000);
-          return;
+      if (selectedUserStr) {
+        try {
+          const selectedUser = JSON.parse(selectedUserStr);
+          
+          // Vérifier que le numéro existe et est un nombre valide
+          if (selectedUser && selectedUser.numero !== undefined && selectedUser.numero !== null) {
+            utilisateur_id = parseInt(selectedUser.numero, 10);
+            
+            // Si ce n'est pas un nombre valide
+            if (isNaN(utilisateur_id)) {
+              showToast('ERREUR : ID utilisateur invalide. Veuillez re-sélectionner un utilisateur.', 'error');
+              localStorage.removeItem('selectedUtilisateur'); // Nettoyer le mauvais stockage
+              setTimeout(() => window.location.href = 'selection.html', 2000);
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Erreur de parsing de selectedUtilisateur :", e);
         }
       }
-    } catch (e) {
-      console.error("Erreur de parsing de selectedUtilisateur :", e);
+      
+      // 2. Si aucun utilisateur n'est défini
+      if (utilisateur_id === null || utilisateur_id === undefined) {
+        showToast('Veuillez d\'abord sélectionner un utilisateur valide depuis la page de sélection.', 'error');
+        setTimeout(() => window.location.href = 'selection.html', 1500);
+        return;
+      }
+      
+      // 3. Construire les données avec l'ID utilisateur valide
+      // CORRECTION : Récupérer l'ID du compte rendu si on est en mode édition
+      const reportIdElement = document.getElementById('reportId');
+      const reportId = reportIdElement ? reportIdElement.value : '';
+      
+      const data = {
+        numero_enregistrement: document.getElementById('reportNumero').value.trim(),
+        date_compte_rendu: document.getElementById('reportDateCR').value,
+        utilisateur_id: utilisateur_id,
+        medecin_id: parseInt(document.getElementById('reportMedecin').value),
+        service_hospitalier: document.getElementById('reportService').value.trim(),
+        patient_id: parseInt(document.getElementById('reportPatient').value),
+        nature_prelevement: document.getElementById('reportNature').value.trim(),
+        date_prelevement: document.getElementById('reportDatePrelevement').value,
+        renseignements_cliniques: document.getElementById('reportRenseignements').value.trim(),
+        macroscopie: document.getElementById('reportMacro').value.trim(),
+        microscopie: document.getElementById('reportMicro').value.trim(),
+        conclusion: document.getElementById('reportConclusion').value.trim(),
+        statut: document.getElementById('reportStatut').value
+      };
+      
+      // Validation des champs obligatoires
+      if (!data.numero_enregistrement || !data.date_compte_rendu || !data.medecin_id || 
+          !data.patient_id || !data.nature_prelevement || !data.date_prelevement) {
+        return showToast('Veuillez remplir tous les champs obligatoires', 'error');
+      }
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        
+        // CORRECTION : Déterminer l'URL et la méthode en fonction du mode
+        let url, method;
+        if (reportId && reportId !== '') {
+          // Mode édition
+          url = `${API_BASE_URL}/comptes-rendus/${reportId}`;
+          method = 'PUT';
+        } else {
+          // Mode création
+          url = `${API_BASE_URL}/comptes-rendus`;
+          method = 'POST';
+        }
+        
+        console.log('Envoi des données:', { url, method, data });
+        
+        const res = await fetch(url, {
+          method: method,
+          headers: { 
+            'Content-Type': 'application/json', 
+            'X-User-ID': userId 
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+          const result = await res.json();
+          showToast(reportId ? 'Compte rendu modifié avec succès' : 'Compte rendu créé avec succès');
+          closeReportModal();
+          loadReports();
+        } else {
+          const err = await res.json();
+          console.error('Erreur serveur:', err);
+          throw new Error(err.erreur || 'Erreur lors de la sauvegarde');
+        }
+      } catch (err) {
+        console.error('Erreur sauvegarde:', err);
+        showToast(err.message, 'error');
+      }
     }
-  }
-  
-  // 2. Si aucun utilisateur n'est défini
-  if (utilisateur_id === null || utilisateur_id === undefined) {
-    showToast('Veuillez d\'abord sélectionner un utilisateur valide depuis la page de sélection.', 'error');
-    setTimeout(() => window.location.href = 'selection.html', 1500);
-    return;
-  }
-  
-  // 3. Construire les données avec l'ID utilisateur valide
-  // CORRECTION : Récupérer l'ID du compte rendu si on est en mode édition
-  const reportIdElement = document.getElementById('reportId');
-  const reportId = reportIdElement ? reportIdElement.value : '';
-  
-  const data = {
-    numero_enregistrement: document.getElementById('reportNumero').value.trim(),
-    date_compte_rendu: document.getElementById('reportDateCR').value,
-    utilisateur_id: utilisateur_id,
-    medecin_id: parseInt(document.getElementById('reportMedecin').value),
-    service_hospitalier: document.getElementById('reportService').value.trim(),
-    patient_id: parseInt(document.getElementById('reportPatient').value),
-    nature_prelevement: document.getElementById('reportNature').value.trim(),
-    date_prelevement: document.getElementById('reportDatePrelevement').value,
-    renseignements_cliniques: document.getElementById('reportRenseignements').value.trim(),
-    macroscopie: document.getElementById('reportMacro').value.trim(),
-    microscopie: document.getElementById('reportMicro').value.trim(),
-    conclusion: document.getElementById('reportConclusion').value.trim(),
-    statut: document.getElementById('reportStatut').value
-  };
-  
-  // Validation des champs obligatoires
-  if (!data.numero_enregistrement || !data.date_compte_rendu || !data.medecin_id || 
-      !data.patient_id || !data.nature_prelevement || !data.date_prelevement) {
-    return showToast('Veuillez remplir tous les champs obligatoires', 'error');
-  }
-  
-  try {
-    const userId = localStorage.getItem('userId');
     
-    // CORRECTION : Déterminer l'URL et la méthode en fonction du mode
-    let url, method;
-    if (reportId && reportId !== '') {
-      // Mode édition
-      url = `${API_BASE_URL}/comptes-rendus/${reportId}`;
-      method = 'PUT';
-    } else {
-      // Mode création
-      url = `${API_BASE_URL}/comptes-rendus`;
-      method = 'POST';
-    }
-    
-    console.log('Envoi des données:', { url, method, data });
-    
-    const res = await fetch(url, {
-      method: method,
-      headers: { 
-        'Content-Type': 'application/json', 
-        'X-User-ID': userId 
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (res.ok) {
-      const result = await res.json();
-      showToast(reportId ? 'Compte rendu modifié avec succès' : 'Compte rendu créé avec succès');
-      closeReportModal();
-      loadReports();
-    } else {
-      const err = await res.json();
-      console.error('Erreur serveur:', err);
-      throw new Error(err.erreur || 'Erreur lors de la sauvegarde');
-    }
-  } catch (err) {
-    console.error('Erreur sauvegarde:', err);
-    showToast(err.message, 'error');
-  }
-}
     function resetReportForm() {
       document.getElementById('reportForm').reset();
       document.getElementById('reportId').value = '';
@@ -1558,248 +1676,420 @@
     }
 
     // ────────────────────────────────────────────
-    // RECHERCHE
+    // FONCTIONS POUR LES TEMPLATES
     // ────────────────────────────────────────────
-async function performSearch() {
-  const type = document.getElementById('searchType').value;
-  const term = document.getElementById('searchTerm').value.trim();
-  
-  if (!term) {
-    return showToast('Veuillez entrer un terme de recherche', 'warning');
-  }
-  
-  try {
-    let results = [];
-    let isPatientSearch = false;
-    
-    if (type === 'numero') {
-      results = allReports.filter(r => 
-        r.numero_enregistrement.toLowerCase().includes(term.toLowerCase())
-      );
-    } else if (type === 'patient') {
-      results = allReports.filter(r => 
-        r.patient_nom && r.patient_nom.toLowerCase().includes(term.toLowerCase())
-      );
-    } else if (type === 'medecin') {
-      results = allReports.filter(r => 
-        r.medecin_nom && r.medecin_nom.toLowerCase().includes(term.toLowerCase())
-      );
-    } else if (type === 'utilisateur') {
-      results = allReports.filter(r => 
-        r.utilisateur_nom && r.utilisateur_nom.toLowerCase().includes(term.toLowerCase())
-      );
-    } else if (type === 'telephone') {
-      results = allPatients.filter(p => 
-        p.telephone && p.telephone.includes(term)
-      );
-      isPatientSearch = true;
+    async function openTemplateSelector() {
+      try {
+        document.getElementById('templateSelectorModal').classList.remove('hidden');
+        
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          showToast('Veuillez vous connecter', 'error');
+          closeTemplateSelector();
+          return;
+        }
+        
+        // Charger les templates
+        const response = await fetch(`${API_BASE_URL}/api/templates`, {
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (response.ok) {
+          allTemplates = await response.json();
+          filteredTemplates = [...allTemplates];
+          renderTemplatesList();
+        } else {
+          throw new Error('Erreur lors du chargement des templates');
+        }
+        
+      } catch (error) {
+        console.error('Erreur chargement templates:', error);
+        showToast('Erreur lors du chargement des templates', 'error');
+      }
     }
-    
-    const container = document.getElementById('searchResults');
-    if (results.length === 0) {
-      container.innerHTML = '<div class="text-center py-8 text-gray-500">Aucun résultat trouvé</div>';
-    } else {
-      container.innerHTML = `
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <div class="flex justify-between items-center mb-3">
-            <h4 class="font-medium">${results.length} résultat(s) trouvé(s)</h4>
-            <button onclick="clearSearch()" class="text-gray-600 hover:text-gray-800 text-sm">
-              <i class="fas fa-times mr-1"></i> Effacer
+
+    function closeTemplateSelector() {
+      document.getElementById('templateSelectorModal').classList.add('hidden');
+    }
+
+    function renderTemplatesList() {
+      const container = document.getElementById('templatesListContainer');
+      const countElement = document.getElementById('templatesCount');
+      
+      if (filteredTemplates.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-gray-500">
+            <i class="fas fa-inbox text-3xl mb-2"></i>
+            <p>Aucun template trouvé</p>
+          </div>
+        `;
+        countElement.textContent = '0';
+        return;
+      }
+      
+      countElement.textContent = filteredTemplates.length;
+      
+      container.innerHTML = filteredTemplates.map(template => `
+        <div class="template-card bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="applyTemplate(${template.id})">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <h4 class="font-semibold text-gray-900">${template.titre}</h4>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs font-mono text-gray-600">${template.code}</span>
+                ${template.organe ? `<span class="organe-badge">${template.organe}</span>` : ''}
+                ${template.user_id === 'system' ? 
+                  '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Système</span>' : 
+                  '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Utilisateur</span>'}
+              </div>
+            </div>
+            <button onclick="previewTemplateInSelector(${template.id}); event.stopPropagation();" 
+                    class="text-blue-600 hover:text-blue-800 ml-2" title="Prévisualiser">
+              <i class="fas fa-eye"></i>
             </button>
           </div>
-          <div id="searchResultsList" class="space-y-3 max-h-60 overflow-y-auto">
-            ${results.map(r => `
-              <div class="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all search-result-item">
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <div class="flex items-start gap-3">
-                      <div class="mt-1">
-                        <i class="fas ${isPatientSearch ? 'fa-user-injured text-blue-500' : 'fa-file-medical text-green-500'}"></i>
-                      </div>
+          
+          <!-- Aperçu du contenu -->
+          <div class="mt-2 text-sm text-gray-600 line-clamp-2">
+            ${getTemplatePreview(template)}
+          </div>
+          
+          <!-- Tags -->
+          ${template.tags && template.tags.length > 0 ? `
+            <div class="mt-3 flex flex-wrap gap-1">
+              ${Array.isArray(template.tags) ? 
+                template.tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('') : 
+                `<span class="tag-badge">${template.tags}</span>`}
+            </div>
+          ` : ''}
+          
+          <div class="mt-3 text-xs text-gray-500 flex justify-between">
+            <span>Cliquez pour appliquer</span>
+            <span>${new Date(template.created_at).toLocaleDateString('fr-FR')}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getTemplatePreview(template) {
+      // Retourne un aperçu du contenu du template
+      if (template.conclusion && template.conclusion.length > 0) {
+        return template.conclusion.substring(0, 100) + '...';
+      }
+      if (template.microscopie && template.microscopie.length > 0) {
+        return template.microscopie.substring(0, 100) + '...';
+      }
+      if (template.macroscopie && template.macroscopie.length > 0) {
+        return template.macroscopie.substring(0, 100) + '...';
+      }
+      return 'Aucun contenu disponible';
+    }
+
+    async function applyTemplate(templateId) {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) throw new Error('Template non trouvé');
+        
+        const template = await response.json();
+        
+        // Appliquer le template aux champs du formulaire
+        if (template.renseignements_cliniques) {
+          document.getElementById('reportRenseignements').value = template.renseignements_cliniques;
+        }
+        
+        if (template.macroscopie) {
+          document.getElementById('reportMacro').value = template.macroscopie;
+        }
+        
+        if (template.microscopie) {
+          document.getElementById('reportMicro').value = template.microscopie;
+        }
+        
+        if (template.conclusion) {
+          document.getElementById('reportConclusion').value = template.conclusion;
+        }
+        
+        // Mettre à jour le champ nature avec le titre du template
+        if (template.titre) {
+          const natureField = document.getElementById('reportNature');
+          if (!natureField.value || natureField.value.trim() === '') {
+            natureField.value = template.titre;
+          }
+        }
+        
+        closeTemplateSelector();
+        showToast(`Template "${template.code}" appliqué avec succès`, 'success');
+        
+      } catch (error) {
+        console.error('Erreur application template:', error);
+        showToast('Erreur lors de l\'application du template', 'error');
+      }
+    }
+
+    async function previewTemplateInSelector(templateId) {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) throw new Error('Template non trouvé');
+        
+        const template = await response.json();
+        
+        // Créer une prévisualisation modale
+        const previewHTML = `
+          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[150] modal-overlay">
+            <div class="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[80vh] overflow-y-auto modal-content">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">${template.titre}</h3>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-gray-600 hover:text-gray-800">
+                  <i class="fas fa-times text-xl"></i>
+                </button>
+              </div>
+              
+              <div class="space-y-4">
+                ${template.renseignements_cliniques ? `
+                  <div>
+                    <h4 class="font-medium text-gray-700 mb-1">Renseignements Cliniques:</h4>
+                    <div class="bg-gray-50 p-3 rounded text-sm">${template.renseignements_cliniques}</div>
+                  </div>
+                ` : ''}
+                
+                ${template.macroscopie ? `
+                  <div>
+                    <h4 class="font-medium text-gray-700 mb-1">Macroscopie:</h4>
+                    <div class="bg-gray-50 p-3 rounded text-sm">${template.macroscopie}</div>
+                  </div>
+                ` : ''}
+                
+                ${template.microscopie ? `
+                  <div>
+                    <h4 class="font-medium text-gray-700 mb-1">Microscopie:</h4>
+                    <div class="bg-gray-50 p-3 rounded text-sm">${template.microscopie}</div>
+                  </div>
+                ` : ''}
+                
+                ${template.conclusion ? `
+                  <div>
+                    <h4 class="font-medium text-gray-700 mb-1">Conclusion:</h4>
+                    <div class="bg-gray-50 p-3 rounded text-sm">${template.conclusion}</div>
+                  </div>
+                ` : ''}
+              </div>
+              
+              <div class="mt-6 pt-4 border-t flex justify-end">
+                <button onclick="applyTemplate(${templateId}); this.closest('.modal-overlay').remove();" 
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                  <i class="fas fa-check mr-2"></i> Appliquer ce template
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', previewHTML);
+        
+      } catch (error) {
+        console.error('Erreur prévisualisation:', error);
+        showToast('Erreur lors de la prévisualisation', 'error');
+      }
+    }
+
+    function filterTemplatesByOrgane(organe) {
+      if (!organe) {
+        filteredTemplates = [...allTemplates];
+      } else {
+        filteredTemplates = allTemplates.filter(t => t.organe === organe);
+      }
+      renderTemplatesList();
+    }
+
+    function searchTemplates() {
+      const searchTerm = document.getElementById('templateSearch').value.toLowerCase();
+      
+      if (!searchTerm) {
+        filteredTemplates = [...allTemplates];
+      } else {
+        filteredTemplates = allTemplates.filter(template => {
+          const searchFields = [
+            template.code,
+            template.titre,
+            template.organe,
+            template.renseignements_cliniques,
+            template.macroscopie,
+            template.microscopie,
+            template.conclusion,
+            ...(Array.isArray(template.tags) ? template.tags : [template.tags || ''])
+          ].filter(Boolean).join(' ').toLowerCase();
+          
+          return searchFields.includes(searchTerm);
+        });
+      }
+      
+      renderTemplatesList();
+    }
+
+    function clearTemplateSearch() {
+      document.getElementById('templateSearch').value = '';
+      filteredTemplates = [...allTemplates];
+      renderTemplatesList();
+    }
+
+    // Raccourci clavier Ctrl+T pour ouvrir le sélecteur de templates
+    document.addEventListener('keydown', (e) => {
+      // Vérifier si on est dans le modal de compte rendu
+      const reportModal = document.getElementById('reportModal');
+      if (reportModal && !reportModal.classList.contains('hidden')) {
+        // Ctrl+T ou Cmd+T
+        if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+          e.preventDefault();
+          openTemplateSelector();
+        }
+      }
+    });
+
+    // ────────────────────────────────────────────
+    // RECHERCHE
+    // ────────────────────────────────────────────
+    async function performSearch() {
+      const type = document.getElementById('searchType').value;
+      const term = document.getElementById('searchTerm').value.trim();
+      
+      if (!term) {
+        return showToast('Veuillez entrer un terme de recherche', 'warning');
+      }
+      
+      try {
+        let results = [];
+        let isPatientSearch = false;
+        
+        if (type === 'numero') {
+          results = allReports.filter(r => 
+            r.numero_enregistrement.toLowerCase().includes(term.toLowerCase())
+          );
+        } else if (type === 'patient') {
+          results = allReports.filter(r => 
+            r.patient_nom && r.patient_nom.toLowerCase().includes(term.toLowerCase())
+          );
+        } else if (type === 'medecin') {
+          results = allReports.filter(r => 
+            r.medecin_nom && r.medecin_nom.toLowerCase().includes(term.toLowerCase())
+          );
+        } else if (type === 'utilisateur') {
+          results = allReports.filter(r => 
+            r.utilisateur_nom && r.utilisateur_nom.toLowerCase().includes(term.toLowerCase())
+          );
+        } else if (type === 'telephone') {
+          results = allPatients.filter(p => 
+            p.telephone && p.telephone.includes(term)
+          );
+          isPatientSearch = true;
+        }
+        
+        const container = document.getElementById('searchResults');
+        if (results.length === 0) {
+          container.innerHTML = '<div class="text-center py-8 text-gray-500">Aucun résultat trouvé</div>';
+        } else {
+          container.innerHTML = `
+            <div class="bg-gray-50 p-4 rounded-lg">
+              <div class="flex justify-between items-center mb-3">
+                <h4 class="font-medium">${results.length} résultat(s) trouvé(s)</h4>
+                <button onclick="clearSearch()" class="text-gray-600 hover:text-gray-800 text-sm">
+                  <i class="fas fa-times mr-1"></i> Effacer
+                </button>
+              </div>
+              <div id="searchResultsList" class="space-y-3 max-h-60 overflow-y-auto">
+                ${results.map(r => `
+                  <div class="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all search-result-item">
+                    <div class="flex justify-between items-start">
                       <div class="flex-1">
-                        <p class="font-medium text-gray-900">${r.numero_enregistrement || r.nom}</p>
-                        <div class="flex flex-wrap gap-2 mt-1">
-                          ${r.patient_nom ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Patient: ${r.patient_nom}</span>` : ''}
-                          ${r.medecin_nom ? `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Médecin: ${r.medecin_nom}</span>` : ''}
-                          ${r.date_prelevement ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">${r.date_prelevement}</span>` : ''}
-                          ${r.statut ? `<span class="status-badge status-${r.statut}">${r.statut}</span>` : ''}
+                        <div class="flex items-start gap-3">
+                          <div class="mt-1">
+                            <i class="fas ${isPatientSearch ? 'fa-user-injured text-blue-500' : 'fa-file-medical text-green-500'}"></i>
+                          </div>
+                          <div class="flex-1">
+                            <p class="font-medium text-gray-900">${r.numero_enregistrement || r.nom}</p>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                              ${r.patient_nom ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Patient: ${r.patient_nom}</span>` : ''}
+                              ${r.medecin_nom ? `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Médecin: ${r.medecin_nom}</span>` : ''}
+                              ${r.date_prelevement ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">${r.date_prelevement}</span>` : ''}
+                              ${r.statut ? `<span class="status-badge status-${r.statut}">${r.statut}</span>` : ''}
+                            </div>
+                          </div>
                         </div>
+                      </div>
+                      <div class="flex gap-2 ml-4">
+                        ${r.id ? `
+                          <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'view')" 
+                            class="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
+                            title="Voir le détail">
+                            <i class="fas fa-eye"></i>
+                            <span class="text-xs">Voir</span>
+                          </button>
+                          <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'edit')" 
+                            class="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
+                            title="Éditer">
+                            <i class="fas fa-edit"></i>
+                            <span class="text-xs">Éditer</span>
+                          </button>
+                        ` : ''}
                       </div>
                     </div>
                   </div>
-                  <div class="flex gap-2 ml-4">
-                
-${r.id ? `
-  <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'view')" 
-    class="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
-    title="Voir le détail">
-    <i class="fas fa-eye"></i>
-    <span class="text-xs">Voir</span>
-  </button>
-  <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'edit')" 
-    class="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
-    title="Éditer">
-    <i class="fas fa-edit"></i>
-    <span class="text-xs">Éditer</span>
-  </button>
-` : ''}
-                  </div>
-                </div>
+                `).join('')}
               </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-      
-      // Ajouter les écouteurs d'événements
-      attachSearchResultListeners();
-    }
-  } catch (err) {
-    console.error(err);
-    showToast('Erreur lors de la recherche', 'error');
-  }
-}
-// Fonction pour gérer les résultats de recherche
-function handleSearchResult(resultId, resultType, action) {
-  if (resultType === 'report') {
-    const report = allReports.find(r => r.id == resultId);
-    if (report) {
-      if (action === 'view') {
-        viewReport(report);
-      } else if (action === 'edit') {
-        editReport(report);
-      }
-      document.getElementById('searchSection').classList.add('hidden');
-    }
-  } else if (resultType === 'patient') {
-    const patient = allPatients.find(p => p.id == resultId);
-    if (patient) {
-      if (action === 'view') {
-        showToast(`Patient: ${patient.nom}`, 'success');
-      } else if (action === 'edit') {
-        if (document.getElementById('patientsContent').classList.contains('hidden')) {
-          toggleSection('patientsSection');
+            </div>
+          `;
         }
-        setTimeout(() => editPatient(patient), 300);
+      } catch (err) {
+        console.error(err);
+        showToast('Erreur lors de la recherche', 'error');
       }
     }
-  }
-}
-// Fonction pour effacer la recherche
-function clearSearch() {
-  document.getElementById('searchTerm').value = '';
-  document.getElementById('searchResults').innerHTML = '';
-  showToast('Recherche effacée', 'success');
-}
-// Fonction pour attacher les écouteurs d'événements aux résultats de recherche
-function attachSearchResultListeners() {
-  const viewButtons = document.querySelectorAll('.view-search-result');
-  
-  viewButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      const resultId = this.getAttribute('data-result-id');
-      const resultType = this.getAttribute('data-result-type');
-      
+
+    // Fonction pour gérer les résultats de recherche
+    function handleSearchResult(resultId, resultType, action) {
       if (resultType === 'report') {
-        // Chercher le compte rendu
         const report = allReports.find(r => r.id == resultId);
         if (report) {
-          viewReport(report);
-          // Fermer le panneau de recherche
+          if (action === 'view') {
+            viewReport(report);
+          } else if (action === 'edit') {
+            editReport(report);
+          }
           document.getElementById('searchSection').classList.add('hidden');
-        } else {
-          showToast('Compte rendu non trouvé', 'error');
         }
       } else if (resultType === 'patient') {
-        // Chercher le patient
         const patient = allPatients.find(p => p.id == resultId);
         if (patient) {
-          showToast(`Patient: ${patient.nom}`, 'success');
-          // Ouvrir la section patients et éditer
-          if (document.getElementById('patientsContent').classList.contains('hidden')) {
-            toggleSection('patientsSection');
+          if (action === 'view') {
+            showToast(`Patient: ${patient.nom}`, 'success');
+          } else if (action === 'edit') {
+            if (document.getElementById('patientsContent').classList.contains('hidden')) {
+              toggleSection('patientsSection');
+            }
+            setTimeout(() => editPatient(patient), 300);
           }
-          // Petit délai pour laisser la section s'ouvrir
-          setTimeout(() => editPatient(patient), 300);
         }
       }
-    });
-  });
-  
-  // Ajouter aussi un événement de clic sur toute la ligne
-  const resultItems = document.querySelectorAll('.search-result-item');
-  resultItems.forEach(item => {
-    item.addEventListener('click', function(e) {
-      // Ne pas déclencher si on clique sur le bouton "Voir"
-      if (!e.target.closest('.view-search-result')) {
-        const button = this.querySelector('.view-search-result');
-        if (button) {
-          button.click();
-        }
-      }
-    });
-    
-    // Effet visuel au survol
-    item.addEventListener('mouseenter', function() {
-      this.style.backgroundColor = '#f9fafb';
-    });
-    
-    item.addEventListener('mouseleave', function() {
-      this.style.backgroundColor = '';
-    });
-  });
-}
-// Fonction pour voir rapidement un compte rendu (mode lecture seule rapide)
-function quickViewReport(reportId) {
-  const report = allReports.find(r => r.id == reportId);
-  if (report) {
-    // Ouvrir en mode vue rapide (sans désactiver les champs)
-    editReport(report);
-    
-    // Ajouter une classe spéciale pour le mode rapide
-    const modal = document.getElementById('reportModal');
-    modal.classList.add('quick-view-mode');
-    
-    // Changer le titre
-    const title = modal.querySelector('h2');
-    if (title) {
-      title.innerHTML = '<i class="fas fa-eye mr-2"></i>Visualisation Rapide';
     }
-    
-    // Changer le bouton
-    const submitBtn = modal.querySelector('button[type="submit"]');
-    if (submitBtn) {
-      submitBtn.innerHTML = '<i class="fas fa-edit mr-2"></i>Passer en Édition';
-      submitBtn.onclick = function() {
-        // Passer en mode édition
-        modal.classList.remove('quick-view-mode');
-        title.innerHTML = 'Compte Rendu Cyto-Pathologique';
-        submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Enregistrer';
-        submitBtn.type = 'submit';
-        
-        // Réactiver tous les champs
-        const form = document.getElementById('reportForm');
-        const inputs = form.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => input.disabled = false);
-      };
-      submitBtn.type = 'button';
-    }
-  }
-}
 
-// Fonction pour éditer rapidement
-function quickEditReport(reportId) {
-  const report = allReports.find(r => r.id == reportId);
-  if (report) {
-    editReport(report);
-    showToast('Mode édition activé. Vous pouvez modifier le compte rendu.', 'success');
-  }
-}
+    // Fonction pour effacer la recherche
+    function clearSearch() {
+      document.getElementById('searchTerm').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+      showToast('Recherche effacée', 'success');
+    }
+
     // ────────────────────────────────────────────
     // INITIALISATION
     // ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-        cleanupLocalStorage();
+      cleanupLocalStorage();
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
       
