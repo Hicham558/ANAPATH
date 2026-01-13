@@ -132,6 +132,12 @@
         </div>
         
         <div>
+          <label class="block text-sm font-medium mb-1">Tags</label>
+          <input type="text" id="templateTags" class="w-full px-3 py-2 border rounded-md" 
+                 placeholder="Séparés par virgules: thyroïde, nodule, bénin">
+        </div>
+        
+        <div>
           <label class="block text-sm font-medium mb-1">Renseignements Cliniques</label>
           <textarea id="templateRenseignements" rows="3" 
                     class="w-full px-3 py-2 border rounded-md"
@@ -217,15 +223,30 @@
     async function loadTemplates() {
       try {
         const userId = localStorage.getItem('userId');
+        if (!userId) {
+          showToast('Veuillez vous connecter', 'error');
+          return;
+        }
+        
+        console.log('Chargement templates depuis:', `${API_BASE_URL}/api/templates`);
+        
         const response = await fetch(`${API_BASE_URL}/api/templates`, {
           headers: { 'X-User-ID': userId }
         });
         
+        console.log('Réponse statut:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP ${response.status}`);
+        }
+        
         allTemplates = await response.json();
+        console.log('Templates reçus:', allTemplates);
+        
         renderTemplates();
         
       } catch (error) {
-        console.error('Erreur:', error);
+        console.error('Erreur chargement templates:', error);
         showToast('Erreur chargement templates', 'error');
         // Données d'exemple
         allTemplates = [
@@ -234,11 +255,24 @@
             code: 'THYROIDE_BENIN',
             titre: 'Nodule thyroïdien bénin',
             organe: 'thyroide',
+            tags: ['thyroïde', 'nodule', 'bénin'],
             renseignements_cliniques: 'Nodule découvert à l\'échographie.',
-            macroscopie: 'Cytoponction échoguidée.',
-            microscopie: 'Cellules folliculaires régulières.',
-            conclusion: 'Bénin - Bethesda II.',
+            macroscopie: 'Cytoponction échoguidée.\n- 2 passages\n- 3 étalements',
+            microscopie: 'Frottis de densité cellulaire moyenne.\nCellules folliculaires isolées.',
+            conclusion: 'Aspect cytologique bénin.\nBethesda II.',
             created_at: '2024-01-15'
+          },
+          {
+            id: 2,
+            code: 'SEIN_CARCINOME',
+            titre: 'Carcinome canalaire invasif',
+            organe: 'sein',
+            tags: ['sein', 'carcinome', 'invasif'],
+            renseignements_cliniques: 'Masse mammaire palpable.',
+            macroscopie: 'Pièce de tumorectomie avec nodule ferme.',
+            microscopie: 'Prolifération carcinomateuse de type canalaire.',
+            conclusion: 'Carcinome canalaire invasif, grade 2.',
+            created_at: '2024-01-10'
           }
         ];
         renderTemplates();
@@ -252,7 +286,7 @@
         tbody.innerHTML = `
           <tr>
             <td colspan="5" class="text-center py-8 text-gray-500">
-              <i class="fas fa-inbox mr-2"></i>Aucun template
+              <i class="fas fa-inbox mr-2"></i>Aucun template disponible
             </td>
           </tr>
         `;
@@ -289,12 +323,30 @@
 
     function editTemplate(templateId) {
       const template = allTemplates.find(t => t.id == templateId);
-      if (!template) return;
+      if (!template) {
+        showToast('Template non trouvé', 'error');
+        return;
+      }
       
+      console.log('Modification template:', template);
+      
+      // Remplir tous les champs
       document.getElementById('templateId').value = template.id;
-      document.getElementById('templateCode').value = template.code;
-      document.getElementById('templateTitre').value = template.titre;
+      document.getElementById('templateCode').value = template.code || '';
+      document.getElementById('templateTitre').value = template.titre || '';
       document.getElementById('templateOrgane').value = template.organe || '';
+      
+      // Gérer les tags
+      let tagsValue = '';
+      if (template.tags) {
+        if (Array.isArray(template.tags)) {
+          tagsValue = template.tags.join(', ');
+        } else {
+          tagsValue = template.tags;
+        }
+      }
+      document.getElementById('templateTags').value = tagsValue;
+      
       document.getElementById('templateRenseignements').value = template.renseignements_cliniques || '';
       document.getElementById('templateMacroscopie').value = template.macroscopie || '';
       document.getElementById('templateMicroscopie').value = template.microscopie || '';
@@ -309,6 +361,13 @@
       const code = document.getElementById('templateCode').value.trim();
       const titre = document.getElementById('templateTitre').value.trim();
       const organe = document.getElementById('templateOrgane').value;
+      
+      // Gérer les tags
+      const tagsInput = document.getElementById('templateTags').value;
+      const tags = tagsInput.split(',')
+        .map(t => t.trim())
+        .filter(t => t !== '');
+      
       const renseignements = document.getElementById('templateRenseignements').value;
       const macroscopie = document.getElementById('templateMacroscopie').value;
       const microscopie = document.getElementById('templateMicroscopie').value;
@@ -320,15 +379,23 @@
       
       try {
         const userId = localStorage.getItem('userId');
+        if (!userId) {
+          showToast('Veuillez vous reconnecter', 'error');
+          return;
+        }
+        
         const templateData = {
           code,
           titre,
           organe: organe || null,
+          tags: tags,
           renseignements_cliniques: renseignements || null,
           macroscopie: macroscopie || null,
           microscopie: microscopie || null,
           conclusion: conclusion || null
         };
+        
+        console.log('Données à envoyer:', templateData);
         
         let url, method;
         if (id) {
@@ -349,40 +416,55 @@
           body: JSON.stringify(templateData)
         });
         
+        console.log('Réponse API:', response.status);
+        
         if (response.ok) {
-          showToast(id ? 'Template modifié' : 'Template créé');
+          showToast(id ? 'Template modifié avec succès' : 'Template créé avec succès');
           closeTemplateModal();
           loadTemplates();
         } else {
+          const errorText = await response.text();
+          console.error('Erreur API:', errorText);
           throw new Error('Erreur API');
         }
         
       } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur sauvegarde', 'error');
+        console.error('Erreur sauvegarde:', error);
+        showToast('Erreur lors de la sauvegarde', 'error');
       }
     }
 
     async function deleteTemplate(templateId) {
-      if (!confirm('Supprimer ce template ?')) return;
+      if (!confirm('Supprimer ce template ? Cette action est irréversible.')) return;
       
       try {
         const userId = localStorage.getItem('userId');
+        if (!userId) {
+          showToast('Veuillez vous reconnecter', 'error');
+          return;
+        }
+        
+        console.log('Suppression template ID:', templateId);
+        
         const response = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
           method: 'DELETE',
           headers: { 'X-User-ID': userId }
         });
         
+        console.log('Réponse suppression:', response.status);
+        
         if (response.ok) {
-          showToast('Template supprimé');
+          showToast('Template supprimé avec succès');
           loadTemplates();
         } else {
+          const errorText = await response.text();
+          console.error('Erreur suppression:', errorText);
           throw new Error('Erreur suppression');
         }
         
       } catch (error) {
         console.error('Erreur:', error);
-        showToast('Erreur suppression', 'error');
+        showToast('Erreur lors de la suppression', 'error');
       }
     }
 
@@ -406,34 +488,42 @@
       const content = `
         <div class="space-y-4">
           <div class="text-sm text-gray-500">
-            Code: ${template.code} | Organe: ${template.organe || 'Non spécifié'}
+            Code: <strong>${template.code}</strong> | 
+            Organe: <strong>${template.organe || 'Non spécifié'}</strong> |
+            Tags: <strong>${template.tags ? (Array.isArray(template.tags) ? template.tags.join(', ') : template.tags) : 'Aucun'}</strong>
           </div>
           
           ${template.renseignements_cliniques ? `
             <div>
-              <h4 class="font-semibold text-blue-600">RENSEIGNEMENTS CLINIQUES</h4>
-              <div class="bg-gray-50 p-3 rounded whitespace-pre-line">${template.renseignements_cliniques}</div>
+              <h4 class="font-semibold text-blue-600 border-b pb-1">RENSEIGNEMENTS CLINIQUES</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-line mt-2">${template.renseignements_cliniques}</div>
             </div>
           ` : ''}
           
           ${template.macroscopie ? `
             <div>
-              <h4 class="font-semibold text-blue-600">MACROSCOPIE</h4>
-              <div class="bg-gray-50 p-3 rounded whitespace-pre-line">${template.macroscopie}</div>
+              <h4 class="font-semibold text-blue-600 border-b pb-1">MACROSCOPIE</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-line mt-2">${template.macroscopie}</div>
             </div>
           ` : ''}
           
           ${template.microscopie ? `
             <div>
-              <h4 class="font-semibold text-blue-600">MICROSCOPIE</h4>
-              <div class="bg-gray-50 p-3 rounded whitespace-pre-line">${template.microscopie}</div>
+              <h4 class="font-semibold text-blue-600 border-b pb-1">MICROSCOPIE</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-line mt-2">${template.microscopie}</div>
             </div>
           ` : ''}
           
           ${template.conclusion ? `
             <div>
-              <h4 class="font-semibold text-blue-600">CONCLUSION</h4>
-              <div class="bg-gray-50 p-3 rounded whitespace-pre-line">${template.conclusion}</div>
+              <h4 class="font-semibold text-blue-600 border-b pb-1">CONCLUSION</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-line mt-2">${template.conclusion}</div>
+            </div>
+          ` : ''}
+          
+          ${!template.renseignements_cliniques && !template.macroscopie && !template.microscopie && !template.conclusion ? `
+            <div class="text-center py-8 text-gray-500">
+              <i class="fas fa-info-circle mr-2"></i>Ce template ne contient pas de contenu
             </div>
           ` : ''}
         </div>
@@ -449,7 +539,31 @@
 
     // INIT
     document.addEventListener('DOMContentLoaded', () => {
-      loadTemplates();
+      const userId = localStorage.getItem('userId');
+      
+      if (userId) {
+        loadTemplates();
+      } else {
+        showToast('Veuillez vous connecter', 'warning');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 2000);
+      }
+      
+      // Gestion déconnexion
+      const loginButton = document.getElementById('loginButton');
+      if (loginButton) {
+        loginButton.addEventListener('click', () => {
+          if (localStorage.getItem('userId')) {
+            if (confirm('Déconnexion ?')) {
+              localStorage.clear();
+              window.location.href = 'index.html';
+            }
+          } else {
+            window.location.href = 'index.html';
+          }
+        });
+      }
     });
   </script>
 </body>
