@@ -1049,19 +1049,19 @@ def add_page_number(canvas, doc):
         f"Page {page_num}"
     )
 
+# ============================================
+# ENDPOINTS TEMPLATES - COMPLET
+# ============================================
 
+# GET: Liste tous les templates
 @app.route('/api/templates', methods=['GET'])
 def get_templates():
-    """Récupère les templates de l'utilisateur"""
     user_id = request.headers.get('X-User-ID')
-    
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Récupérer tous les templates de l'utilisateur + templates système
     cur.execute("""
-        SELECT id, code, titre, organe, tags
-        FROM templates 
+        SELECT * FROM templates 
         WHERE user_id = %s OR user_id = 'system'
         ORDER BY titre
     """, (user_id,))
@@ -1069,22 +1069,19 @@ def get_templates():
     templates = cur.fetchall()
     cur.close()
     conn.close()
-    
     return jsonify(templates)
 
-@app.route('/api/templates/<string:code>', methods=['GET'])
-def get_template_content(code):
-    """Récupère le contenu complet d'un template"""
+# GET: Un template par ID
+@app.route('/api/templates/<int:id>', methods=['GET'])
+def get_template_by_id(id):
     user_id = request.headers.get('X-User-ID')
-    
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     cur.execute("""
-        SELECT renseignements_cliniques, macroscopie, microscopie, conclusion
-        FROM templates 
-        WHERE code = %s AND (user_id = %s OR user_id = 'system')
-    """, (code, user_id))
+        SELECT * FROM templates 
+        WHERE id = %s AND (user_id = %s OR user_id = 'system')
+    """, (id, user_id))
     
     template = cur.fetchone()
     cur.close()
@@ -1092,19 +1089,16 @@ def get_template_content(code):
     
     if not template:
         return jsonify({'erreur': 'Template non trouvé'}), 404
-    
     return jsonify(template)
 
+# POST: Créer un template
 @app.route('/api/templates', methods=['POST'])
 def create_template():
-    """Crée un nouveau template"""
     user_id = request.headers.get('X-User-ID')
     data = request.json
     
-    required_fields = ['code', 'titre', 'renseignements_cliniques', 'macroscopie', 'microscopie', 'conclusion']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({'erreur': f'Champ {field} manquant'}), 400
+    if not data.get('code') or not data.get('titre'):
+        return jsonify({'erreur': 'Code et titre requis'}), 400
     
     conn = get_db()
     cur = conn.cursor()
@@ -1112,29 +1106,103 @@ def create_template():
     try:
         cur.execute("""
             INSERT INTO templates 
-            (code, user_id, titre, organe, tags, renseignements_cliniques, macroscopie, microscopie, conclusion)
+            (code, user_id, titre, organe, tags, 
+             renseignements_cliniques, macroscopie, microscopie, conclusion)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """, (
-            data['code'],
-            user_id,
-            data['titre'],
-            data.get('organe'),
-            data.get('tags', []),
-            data['renseignements_cliniques'],
-            data['macroscopie'],
-            data['microscopie'],
-            data['conclusion']
+            data['code'], user_id, data['titre'],
+            data.get('organe'), data.get('tags', []),
+            data.get('renseignements_cliniques', ''),
+            data.get('macroscopie', ''), data.get('microscopie', ''),
+            data.get('conclusion', '')
         ))
         
+        new_id = cur.fetchone()['id']
         conn.commit()
-        return jsonify({'success': True, 'message': 'Template créé'})
+        return jsonify({'success': True, 'id': new_id}), 201
         
     except Exception as e:
         conn.rollback()
         return jsonify({'erreur': str(e)}), 500
     finally:
         cur.close()
-        conn.close()    
+        conn.close()
+
+# PUT: Modifier un template
+@app.route('/api/templates/<int:id>', methods=['PUT'])
+def update_template(id):
+    user_id = request.headers.get('X-User-ID')
+    data = request.json
+    
+    conn = get_db()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE templates SET
+                code = COALESCE(%s, code),
+                titre = COALESCE(%s, titre),
+                organe = %s,
+                tags = %s,
+                renseignements_cliniques = %s,
+                macroscopie = %s,
+                microscopie = %s,
+                conclusion = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s AND (user_id = %s OR user_id = 'system')
+            RETURNING id
+        """, (
+            data.get('code'), data.get('titre'),
+            data.get('organe'), data.get('tags', []),
+            data.get('renseignements_cliniques', ''),
+            data.get('macroscopie', ''), data.get('microscopie', ''),
+            data.get('conclusion', ''),
+            id, user_id
+        ))
+        
+        if not cur.fetchone():
+            conn.rollback()
+            return jsonify({'erreur': 'Template non trouvé'}), 404
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+# DELETE: Supprimer un template
+@app.route('/api/templates/<int:id>', methods=['DELETE'])
+def delete_template(id):
+    user_id = request.headers.get('X-User-ID')
+    
+    conn = get_db()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute("""
+            DELETE FROM templates 
+            WHERE id = %s AND (user_id = %s OR user_id = 'system')
+            RETURNING id
+        """, (id, user_id))
+        
+        if not cur.fetchone():
+            conn.rollback()
+            return jsonify({'erreur': 'Template non trouvé'}), 404
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
 # ================================================
 # DÉMARRAGE
 # ================================================
