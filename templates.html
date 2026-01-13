@@ -532,61 +532,82 @@
     }
 
     // Créer une carte template
-    function createTemplateCard(template) {
-      const organeClass = template.organe ? `organe-${template.organe}` : 'organe-thyroide';
-      const isOwner = template.user_id === currentUserId;
-      
-      return `
+   // Modifiez la fonction createTemplateCard pour ajouter un bouton de copie
+function createTemplateCard(template) {
+    const organeClass = template.organe ? `organe-${template.organe}` : 'organe-thyroide';
+    const templateUserId = String(template.user_id);
+    const isOwner = templateUserId === String(currentUserId);
+    const isSystem = templateUserId === 'system';
+    
+    return `
         <div class="template-card bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all">
-          <div class="flex justify-between items-start mb-3">
-            <div>
-              <h3 class="font-semibold text-lg text-gray-900 mb-1">${template.titre}</h3>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-medium text-gray-500">${template.code}</span>
-                ${template.organe ? `<span class="organe-badge ${organeClass}">${template.organe}</span>` : ''}
-                ${isOwner ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Mien</span>' : 
-                          '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Système</span>'}
-              </div>
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h3 class="font-semibold text-lg text-gray-900 mb-1">${template.titre}</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-mono text-gray-500">${template.code}</span>
+                        ${template.organe ? `<span class="organe-badge ${organeClass}">${template.organe}</span>` : ''}
+                        ${isOwner ? 
+                            '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Mien</span>' : 
+                          isSystem ? 
+                            '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Système</span>' :
+                            '<span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">Autre</span>'
+                        }
+                    </div>
+                </div>
+                <div class="flex gap-1">
+                    ${isOwner || isSystem ? `
+                        <button onclick="editTemplate(${template.id})" class="text-blue-600 hover:text-blue-800 p-1" title="${isSystem ? 'Voir' : 'Modifier'}">
+                            <i class="fas ${isSystem ? 'fa-eye' : 'fa-edit'}"></i>
+                        </button>
+                    ` : ''}
+                    ${isSystem ? `
+                        <button onclick="copySystemTemplate(${template.id})" class="text-purple-600 hover:text-purple-800 p-1" title="Copier ce template">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    ` : ''}
+                    ${isOwner ? `
+                        <button onclick="deleteTemplate(${template.id})" class="text-red-600 hover:text-red-800 p-1" title="Supprimer">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : ''}
+                </div>
             </div>
-            <div class="flex gap-1">
-              <button onclick="editTemplate(${template.id})" class="text-blue-600 hover:text-blue-800 p-1" title="Modifier">
-                <i class="fas fa-edit"></i>
-              </button>
-              ${isOwner ? `
-                <button onclick="deleteTemplate(${template.id})" class="text-red-600 hover:text-red-800 p-1" title="Supprimer">
-                  <i class="fas fa-trash"></i>
-                </button>
-              ` : ''}
-            </div>
-          </div>
-          
-          <div class="mb-4">
-            <div class="text-sm text-gray-600 line-clamp-3">
-              ${template.description || 'Aucune description'}
-            </div>
-          </div>
-          
-          <div class="mb-4">
-            ${template.tags && template.tags.length > 0 ? `
-              <div class="flex flex-wrap gap-1">
-                ${template.tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('')}
-              </div>
-            ` : ''}
-          </div>
-          
-          <div class="flex justify-between items-center">
-            <span class="text-xs text-gray-500">
-              Créé le ${new Date(template.created_at).toLocaleDateString('fr-FR')}
-            </span>
-            <button onclick="previewTemplate(${template.id})" 
-                    class="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1">
-              <i class="fas fa-eye"></i> Prévisualiser
-            </button>
-          </div>
+            
+            <!-- ... reste du code inchangé ... -->
         </div>
-      `;
-    }
+    `;
+}
 
+// Fonction pour copier un template système
+function copySystemTemplate(templateId) {
+    const template = allTemplates.find(t => t.id === templateId);
+    if (!template || String(template.user_id) !== 'system') return;
+    
+    // Ouvrir le modal avec les données du template système
+    openNewTemplateModal();
+    
+    // Pré-remplir avec le code original + "_COPY"
+    document.getElementById('templateCode').value = `${template.code}_COPY`;
+    document.getElementById('templateTitre').value = `${template.titre} (Copie)`;
+    document.getElementById('templateOrgane').value = template.organe || '';
+    
+    // Gérer les tags
+    let tagsValue = '';
+    if (Array.isArray(template.tags)) {
+        tagsValue = template.tags.join(', ');
+    } else if (typeof template.tags === 'string') {
+        tagsValue = template.tags;
+    }
+    document.getElementById('templateTags').value = tagsValue;
+    
+    document.getElementById('templateRenseignements').value = template.renseignements_cliniques || '';
+    document.getElementById('templateMacroscopie').value = template.macroscopie || '';
+    document.getElementById('templateMicroscopie').value = template.microscopie || '';
+    document.getElementById('templateConclusion').value = template.conclusion || '';
+    
+    showToast('Template système chargé. Modifiez le code si nécessaire.', 'info');
+}
     // Créer une ligne de tableau
     function createTemplateTableRow(template) {
       const isOwner = template.user_id === currentUserId;
@@ -747,92 +768,152 @@
       document.getElementById('templateModal').classList.remove('hidden');
     }
 
-    function editTemplate(templateId) {
-      const template = allTemplates.find(t => t.id === templateId);
-      if (!template) return;
-      
-      // Vérifier que l'utilisateur est le propriétaire
-      if (template.user_id !== currentUserId && template.user_id !== 'system') {
+  function editTemplate(templateId) {
+    const template = allTemplates.find(t => t.id === templateId);
+    if (!template) {
+        showToast('Template non trouvé', 'error');
+        return;
+    }
+    
+    // DÉBUGAGE : Afficher les valeurs pour comprendre
+    console.log('Debug editTemplate:');
+    console.log('template.user_id:', template.user_id, 'type:', typeof template.user_id);
+    console.log('currentUserId:', currentUserId, 'type:', typeof currentUserId);
+    console.log('is system?', template.user_id === 'system');
+    
+    // CORRECTION : Vérifier si c'est un template système ou l'utilisateur courant
+    // Note: template.user_id pourrait être un nombre ou une chaîne
+    const templateUserId = String(template.user_id); // Convertir en string pour comparaison
+    const currentUserStr = String(currentUserId);
+    
+    if (templateUserId !== currentUserStr && templateUserId !== 'system') {
         showToast('Vous ne pouvez pas modifier ce template', 'error');
         return;
-      }
-      
-      document.getElementById('templateId').value = template.id;
-      document.getElementById('templateCode').value = template.code;
-      document.getElementById('templateTitre').value = template.titre;
-      document.getElementById('templateOrgane').value = template.organe || '';
-      document.getElementById('templateTags').value = template.tags ? template.tags.join(', ') : '';
-      document.getElementById('templateRenseignements').value = template.renseignements_cliniques || '';
-      document.getElementById('templateMacroscopie').value = template.macroscopie || '';
-      document.getElementById('templateMicroscopie').value = template.microscopie || '';
-      document.getElementById('templateConclusion').value = template.conclusion || '';
-      
-      document.getElementById('templateModalTitle').textContent = 'Modifier Template';
-      document.getElementById('templateModal').classList.remove('hidden');
     }
+    
+    // Remplir le formulaire
+    document.getElementById('templateId').value = template.id;
+    document.getElementById('templateCode').value = template.code;
+    document.getElementById('templateTitre').value = template.titre;
+    document.getElementById('templateOrgane').value = template.organe || '';
+    
+    // Gérer les tags (pourrait être un tableau PostgreSQL ou une chaîne)
+    let tagsValue = '';
+    if (Array.isArray(template.tags)) {
+        tagsValue = template.tags.join(', ');
+    } else if (typeof template.tags === 'string') {
+        tagsValue = template.tags;
+    }
+    document.getElementById('templateTags').value = tagsValue;
+    
+    document.getElementById('templateRenseignements').value = template.renseignements_cliniques || '';
+    document.getElementById('templateMacroscopie').value = template.macroscopie || '';
+    document.getElementById('templateMicroscopie').value = template.microscopie || '';
+    document.getElementById('templateConclusion').value = template.conclusion || '';
+    
+    // Pour les templates système, désactiver le champ code (non modifiable)
+    if (templateUserId === 'system') {
+        document.getElementById('templateCode').disabled = true;
+        document.getElementById('templateModalTitle').textContent = 'Voir Template (Système)';
+        showToast('Template système - le code ne peut pas être modifié', 'info');
+    } else {
+        document.getElementById('templateCode').disabled = false;
+        document.getElementById('templateModalTitle').textContent = 'Modifier Template';
+    }
+    
+    document.getElementById('templateModal').classList.remove('hidden');
+}
 
-    async function saveTemplate() {
-      const id = document.getElementById('templateId').value;
-      const code = document.getElementById('templateCode').value.trim();
-      const titre = document.getElementById('templateTitre').value.trim();
-      const organe = document.getElementById('templateOrgane').value;
-      const tags = document.getElementById('templateTags').value.split(',').map(t => t.trim()).filter(t => t);
-      
-      const renseignements = document.getElementById('templateRenseignements').value;
-      const macroscopie = document.getElementById('templateMacroscopie').value;
-      const microscopie = document.getElementById('templateMicroscopie').value;
-      const conclusion = document.getElementById('templateConclusion').value;
-      
-      if (!code || !titre) {
+  async function saveTemplate() {
+    const id = document.getElementById('templateId').value;
+    const code = document.getElementById('templateCode').value.trim();
+    const titre = document.getElementById('templateTitre').value.trim();
+    const organe = document.getElementById('templateOrgane').value;
+    
+    // Gérer les tags
+    const tagsInput = document.getElementById('templateTags').value;
+    const tags = tagsInput.split(',')
+        .map(t => t.trim())
+        .filter(t => t !== '');
+    
+    const renseignements = document.getElementById('templateRenseignements').value;
+    const macroscopie = document.getElementById('templateMacroscopie').value;
+    const microscopie = document.getElementById('templateMicroscopie').value;
+    const conclusion = document.getElementById('templateConclusion').value;
+    
+    // Validation
+    if (!code || !titre) {
         return showToast('Code et titre sont obligatoires', 'error');
-      }
-      
-      try {
+    }
+    
+    try {
         const userId = localStorage.getItem('userId');
+        if (!userId) {
+            showToast('Veuillez vous reconnecter', 'error');
+            return;
+        }
+        
         const templateData = {
-          code,
-          titre,
-          organe,
-          tags,
-          renseignements_cliniques: renseignements,
-          macroscopie,
-          microscopie,
-          conclusion
+            code: code,
+            titre: titre,
+            organe: organe || null,
+            tags: tags,
+            renseignements_cliniques: renseignements || null,
+            macroscopie: macroscopie || null,
+            microscopie: microscopie || null,
+            conclusion: conclusion || null
         };
         
         let url, method;
         if (id) {
-          url = `${API_BASE_URL}/api/templates/${id}`;
-          method = 'PUT';
+            // Mode modification
+            url = `${API_BASE_URL}/api/templates/${id}`;
+            method = 'PUT';
+            
+            // Ajouter l'ID utilisateur pour la modification
+            templateData.user_id = userId;
         } else {
-          url = `${API_BASE_URL}/api/templates`;
-          method = 'POST';
-          templateData.user_id = userId;
+            // Mode création
+            url = `${API_BASE_URL}/api/templates`;
+            method = 'POST';
+            templateData.user_id = userId;
         }
         
+        console.log('Envoi données template:', { url, method, templateData });
+        
         const response = await fetch(url, {
-          method: method,
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-User-ID': userId
-          },
-          body: JSON.stringify(templateData)
+            method: method,
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-User-ID': userId
+            },
+            body: JSON.stringify(templateData)
         });
         
         if (!response.ok) {
-          throw new Error('Erreur lors de la sauvegarde');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.erreur || `Erreur ${response.status}`);
         }
         
-        showToast(id ? 'Template modifié' : 'Template créé');
+        showToast(id ? 'Template modifié avec succès' : 'Template créé avec succès');
         closeTemplateModal();
         loadTemplates();
         
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la sauvegarde', 'error');
-      }
+    } catch (error) {
+        console.error('Erreur sauvegarde template:', error);
+        showToast(`Erreur: ${error.message}`, 'error');
     }
+}
+ function resetTemplateForm() {
+    document.getElementById('templateForm').reset();
+    document.getElementById('templateId').value = '';
+    document.getElementById('templateCode').disabled = false; // Réactiver le champ
+}
 
+function closeTemplateModal() {
+    document.getElementById('templateModal').classList.add('hidden');
+    resetTemplateForm();
+}
     async function deleteTemplate(templateId) {
       if (!confirm('Supprimer ce template ?')) return;
       
