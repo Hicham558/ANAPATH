@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion des Templates - ANAPATH</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Réutilisez vos styles existants */
+    @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastSlideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes toastFadeOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
+    
+    .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
+    .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+    
+    .table-container { max-height: 500px; overflow-y: auto; }
+    .table-container thead { position: sticky; top: 0; background: #f9fafb; z-index: 1; }
+    
+    .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    
+    .toast { 
+      position: fixed; bottom: 20px; right: 20px; padding: 16px 24px; border-radius: 8px; 
+      color: white; display: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+    }
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+    .toast.warning { background: #f59e0b; }
+    .toast.show { display: flex; align-items: center; animation: toastSlideIn 0.3s ease-out; }
+    .toast.hide { animation: toastFadeOut 0.3s ease-out; }
+    
+    .section-content { transition: all 0.3s ease-in-out; }
+    .chevron-icon { transition: transform 0.3s ease; }
+    .chevron-icon.rotate { transform: rotate(180deg); }
+    
+    .modal-overlay { background: rgba(0,0,0,0.75); }
+    .modal-content { max-height: 85vh; overflow-y: auto; }
+    
+    .user-selected-badge { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+    }
+    
+    .tag-badge {
+      background: #e0e7ff;
+      color: #4f46e5;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      margin-right: 4px;
+      margin-bottom: 4px;
+      display: inline-block;
+    }
+    
+    .template-card {
+      transition: all 0.3s ease;
+      border-left: 4px solid #4f46e5;
+    }
+    .template-card:hover {
+      transform: translateX(5px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+    }
+    
+    .organe-badge {
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .organe-thyroide { background: #fef3c7; color: #92400e; }
+    .organe-sein { background: #fce7f3; color: #be185d; }
+    .organe-prostate { background: #dbeafe; color: #1e40af; }
+    .organe-poumon { background: #dcfce7; color: #166534; }
+    .organe-peau { background: #fef9c3; color: #854d0e; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!-- Navigation (identique à index.html) -->
+  <nav class="bg-indigo-600 text-white p-4 fixed w-full top-0 z-50 shadow-md animate-slide-in">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <h1 class="text-2xl font-bold flex items-center">
+          <i class="fas fa-clone mr-2 text-blue-300"></i> ANAPATH ELYOUSR - Templates
+        </h1>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span id="selectedUserDisplay" class="text-xs text-indigo-200">
+              Utilisateur :
+            </span>
+            <span id="currentUserName" class="user-selected-badge text-white text-xs font-medium">
+              —
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2 items-center">
+        <a href="index.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs flex items-center gap-1">
+          <i class="fas fa-home"></i> Accueil
+        </a>
+        <a href="selection.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs flex items-center gap-1">
+          <i class="fas fa-user-edit"></i> Changer
+        </a>
+        <span id="apiStatus" class="px-3 py-2 text-xs flex items-center bg-indigo-700 rounded-md">
+          <i class="fas fa-database mr-1"></i> PostgreSQL
+        </span>
+        <button id="loginButton" class="bg-red-500 px-3 py-2 rounded-md hover:bg-red-600 transition text-xs flex items-center gap-1">
+          <i class="fas fa-sign-in-alt"></i> <span class="hidden sm:inline">Connexion</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenu Principal -->
+  <div class="container mx-auto px-4 py-16 mt-16">
+    <!-- En-tête -->
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-indigo-700">Gestion des Templates</h1>
+      <p class="text-gray-600">Bibliothèque de templates pour comptes rendus anatomopathologiques</p>
+    </header>
+
+    <!-- KPI Section -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 animate-fade-in">
+      <div class="kpi-card bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Total Templates</p>
+            <p id="totalTemplates" class="text-3xl font-bold">0</p>
+          </div>
+          <i class="fas fa-clone text-4xl opacity-50"></i>
+        </div>
+      </div>
+      <div class="kpi-card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Mes Templates</p>
+            <p id="myTemplates" class="text-3xl font-bold">0</p>
+          </div>
+          <i class="fas fa-user-cog text-4xl opacity-50"></i>
+        </div>
+      </div>
+      <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Templates Système</p>
+            <p id="systemTemplates" class="text-3xl font-bold">0</p>
+          </div>
+          <i class="fas fa-robot text-4xl opacity-50"></i>
+        </div>
+      </div>
+      <div class="kpi-card bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Utilisations</p>
+            <p id="totalUtilisations" class="text-3xl font-bold">0</p>
+          </div>
+          <i class="fas fa-chart-line text-4xl opacity-50"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions Rapides -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fas fa-bolt mr-2 text-indigo-500"></i> Actions Rapides
+      </h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <button onclick="openNewTemplateModal()" class="bg-indigo-600 text-white p-4 rounded-lg hover:bg-indigo-700 transition flex flex-col items-center group">
+          <i class="fas fa-plus-circle text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Nouveau Template</span>
+        </button>
+        <button onclick="filterTemplates('thyroide')" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition flex flex-col items-center group">
+          <i class="fas fa-gland text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Thyroïde</span>
+        </button>
+        <button onclick="filterTemplates('sein')" class="bg-pink-600 text-white p-4 rounded-lg hover:bg-pink-700 transition flex flex-col items-center group">
+          <i class="fas fa-female text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Sein</span>
+        </button>
+        <button onclick="filterTemplates('prostate')" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
+          <i class="fas fa-male text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Prostate</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtres et Recherche -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fas fa-filter mr-2 text-indigo-500"></i> Filtres & Recherche
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Recherche</label>
+          <input type="text" id="searchTemplate" placeholder="Nom, code, tags..." 
+                 class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                 onkeyup="performSearch()">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Organe</label>
+          <select id="filterOrgane" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  onchange="filterByOrgane()">
+            <option value="">Tous les organes</option>
+            <option value="thyroide">Thyroïde</option>
+            <option value="sein">Sein</option>
+            <option value="prostate">Prostate</option>
+            <option value="poumon">Poumon</option>
+            <option value="peau">Peau</option>
+            <option value="colon">Côlon</option>
+            <option value="foie">Foie</option>
+            <option value="rein">Rein</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Propriétaire</label>
+          <select id="filterOwner" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  onchange="filterByOwner()">
+            <option value="">Tous</option>
+            <option value="me">Mes templates</option>
+            <option value="system">Système</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button onclick="clearFilters()" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+            <i class="fas fa-times mr-2"></i>Effacer filtres
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Liste des Templates -->
+    <div class="bg-white rounded-lg shadow-md animate-fade-in">
+      <div class="p-6 border-b">
+        <h2 class="text-xl font-semibold flex items-center justify-between">
+          <div>
+            <i class="fas fa-clone mr-2 text-indigo-500"></i> Bibliothèque des Templates
+            <span id="templatesCount" class="ml-2 text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">0</span>
+          </div>
+          <button onclick="loadTemplates()" class="text-sm bg-indigo-100 text-indigo-800 px-3 py-1 rounded hover:bg-indigo-200 transition">
+            <i class="fas fa-sync-alt mr-1"></i> Actualiser
+          </button>
+        </h2>
+      </div>
+      
+      <div class="p-6">
+        <!-- Vue Grille (par défaut) -->
+        <div id="gridView" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Les templates s'affichent ici -->
+          <div class="text-center py-12 text-gray-500">
+            <i class="fas fa-spinner fa-spin text-3xl mb-4"></i>
+            <p>Chargement des templates...</p>
+          </div>
+        </div>
+        
+        <!-- Vue Tableau (alternative) -->
+        <div id="tableView" class="hidden">
+          <div class="table-container border rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titre</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organe</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Propriétaire</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="templatesTableBody" class="bg-white divide-y divide-gray-200">
+                <!-- Rempli dynamiquement -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Toggle Vue -->
+        <div class="mt-6 flex justify-center">
+          <div class="inline-flex rounded-md shadow-sm" role="group">
+            <button type="button" id="btnGridView" onclick="showGridView()" 
+                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-l-lg hover:bg-indigo-700 focus:z-10">
+              <i class="fas fa-th-large mr-2"></i>Grille
+            </button>
+            <button type="button" id="btnTableView" onclick="showTableView()"
+                    class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-r border-gray-200 rounded-r-md hover:bg-gray-100 hover:text-blue-700 focus:z-10">
+              <i class="fas fa-table mr-2"></i>Tableau
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-700 text-white text-center py-4 mt-8">
+    <p>ANAPATH ELYOUSR - Laboratoire d'Anatomie & Cytologie Pathologiques</p>
+    <p class="text-sm">Dr. BENFOULA Amel épouse ERROUANE</p>
+  </footer>
+
+  <!-- Modal Nouveau/Édition Template -->
+  <div id="templateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto modal-content">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <h2 class="text-2xl font-semibold text-indigo-700" id="templateModalTitle">Nouveau Template</h2>
+        <button onclick="closeTemplateModal()" class="text-gray-600 hover:text-gray-800 transition">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <form id="templateForm" class="space-y-6" onsubmit="event.preventDefault(); saveTemplate();">
+        <input type="hidden" id="templateId">
+        
+        <!-- Informations de base -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Code*</label>
+            <input type="text" id="templateCode" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+                   placeholder="ex: THYROIDE_NODULE_BENIN" required>
+            <p class="text-xs text-gray-500 mt-1">Code unique pour identifier le template</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Titre*</label>
+            <input type="text" id="templateTitre" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+                   placeholder="ex: Nodule thyroïdien bénin - Bethesda II" required>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Organe</label>
+            <select id="templateOrgane" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+              <option value="">Sélectionner un organe</option>
+              <option value="thyroide">Thyroïde</option>
+              <option value="sein">Sein</option>
+              <option value="prostate">Prostate</option>
+              <option value="poumon">Poumon</option>
+              <option value="peau">Peau</option>
+              <option value="colon">Côlon</option>
+              <option value="foie">Foie</option>
+              <option value="rein">Rein</option>
+              <option value="estomac">Estomac</option>
+              <option value="pancreas">Pancréas</option>
+              <option value="vessie">Vessie</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Tags</label>
+            <input type="text" id="templateTags" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+                   placeholder="Séparés par des virgules: thyroïde, nodule, bénin">
+            <p class="text-xs text-gray-500 mt-1">Mots-clés pour faciliter la recherche</p>
+          </div>
+        </div>
+        
+        <!-- Sections du template -->
+        <div class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium mb-1 flex items-center">
+              <i class="fas fa-clipboard-list mr-2 text-indigo-500"></i>Renseignements Cliniques
+            </label>
+            <textarea id="templateRenseignements" rows="3" 
+                      class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Informations cliniques fournies..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1 flex items-center">
+              <i class="fas fa-eye mr-2 text-indigo-500"></i>MACROSCOPIE
+            </label>
+            <textarea id="templateMacroscopie" rows="4" 
+                      class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Description macroscopique..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1 flex items-center">
+              <i class="fas fa-microscope mr-2 text-indigo-500"></i>MICROSCOPIE
+            </label>
+            <textarea id="templateMicroscopie" rows="6" 
+                      class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Description microscopique..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1 flex items-center">
+              <i class="fas fa-diagnoses mr-2 text-indigo-500"></i>CONCLUSION
+            </label>
+            <textarea id="templateConclusion" rows="4" 
+                      class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Conclusion et recommandations..."></textarea>
+          </div>
+        </div>
+        
+        <!-- Variables disponibles -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <h3 class="text-sm font-medium mb-2 text-gray-700">
+            <i class="fas fa-code mr-1"></i> Variables disponibles
+          </h3>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">&#123;taille&#125;</span>
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">&#123;localisation&#125;</span>
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">&#123;grade&#125;</span>
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">&#123;index_mitotique&#125;</span>
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">&#123;marges&#125;</span>
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">&#123;ganglions&#125;</span>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Utilisez ces variables entre accolades pour des valeurs dynamiques</p>
+        </div>
+        
+        <!-- Boutons -->
+        <div class="flex justify-end space-x-3 pt-6 border-t">
+          <button type="button" onclick="closeTemplateModal()" 
+                  class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 transition">
+            Annuler
+          </button>
+          <button type="submit" 
+                  class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition flex items-center gap-2">
+            <i class="fas fa-save"></i> Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">
+    <i id="toastIcon" class="mr-2"></i>
+    <span id="toastMessage"></span>
+  </div>
+
+  <script>
+    // Configuration API
+    const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
+    let currentUser = null;
+    let allTemplates = [];
+    let currentUserId = '';
+
+    // Fonctions d'utilité
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toastIcon');
+      const msg = document.getElementById('toastMessage');
+      
+      toast.className = `toast ${type}`;
+      icon.className = `fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2`;
+      msg.textContent = message;
+      
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.add('hide');
+        toast.classList.remove('show');
+        setTimeout(() => toast.classList.remove('hide'), 300);
+      }, 3000);
+    }
+
+    // Mise à jour de l'affichage utilisateur
+    function updateSelectedUserDisplay() {
+      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+      const selectedUtilisateurNom = selectedUtilisateur.nom || 'Non sélectionné';
+      
+      document.getElementById('currentUserName').textContent = selectedUtilisateurNom;
+      return selectedUtilisateur;
+    }
+
+    // Charger les templates
+    async function loadTemplates() {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          showToast('Veuillez vous connecter', 'error');
+          return;
+        }
+        
+        currentUserId = userId;
+        
+        const response = await fetch(`${API_BASE_URL}/api/templates`, {
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors du chargement des templates');
+        }
+        
+        allTemplates = await response.json();
+        renderTemplates();
+        updateKPIs();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur lors du chargement des templates', 'error');
+        // Afficher des templates fictifs pour le développement
+        loadSampleTemplates();
+      }
+    }
+
+    // Rendre les templates en vue grille
+    function renderTemplates() {
+      const gridView = document.getElementById('gridView');
+      const tableView = document.getElementById('templatesTableBody');
+      
+      if (allTemplates.length === 0) {
+        gridView.innerHTML = `
+          <div class="col-span-3 text-center py-12 text-gray-500">
+            <i class="fas fa-inbox text-4xl mb-4"></i>
+            <p class="text-lg">Aucun template disponible</p>
+            <p class="text-sm mt-2">Créez votre premier template !</p>
+            <button onclick="openNewTemplateModal()" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+              <i class="fas fa-plus mr-2"></i>Créer un template
+            </button>
+          </div>
+        `;
+        tableView.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center py-8 text-gray-500">
+              <i class="fas fa-inbox mr-2"></i>Aucun template disponible
+            </td>
+          </tr>
+        `;
+      } else {
+        // Vue Grille
+        gridView.innerHTML = allTemplates.map(template => createTemplateCard(template)).join('');
+        
+        // Vue Tableau
+        tableView.innerHTML = allTemplates.map(template => createTemplateTableRow(template)).join('');
+      }
+      
+      // Mettre à jour le compteur
+      document.getElementById('templatesCount').textContent = allTemplates.length;
+    }
+
+    // Créer une carte template
+    function createTemplateCard(template) {
+      const organeClass = template.organe ? `organe-${template.organe}` : 'organe-thyroide';
+      const isOwner = template.user_id === currentUserId;
+      
+      return `
+        <div class="template-card bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <h3 class="font-semibold text-lg text-gray-900 mb-1">${template.titre}</h3>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-gray-500">${template.code}</span>
+                ${template.organe ? `<span class="organe-badge ${organeClass}">${template.organe}</span>` : ''}
+                ${isOwner ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Mien</span>' : 
+                          '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Système</span>'}
+              </div>
+            </div>
+            <div class="flex gap-1">
+              <button onclick="editTemplate(${template.id})" class="text-blue-600 hover:text-blue-800 p-1" title="Modifier">
+                <i class="fas fa-edit"></i>
+              </button>
+              ${isOwner ? `
+                <button onclick="deleteTemplate(${template.id})" class="text-red-600 hover:text-red-800 p-1" title="Supprimer">
+                  <i class="fas fa-trash"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+          
+          <div class="mb-4">
+            <div class="text-sm text-gray-600 line-clamp-3">
+              ${template.description || 'Aucune description'}
+            </div>
+          </div>
+          
+          <div class="mb-4">
+            ${template.tags && template.tags.length > 0 ? `
+              <div class="flex flex-wrap gap-1">
+                ${template.tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+          
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-gray-500">
+              Créé le ${new Date(template.created_at).toLocaleDateString('fr-FR')}
+            </span>
+            <button onclick="previewTemplate(${template.id})" 
+                    class="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1">
+              <i class="fas fa-eye"></i> Prévisualiser
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Créer une ligne de tableau
+    function createTemplateTableRow(template) {
+      const isOwner = template.user_id === currentUserId;
+      
+      return `
+        <tr class="hover:bg-gray-50">
+          <td class="px-6 py-4 text-sm font-mono">${template.code}</td>
+          <td class="px-6 py-4 text-sm font-medium">${template.titre}</td>
+          <td class="px-6 py-4 text-sm">
+            ${template.organe ? `<span class="organe-badge organe-${template.organe}">${template.organe}</span>` : '-'}
+          </td>
+          <td class="px-6 py-4 text-sm">
+            ${template.tags && template.tags.length > 0 ? 
+              template.tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('') : 
+              '-'}
+          </td>
+          <td class="px-6 py-4 text-sm">
+            ${isOwner ? 
+              '<span class="text-green-600 font-medium"><i class="fas fa-user mr-1"></i>Moi</span>' : 
+              '<span class="text-blue-600"><i class="fas fa-robot mr-1"></i>Système</span>'}
+          </td>
+          <td class="px-6 py-4 text-sm">
+            <button onclick="editTemplate(${template.id})" class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button onclick="previewTemplate(${template.id})" class="text-purple-600 hover:text-purple-800 mr-3" title="Prévisualiser">
+              <i class="fas fa-eye"></i>
+            </button>
+            ${isOwner ? `
+              <button onclick="deleteTemplate(${template.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                <i class="fas fa-trash"></i>
+              </button>
+            ` : ''}
+          </td>
+        </tr>
+      `;
+    }
+
+    // Mettre à jour les KPI
+    function updateKPIs() {
+      const total = allTemplates.length;
+      const mine = allTemplates.filter(t => t.user_id === currentUserId).length;
+      const system = allTemplates.filter(t => t.user_id === 'system').length;
+      
+      document.getElementById('totalTemplates').textContent = total;
+      document.getElementById('myTemplates').textContent = mine;
+      document.getElementById('systemTemplates').textContent = system;
+      document.getElementById('totalUtilisations').textContent = allTemplates.reduce((sum, t) => sum + (t.utilisations || 0), 0);
+    }
+
+    // Gestion des vues
+    function showGridView() {
+      document.getElementById('gridView').classList.remove('hidden');
+      document.getElementById('tableView').classList.add('hidden');
+      document.getElementById('btnGridView').classList.add('bg-indigo-600', 'text-white');
+      document.getElementById('btnGridView').classList.remove('bg-white', 'text-gray-900');
+      document.getElementById('btnTableView').classList.remove('bg-indigo-600', 'text-white');
+      document.getElementById('btnTableView').classList.add('bg-white', 'text-gray-900');
+    }
+
+    function showTableView() {
+      document.getElementById('gridView').classList.add('hidden');
+      document.getElementById('tableView').classList.remove('hidden');
+      document.getElementById('btnTableView').classList.add('bg-indigo-600', 'text-white');
+      document.getElementById('btnTableView').classList.remove('bg-white', 'text-gray-900');
+      document.getElementById('btnGridView').classList.remove('bg-indigo-600', 'text-white');
+      document.getElementById('btnGridView').classList.add('bg-white', 'text-gray-900');
+    }
+
+    // Filtres
+    function filterTemplates(organe) {
+      document.getElementById('filterOrgane').value = organe;
+      filterByOrgane();
+    }
+
+    function filterByOrgane() {
+      const organe = document.getElementById('filterOrgane').value;
+      const search = document.getElementById('searchTemplate').value.toLowerCase();
+      const owner = document.getElementById('filterOwner').value;
+      
+      let filtered = allTemplates;
+      
+      if (organe) {
+        filtered = filtered.filter(t => t.organe === organe);
+      }
+      
+      if (search) {
+        filtered = filtered.filter(t => 
+          t.titre.toLowerCase().includes(search) || 
+          t.code.toLowerCase().includes(search) ||
+          (t.tags && t.tags.some(tag => tag.toLowerCase().includes(search)))
+        );
+      }
+      
+      if (owner === 'me') {
+        filtered = filtered.filter(t => t.user_id === currentUserId);
+      } else if (owner === 'system') {
+        filtered = filtered.filter(t => t.user_id === 'system');
+      }
+      
+      // Afficher les résultats filtrés
+      renderFilteredTemplates(filtered);
+    }
+
+    function filterByOwner() {
+      filterByOrgane(); // Réutilise la même fonction
+    }
+
+    function performSearch() {
+      filterByOrgane(); // Réutilise la même fonction
+    }
+
+    function renderFilteredTemplates(filteredTemplates) {
+      const gridView = document.getElementById('gridView');
+      const tableView = document.getElementById('templatesTableBody');
+      
+      if (filteredTemplates.length === 0) {
+        gridView.innerHTML = `
+          <div class="col-span-3 text-center py-12 text-gray-500">
+            <i class="fas fa-search text-4xl mb-4"></i>
+            <p class="text-lg">Aucun template trouvé</p>
+            <p class="text-sm mt-2">Essayez d'autres critères de recherche</p>
+          </div>
+        `;
+        tableView.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center py-8 text-gray-500">
+              <i class="fas fa-search mr-2"></i>Aucun template trouvé
+            </td>
+          </tr>
+        `;
+      } else {
+        gridView.innerHTML = filteredTemplates.map(t => createTemplateCard(t)).join('');
+        tableView.innerHTML = filteredTemplates.map(t => createTemplateTableRow(t)).join('');
+      }
+      
+      document.getElementById('templatesCount').textContent = filteredTemplates.length;
+    }
+
+    function clearFilters() {
+      document.getElementById('searchTemplate').value = '';
+      document.getElementById('filterOrgane').value = '';
+      document.getElementById('filterOwner').value = '';
+      renderTemplates();
+    }
+
+    // Gestion des templates
+    function openNewTemplateModal() {
+      const selectedUser = updateSelectedUserDisplay();
+      
+      if (!selectedUser.numero) {
+        showToast('Veuillez d\'abord sélectionner un utilisateur', 'warning');
+        return;
+      }
+      
+      resetTemplateForm();
+      document.getElementById('templateModalTitle').textContent = 'Nouveau Template';
+      document.getElementById('templateModal').classList.remove('hidden');
+    }
+
+    function editTemplate(templateId) {
+      const template = allTemplates.find(t => t.id === templateId);
+      if (!template) return;
+      
+      // Vérifier que l'utilisateur est le propriétaire
+      if (template.user_id !== currentUserId && template.user_id !== 'system') {
+        showToast('Vous ne pouvez pas modifier ce template', 'error');
+        return;
+      }
+      
+      document.getElementById('templateId').value = template.id;
+      document.getElementById('templateCode').value = template.code;
+      document.getElementById('templateTitre').value = template.titre;
+      document.getElementById('templateOrgane').value = template.organe || '';
+      document.getElementById('templateTags').value = template.tags ? template.tags.join(', ') : '';
+      document.getElementById('templateRenseignements').value = template.renseignements_cliniques || '';
+      document.getElementById('templateMacroscopie').value = template.macroscopie || '';
+      document.getElementById('templateMicroscopie').value = template.microscopie || '';
+      document.getElementById('templateConclusion').value = template.conclusion || '';
+      
+      document.getElementById('templateModalTitle').textContent = 'Modifier Template';
+      document.getElementById('templateModal').classList.remove('hidden');
+    }
+
+    async function saveTemplate() {
+      const id = document.getElementById('templateId').value;
+      const code = document.getElementById('templateCode').value.trim();
+      const titre = document.getElementById('templateTitre').value.trim();
+      const organe = document.getElementById('templateOrgane').value;
+      const tags = document.getElementById('templateTags').value.split(',').map(t => t.trim()).filter(t => t);
+      
+      const renseignements = document.getElementById('templateRenseignements').value;
+      const macroscopie = document.getElementById('templateMacroscopie').value;
+      const microscopie = document.getElementById('templateMicroscopie').value;
+      const conclusion = document.getElementById('templateConclusion').value;
+      
+      if (!code || !titre) {
+        return showToast('Code et titre sont obligatoires', 'error');
+      }
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const templateData = {
+          code,
+          titre,
+          organe,
+          tags,
+          renseignements_cliniques: renseignements,
+          macroscopie,
+          microscopie,
+          conclusion
+        };
+        
+        let url, method;
+        if (id) {
+          url = `${API_BASE_URL}/api/templates/${id}`;
+          method = 'PUT';
+        } else {
+          url = `${API_BASE_URL}/api/templates`;
+          method = 'POST';
+          templateData.user_id = userId;
+        }
+        
+        const response = await fetch(url, {
+          method: method,
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          body: JSON.stringify(templateData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la sauvegarde');
+        }
+        
+        showToast(id ? 'Template modifié' : 'Template créé');
+        closeTemplateModal();
+        loadTemplates();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur lors de la sauvegarde', 'error');
+      }
+    }
+
+    async function deleteTemplate(templateId) {
+      if (!confirm('Supprimer ce template ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la suppression');
+        }
+        
+        showToast('Template supprimé');
+        loadTemplates();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur lors de la suppression', 'error');
+      }
+    }
+
+    function previewTemplate(templateId) {
+      const template = allTemplates.find(t => t.id === templateId);
+      if (!template) return;
+      
+      const preview = `
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-lg font-semibold mb-2">${template.titre}</h3>
+            <div class="text-sm text-gray-500">Code: ${template.code}</div>
+          </div>
+          
+          ${template.renseignements_cliniques ? `
+            <div>
+              <h4 class="font-medium mb-2 text-indigo-600">Renseignements Cliniques</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-wrap">${template.renseignements_cliniques}</div>
+            </div>
+          ` : ''}
+          
+          ${template.macroscopie ? `
+            <div>
+              <h4 class="font-medium mb-2 text-indigo-600">MACROSCOPIE</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-wrap">${template.macroscopie}</div>
+            </div>
+          ` : ''}
+          
+          ${template.microscopie ? `
+            <div>
+              <h4 class="font-medium mb-2 text-indigo-600">MICROSCOPIE</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-wrap">${template.microscopie}</div>
+            </div>
+          ` : ''}
+          
+          ${template.conclusion ? `
+            <div>
+              <h4 class="font-medium mb-2 text-indigo-600">CONCLUSION</h4>
+              <div class="bg-gray-50 p-3 rounded whitespace-pre-wrap">${template.conclusion}</div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      // Vous pourriez ouvrir un modal de prévisualisation ici
+      // Pour l'instant, affichons dans une alerte
+      alert(`Prévisualisation de ${template.titre}\n\n` +
+            (template.renseignements_cliniques ? `RENSEIGNEMENTS:\n${template.renseignements_cliniques}\n\n` : '') +
+            (template.macroscopie ? `MACROSCOPIE:\n${template.macroscopie}\n\n` : '') +
+            (template.microscopie ? `MICROSCOPIE:\n${template.microscopie}\n\n` : '') +
+            (template.conclusion ? `CONCLUSION:\n${template.conclusion}` : ''));
+    }
+
+    function resetTemplateForm() {
+      document.getElementById('templateForm').reset();
+      document.getElementById('templateId').value = '';
+    }
+
+    function closeTemplateModal() {
+      document.getElementById('templateModal').classList.add('hidden');
+      resetTemplateForm();
+    }
+
+    // Templates d'exemple pour le développement
+    function loadSampleTemplates() {
+      allTemplates = [
+        {
+          id: 1,
+          code: 'THYROIDE_NODULE_BENIN',
+          titre: 'Nodule thyroïdien bénin - Bethesda II',
+          user_id: 'system',
+          organe: 'thyroide',
+          tags: ['thyroïde', 'nodule', 'bénin', 'Bethesda II'],
+          renseignements_cliniques: 'Nodule thyroïdien découvert à l\'échographie.',
+          macroscopie: '- Après repérage échographique avec une sonde linéaire à haute fréquence.\n- Cytoponction d\'un nodule thyroïdien.',
+          microscopie: 'Frottis de densité cellulaire adéquate. Cellules folliculaires en amas réguliers.',
+          conclusion: 'Aspect cytologique bénin (Catégorie II de Bethesda).',
+          created_at: '2024-01-15'
+        },
+        {
+          id: 2,
+          code: 'SEIN_CARCINOME_INVASIF',
+          titre: 'Carcinome canalaire invasif - Grade 2',
+          user_id: 'system',
+          organe: 'sein',
+          tags: ['sein', 'carcinome', 'invasif', 'malin'],
+          renseignements_cliniques: 'Masse mammaire palpable. Mammographie suspecte.',
+          macroscopie: 'Pièce de tumorectomie contenant nodule ferme blanchâtre.',
+          microscopie: 'Prolifération carcinomateuse de type canalaire invasif.',
+          conclusion: 'Carcinome canalaire invasif, grade 2. Marges saines.',
+          created_at: '2024-01-10'
+        }
+      ];
+      
+      renderTemplates();
+      updateKPIs();
+      showToast('Chargé avec des données d\'exemple', 'warning');
+    }
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+      const userId = localStorage.getItem('userId');
+      const userEmail = localStorage.getItem('userEmail');
+      
+      updateSelectedUserDisplay();
+      
+      if (userId && userEmail) {
+        currentUser = { userId, email: userEmail };
+        document.getElementById('loginButton').innerHTML = '<i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Déconnexion</span>';
+        loadTemplates();
+      } else {
+        showToast('Veuillez vous connecter', 'warning');
+        // Redirection vers la page de connexion après 2 secondes
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 2000);
+      }
+      
+      // Gestion du bouton de connexion/déconnexion
+      document.getElementById('loginButton').addEventListener('click', () => {
+        if (localStorage.getItem('userId')) {
+          if (confirm('Déconnexion ?')) {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('selectedUtilisateur');
+            window.location.href = 'index.html';
+          }
+        } else {
+          window.location.href = 'index.html';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
