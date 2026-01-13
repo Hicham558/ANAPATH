@@ -4,16 +4,16 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 import os
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+# from reportlab.lib.pagesizes import A4
+# from reportlab.pdfgen import canvas
 from io import BytesIO
 import traceback
 import textwrap
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-from reportlab.lib.units import cm
+# from reportlab.lib.pagesizes import A4
+# from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+# from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+# from reportlab.lib import colors
+# from reportlab.lib.units import cm
 
 
 app = Flask(__name__)
@@ -698,6 +698,16 @@ def compte_rendu_detail(id):
 
 @app.route('/comptes-rendus/<int:id>/print', methods=['GET'])
 def print_compte_rendu(id):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from io import BytesIO
+    import gc
+    
+    gc.collect()
+    
     user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
     
     if not user_id:
