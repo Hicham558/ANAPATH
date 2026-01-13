@@ -13,59 +13,83 @@
     @keyframes toastSlideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @keyframes toastFadeOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    @keyframes slideDown { from { max-height: 0; opacity: 0; } to { max-height: 2000px; opacity: 1; } }
-    @keyframes slideUp { from { max-height: 2000px; opacity: 1; } to { max-height: 0; opacity: 0; } }
+    @keyframes expandPanel { 
+      from { max-height: 0; opacity: 0; transform: translateY(-20px); } 
+      to { max-height: 2000px; opacity: 1; transform: translateY(0); } 
+    }
     
     .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
     .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
     .animate-pulse { animation: pulse 2s infinite ease-in-out; }
     .animate-blink { animation: blink 1.5s infinite; }
     
-    /* Correction pour les barres de défilement horizontales */
+    /* Amélioration pour mobile - Scroll horizontal */
     .table-container { 
       max-height: 500px; 
       overflow-y: auto; 
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      -ms-overflow-style: -ms-autohiding-scrollbar;
+      position: relative;
     }
-    .table-container table {
-      min-width: 1000px; /* Force une largeur minimale pour le défilement horizontal */
-      width: 100%;
-    }
-    .table-container thead th { 
+    .table-container thead { 
       position: sticky; 
       top: 0; 
       background: #f9fafb; 
       z-index: 10; 
-      white-space: nowrap;
+    }
+    .table-container table {
+      min-width: 100%;
+      width: max-content;
     }
     
-    /* Amélioration pour les colonnes sur mobile */
+    /* Indicateur de scroll horizontal */
+    .table-container::after {
+      content: '← Glisser pour voir plus →';
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(79, 70, 229, 0.9);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 5;
+    }
+    
     @media (max-width: 768px) {
-      .table-container {
-        max-height: 400px;
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
+      .table-container::after {
+        opacity: 1;
       }
-      .table-container table {
-        min-width: 1200px; /* Plus large sur mobile pour voir toutes les colonnes */
+      .table-container:hover::after {
+        opacity: 0;
       }
     }
     
     .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
     .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
     
+    /* Animation fluide pour les panneaux */
     .drawer-content { 
       max-height: 0; 
       overflow: hidden; 
-      transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
       opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .drawer-content.open { 
       max-height: 2000px; 
       opacity: 1;
-      animation: slideDown 0.4s ease-out;
+      transform: translateY(0);
+      animation: expandPanel 0.5s ease-out;
+    }
+    
+    /* Focalisation du panneau au centre */
+    .section-expanded {
+      scroll-margin-top: 100px;
     }
     
     .toast { 
@@ -78,47 +102,12 @@
     .toast.show { display: flex; align-items: center; animation: toastSlideIn 0.3s ease-out; }
     .toast.hide { animation: toastFadeOut 0.3s ease-out; }
     
-    .section-content { 
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease 0.1s;
-      opacity: 0;
-    }
-    .section-content.open { 
-      max-height: 5000px;
-      opacity: 1;
-      animation: slideDown 0.5s ease-out;
-    }
-    
+    .section-content { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     .chevron-icon { transition: transform 0.3s ease; }
     .chevron-icon.rotate { transform: rotate(180deg); }
     
-    .modal-overlay { 
-      background: rgba(0,0,0,0.75);
-      animation: fadeIn 0.3s ease-out;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-content { 
-      max-height: 85vh; 
-      overflow-y: auto;
-      animation: slideIn 0.3s ease-out;
-      background: white;
-      border-radius: 12px;
-      margin: 20px;
-      width: 90%;
-      max-width: 1200px;
-    }
-    
-    /* Centre le modal à l'écran */
-    .modal-center {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 1000;
-    }
+    .modal-overlay { background: rgba(0,0,0,0.75); }
+    .modal-content { max-height: 85vh; overflow-y: auto; }
     
     .user-selected-badge { 
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -139,7 +128,6 @@
     .status-terminé { background-color: #d1fae5; color: #065f46; }
     .status-validé { background-color: #dbeafe; color: #1e40af; }
     
-    /* Styles pour les templates */
     .organe-badge {
       background: #e0e7ff;
       color: #4f46e5;
@@ -174,109 +162,28 @@
       overflow: hidden;
     }
     
-    /* Bouton flottant pour remonter en haut */
-    .back-to-top {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 999;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-      transition: all 0.3s ease;
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    .back-to-top.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .back-to-top:hover {
-      transform: scale(1.1);
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+    /* PDF Preview Modal */
+    #pdfPreviewModal iframe {
+      width: 100%;
+      height: 70vh;
+      border: none;
+      border-radius: 8px;
     }
     
-    /* Améliorations pour mobile */
-    @media (max-width: 768px) {
+    /* Responsive mobile improvements */
+    @media (max-width: 640px) {
       .table-container {
-        max-height: 400px;
-      }
-      .search-bar-container {
-        flex-direction: column;
-      }
-      .search-bar-container input,
-      .search-bar-container select {
-        width: 100%;
-        margin-bottom: 10px;
-      }
-      .actions-buttons-container {
-        flex-direction: column;
-        gap: 10px;
-      }
-      .add-button {
-        width: 100%;
-        justify-content: center;
-        order: 2;
-      }
-      .search-input {
-        order: 1;
+        border-radius: 8px;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
       }
       
-      /* Modal responsive */
+      .kpi-card {
+        font-size: 0.9rem;
+      }
+      
       .modal-content {
-        width: 95%;
-        margin: 10px;
         max-height: 90vh;
       }
-    }
-    
-    /* Animation pour les modales */
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.9); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    
-    .modal-fade-in {
-      animation: modalFadeIn 0.3s ease-out;
-    }
-    
-    /* Style pour les cellules de table */
-    .table-cell {
-      padding: 12px 16px;
-      text-align: left;
-      white-space: nowrap;
-    }
-    
-    /* Amélioration de la visibilité des tables */
-    .table-striped tbody tr:nth-child(odd) {
-      background-color: #f9fafb;
-    }
-    
-    /* Scrollbar personnalisée */
-    .table-container::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    
-    .table-container::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
-    }
-    
-    .table-container::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
-      border-radius: 4px;
-    }
-    
-    .table-container::-webkit-scrollbar-thumb:hover {
-      background: #a1a1a1;
     }
   </style>
 </head>
@@ -303,16 +210,16 @@
       </div>
       <div class="flex gap-2 items-center">
         <a href="templates.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs flex items-center gap-1" title="Gérer les templates">
-          <i class="fas fa-file-alt"></i> Templates
+          <i class="fas fa-file-alt"></i> <span class="hidden sm:inline">Templates</span>
         </a> 
         <a href="selection.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs flex items-center gap-1" title="Changer d'utilisateur">
-          <i class="fas fa-user-edit"></i> Changer
+          <i class="fas fa-user-edit"></i> <span class="hidden sm:inline">Changer</span>
         </a>
         <a href="params.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs" title="Paramètres">
           <i class="fas fa-cog"></i>
         </a>
         <span id="apiStatus" class="px-3 py-2 text-xs flex items-center bg-indigo-700 rounded-md">
-          <i class="fas fa-database mr-1"></i> PostgreSQL
+          <i class="fas fa-database mr-1"></i> <span class="hidden sm:inline">PostgreSQL</span>
         </span>
         <button id="loginButton" class="bg-red-500 px-3 py-2 rounded-md hover:bg-red-600 transition text-xs flex items-center gap-1">
           <i class="fas fa-sign-in-alt"></i> <span class="hidden sm:inline">Connexion</span>
@@ -321,31 +228,40 @@
     </div>
   </nav>
 
-  <!-- Bouton flottant pour remonter en haut -->
-  <div id="backToTop" class="back-to-top" title="Remonter en haut">
-    <i class="fas fa-chevron-up text-xl"></i>
+  <!-- Modal Connexion -->
+  <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+      <h2 class="text-xl font-semibold mb-4">Connexion</h2>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">Email</label>
+        <input type="email" id="userEmail" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">Mot de passe</label>
+        <input type="password" id="userPassword" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button onclick="toggleLogin()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">Annuler</button>
+        <button onclick="login()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">Se connecter</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Modal Connexion -->
-  <div id="loginModal" class="fixed inset-0 z-50 hidden">
-    <div class="modal-overlay">
-      <div class="modal-content modal-fade-in">
-        <div class="p-6">
-          <h2 class="text-xl font-semibold mb-4">Connexion</h2>
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Email</label>
-            <input type="email" id="userEmail" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Mot de passe</label>
-            <input type="password" id="userPassword" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-          </div>
-          <div class="flex justify-end space-x-3">
-            <button onclick="toggleLogin()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">Annuler</button>
-            <button onclick="login()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">Se connecter</button>
-          </div>
+  <!-- Modal PDF Preview -->
+  <div id="pdfPreviewModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-5xl mx-4 max-h-[90vh]">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold">Aperçu du Compte Rendu</h2>
+        <div class="flex gap-2">
+          <button onclick="downloadCurrentPDF()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+            <i class="fas fa-download mr-2"></i> Télécharger
+          </button>
+          <button onclick="closePDFPreview()" class="text-gray-600 hover:text-gray-800 transition">
+            <i class="fas fa-times text-2xl"></i>
+          </button>
         </div>
       </div>
+      <iframe id="pdfPreviewFrame"></iframe>
     </div>
   </div>
 
@@ -358,50 +274,50 @@
     </header>
 
     <!-- KPI Section -->
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8 animate-fade-in">
-      <div class="kpi-card bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8 animate-fade-in">
+      <div class="kpi-card bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 md:p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm opacity-90">Total Patients</p>
-            <p id="totalPatients" class="text-3xl font-bold">0</p>
+            <p class="text-xs md:text-sm opacity-90">Total Patients</p>
+            <p id="totalPatients" class="text-2xl md:text-3xl font-bold">0</p>
           </div>
-          <i class="fas fa-user-injured text-4xl opacity-50"></i>
+          <i class="fas fa-user-injured text-2xl md:text-4xl opacity-50"></i>
         </div>
       </div>
-      <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
+      <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 text-white p-4 md:p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm opacity-90">Comptes Rendus</p>
-            <p id="totalReports" class="text-3xl font-bold">0</p>
+            <p class="text-xs md:text-sm opacity-90">Comptes Rendus</p>
+            <p id="totalReports" class="text-2xl md:text-3xl font-bold">0</p>
           </div>
-          <i class="fas fa-file-medical text-4xl opacity-50"></i>
+          <i class="fas fa-file-medical text-2xl md:text-4xl opacity-50"></i>
         </div>
       </div>
-      <div class="kpi-card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
+      <div class="kpi-card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 md:p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm opacity-90">Médecins</p>
-            <p id="totalMedecins" class="text-3xl font-bold">0</p>
+            <p class="text-xs md:text-sm opacity-90">Médecins</p>
+            <p id="totalMedecins" class="text-2xl md:text-3xl font-bold">0</p>
           </div>
-          <i class="fas fa-user-md text-4xl opacity-50"></i>
+          <i class="fas fa-user-md text-2xl md:text-4xl opacity-50"></i>
         </div>
       </div>
-      <div class="kpi-card bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-md">
+      <div class="kpi-card bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 md:p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm opacity-90">En Attente</p>
-            <p id="pendingReports" class="text-3xl font-bold">0</p>
+            <p class="text-xs md:text-sm opacity-90">En Attente</p>
+            <p id="pendingReports" class="text-2xl md:text-3xl font-bold">0</p>
           </div>
-          <i class="fas fa-clock text-4xl opacity-50"></i>
+          <i class="fas fa-clock text-2xl md:text-4xl opacity-50"></i>
         </div>
       </div>
-      <div class="kpi-card bg-gradient-to-br from-pink-500 to-pink-600 text-white p-6 rounded-lg shadow-md">
+      <div class="kpi-card bg-gradient-to-br from-pink-500 to-pink-600 text-white p-4 md:p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm opacity-90">Utilisateurs</p>
-            <p id="totalUtilisateurs" class="text-3xl font-bold">0</p>
+            <p class="text-xs md:text-sm opacity-90">Utilisateurs</p>
+            <p id="totalUtilisateurs" class="text-2xl md:text-3xl font-bold">0</p>
           </div>
-          <i class="fas fa-users text-4xl opacity-50"></i>
+          <i class="fas fa-users text-2xl md:text-4xl opacity-50"></i>
         </div>
       </div>
     </div>
@@ -414,36 +330,36 @@
       <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
         <button onclick="openNewReport()" class="bg-indigo-600 text-white p-4 rounded-lg hover:bg-indigo-700 transition flex flex-col items-center group">
           <i class="fas fa-plus-circle text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Nouveau Compte Rendu</span>
+          <span class="text-sm md:text-base">Nouveau CR</span>
         </button>
         <button onclick="toggleSection('patientsSection')" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition flex flex-col items-center group">
           <i class="fas fa-users text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Patients</span>
+          <span class="text-sm md:text-base">Patients</span>
         </button>
         <button onclick="toggleSection('medecinsSection')" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
           <i class="fas fa-stethoscope text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Médecins</span>
+          <span class="text-sm md:text-base">Médecins</span>
         </button>
         <button onclick="toggleSection('utilisateursSection')" class="bg-pink-600 text-white p-4 rounded-lg hover:bg-pink-700 transition flex flex-col items-center group">
           <i class="fas fa-user-cog text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Utilisateurs</span>
+          <span class="text-sm md:text-base">Utilisateurs</span>
         </button>
         <button onclick="toggleSearchPanel()" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition flex flex-col items-center group">
           <i class="fas fa-search text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Rechercher</span>
+          <span class="text-sm md:text-base">Rechercher</span>
         </button>
       </div>
     </div>
 
     <!-- Panneau de Recherche -->
-    <div id="searchSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in hidden">
+    <div id="searchSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in hidden section-expanded">
       <div class="p-6 border-b">
         <h2 class="text-xl font-semibold flex items-center">
           <i class="fas fa-search mr-2 text-indigo-500"></i> Recherche Avancée
         </h2>
       </div>
       <div class="p-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 search-bar-container">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium mb-1">Rechercher par</label>
             <select id="searchType" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
@@ -456,7 +372,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Terme de recherche</label>
-            <input type="text" id="searchTerm" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input" placeholder="Entrez votre recherche...">
+            <input type="text" id="searchTerm" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Entrez votre recherche...">
           </div>
           <div class="flex items-end">
             <button onclick="performSearch()" class="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition flex items-center justify-center">
@@ -469,7 +385,7 @@
     </div>
 
     <!-- Section Utilisateurs -->
-    <div id="utilisateursSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in">
+    <div id="utilisateursSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in section-expanded">
       <div class="p-6 flex justify-between items-center border-b cursor-pointer hover:bg-gray-50 transition" onclick="toggleSection('utilisateursSection')">
         <h2 class="text-xl font-semibold flex items-center">
           <i class="fas fa-user-cog mr-2 text-indigo-500"></i> Gestion des Utilisateurs
@@ -477,12 +393,12 @@
         </h2>
         <i id="utilisateursChevron" class="fas fa-chevron-down text-gray-600 chevron-icon"></i>
       </div>
-      <div id="utilisateursContent" class="section-content">
+      <div id="utilisateursContent" class="section-content hidden">
         <div class="p-6">
-          <div class="mb-4 flex gap-2 actions-buttons-container">
-            <input type="text" id="searchUtilisateur" placeholder="Rechercher un utilisateur..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input">
-            <button onclick="toggleUtilisateurForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1 add-button">
-              <i class="fas fa-plus"></i> Ajouter
+          <div class="mb-4 flex gap-2">
+            <input type="text" id="searchUtilisateur" placeholder="Rechercher un utilisateur..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button onclick="toggleUtilisateurForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
+              <i class="fas fa-plus"></i> <span class="hidden sm:inline">Ajouter</span>
             </button>
           </div>
           
@@ -491,86 +407,6 @@
               <h3 class="font-medium mb-3 text-lg">Nouvel Utilisateur</h3>
               <input type="hidden" id="utilisateurId">
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-1">Nom*</label>
-                  <input type="text" id="utilisateurNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-1">Mot de passe*</label>
-                  <input type="password" id="utilisateurPassword" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-1">Statut</label>
-                  <select id="utilisateurStatut" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                    <option value="utilisateur">Utilisateur</option>
-                    <option value="admin">Administrateur</option>
-                    <option value="medecin">Médecin</option>
-                    <option value="technicien">Technicien</option>
-                  </select>
-                </div>
-              </div>
-              <div class="flex justify-end space-x-3 mt-4">
-                <button onclick="toggleUtilisateurForm()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
-                  Annuler
-                </button>
-                <button onclick="saveUtilisateur()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center gap-1">
-                  <i class="fas fa-save"></i> Enregistrer
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="table-container border rounded-lg overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N°</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Création</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="utilisateursList" class="bg-white divide-y divide-gray-200">
-                <tr><td colspan="5" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Section Patients -->
-    <div id="patientsSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in">
-      <div class="p-6 flex justify-between items-center border-b cursor-pointer hover:bg-gray-50 transition" onclick="toggleSection('patientsSection')">
-        <h2 class="text-xl font-semibold flex items-center">
-          <i class="fas fa-user-injured mr-2 text-indigo-500"></i> Gestion des Patients
-          <span id="patientCount" class="ml-2 text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">0</span>
-        </h2>
-        <i id="patientsChevron" class="fas fa-chevron-down text-gray-600 chevron-icon"></i>
-      </div>
-      <div id="patientsContent" class="section-content">
-        <div class="p-6">
-          <div class="mb-4 flex gap-2 actions-buttons-container">
-            <input type="text" id="searchPatient" placeholder="Rechercher un patient..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input">
-            <button onclick="togglePatientForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1 add-button">
-              <i class="fas fa-plus"></i> Ajouter
-            </button>
-          </div>
-          
-          <div id="patientForm" class="drawer-content mb-6">
-            <div class="p-4 bg-gray-50 rounded-lg border">
-              <h3 class="font-medium mb-3 text-lg">Nouveau Patient</h3>
-              <input type="hidden" id="patientId">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-1">Nom & Prénom*</label>
-                  <input type="text" id="patientNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-1">Âge</label>
-                  <input type="number" id="patientAge" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" max="150">
-                </div>
                 <div>
                   <label class="block text-sm font-medium mb-1">Sexe</label>
                   <select id="patientSexe" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
@@ -603,12 +439,12 @@
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom & Prénom</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Âge</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sexe</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adresse</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nom & Prénom</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Âge</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Sexe</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Téléphone</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Adresse</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody id="patientsList" class="bg-white divide-y divide-gray-200">
@@ -621,7 +457,7 @@
     </div>
 
     <!-- Section Médecins -->
-    <div id="medecinsSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in">
+    <div id="medecinsSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in section-expanded">
       <div class="p-6 flex justify-between items-center border-b cursor-pointer hover:bg-gray-50 transition" onclick="toggleSection('medecinsSection')">
         <h2 class="text-xl font-semibold flex items-center">
           <i class="fas fa-user-md mr-2 text-indigo-500"></i> Médecins Demandeurs
@@ -629,12 +465,12 @@
         </h2>
         <i id="medecinsChevron" class="fas fa-chevron-down text-gray-600 chevron-icon"></i>
       </div>
-      <div id="medecinsContent" class="section-content">
+      <div id="medecinsContent" class="section-content hidden">
         <div class="p-6">
-          <div class="mb-4 flex gap-2 actions-buttons-container">
-            <input type="text" id="searchMedecin" placeholder="Rechercher un médecin..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input">
-            <button onclick="toggleMedecinForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1 add-button">
-              <i class="fas fa-plus"></i> Ajouter
+          <div class="mb-4 flex gap-2">
+            <input type="text" id="searchMedecin" placeholder="Rechercher un médecin..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button onclick="toggleMedecinForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
+              <i class="fas fa-plus"></i> <span class="hidden sm:inline">Ajouter</span>
             </button>
           </div>
           
@@ -675,11 +511,11 @@
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom & Prénom</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Spécialité</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nom & Prénom</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Spécialité</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Service</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Téléphone</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody id="medecinsList" class="bg-white divide-y divide-gray-200">
@@ -706,13 +542,13 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Enregistrement</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Médecin</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prélèvement</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">N° Enregistrement</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Patient</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Médecin</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Utilisateur</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Prélèvement</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Statut</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody id="reportsList" class="bg-white divide-y divide-gray-200">
@@ -737,216 +573,199 @@
   </div>
 
   <!-- Modal Formulaire Compte Rendu -->
-  <div id="reportModal" class="fixed inset-0 z-50 hidden">
-    <div class="modal-overlay">
-      <div class="modal-content">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-6 pb-4 border-b">
-            <h2 class="text-2xl font-semibold text-indigo-700">Compte Rendu Cyto-Pathologique</h2>
-            <button onclick="closeReportModal()" class="text-gray-600 hover:text-gray-800 transition">
-              <i class="fas fa-times text-2xl"></i>
-            </button>
-          </div>
-          
-          <form id="reportForm" class="space-y-6" onsubmit="event.preventDefault(); saveReport();">
-            <input type="hidden" id="reportId">
-            
-            <!-- Avis utilisateur sélectionné -->
-            <div id="userSelectionAlert" class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
-              <div class="flex items-center">
-                <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
-                <div>
-                  <p class="font-medium text-yellow-800">Utilisateur actuel : <span id="currentReportUser" class="font-bold"></span></p>
-                  <p class="text-sm text-yellow-700 mt-1">Ce compte rendu sera attribué à cet utilisateur</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- En-tête -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-indigo-50 rounded-lg">
-              <div>
-                <label class="block text-sm font-medium mb-1 text-indigo-700">N° Enregistrement*</label>
-                <input type="text" id="reportNumero" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1 text-indigo-700">Date Compte Rendu*</label>
-                <input type="date" id="reportDateCR" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-              </div>
-            </div>
-
-            <!-- Médecin et Patient -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium mb-1">Médecin Demandeur*</label>
-                <select id="reportMedecin" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-                  <option value="">Sélectionner...</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Service Hospitalier</label>
-                <input type="text" id="reportService" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium mb-1">Patient*</label>
-                <select id="reportPatient" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePatientInfo()">
-                  <option value="">Sélectionner...</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Âge</label>
-                <input type="number" id="reportAge" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Sexe</label>
-                <input type="text" id="reportSexe" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
-              </div>
-            </div>
-
-            <!-- Prélèvement -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div class="md:col-span-2">
-                <label class="block text-sm font-medium mb-1">Nature/Siège du Prélèvement*</label>
-                <div class="flex gap-2">
-                  <input type="text" id="reportNature" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Ex: Nodule thyroïdien, Biopsie hépatique..." required>
-                  <!-- BOUTON TEMPLATE -->
-                  <button type="button" onclick="openTemplateSelector()" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition flex items-center gap-1 whitespace-nowrap" title="Charger depuis un template">
-                    <i class="fas fa-clone"></i> Template
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Date Prélèvement*</label>
-                <input type="date" id="reportDatePrelevement" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-              </div>
-            </div>
-
-            <!-- Renseignements Cliniques -->
-            <div>
-              <label class="block text-sm font-medium mb-1 flex items-center">
-                <i class="fas fa-clipboard-list mr-2 text-indigo-500"></i>Renseignements Cliniques Fournis
-              </label>
-              <textarea id="reportRenseignements" rows="3" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Antécédents, symptômes, traitement en cours..."></textarea>
-            </div>
-
-            <!-- MACROSCOPIE -->
-            <div class="border-t pt-6">
-              <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
-                <i class="fas fa-eye mr-2"></i>MACROSCOPIE
-              </h3>
-              <textarea id="reportMacro" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Description macroscopique : aspect, couleur, dimensions, poids..."></textarea>
-            </div>
-
-            <!-- MICROSCOPIE -->
-            <div class="border-t pt-6">
-              <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
-                <i class="fas fa-microscope mr-2"></i>MICROSCOPIE
-              </h3>
-              <textarea id="reportMicro" rows="6" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Étude cytologique, architecture, cellules, mitoses, nécrose, emboles..."></textarea>
-            </div>
-
-            <!-- CONCLUSION -->
-            <div class="border-t pt-6">
-              <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
-                <i class="fas fa-diagnoses mr-2"></i>CONCLUSION
-              </h3>
-              <textarea id="reportConclusion" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Diagnostic, classification, grade, recommandations..."></textarea>
-            </div>
-
-            <!-- Statut -->
-            <div>
-              <label class="block text-sm font-medium mb-1">Statut*</label>
-              <select id="reportStatut" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-                <option value="en_cours">En cours</option>
-                <option value="terminé">Terminé</option>
-                <option value="validé">Validé</option>
-                <option value="signé">Signé</option>
-              </select>
-            </div>
-
-            <!-- Boutons -->
-            <div class="flex justify-end space-x-3 pt-6 border-t">
-              <button type="button" onclick="closeReportModal()" class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 transition">
-                Annuler
-              </button>
-              <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition flex items-center gap-2">
-                <i class="fas fa-save"></i> Enregistrer
-              </button>
-            </div>
-          </form>
-        </div>
+  <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[85vh] overflow-y-auto modal-content">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <h2 class="text-2xl font-semibold text-indigo-700">Compte Rendu Cyto-Pathologique</h2>
+        <button onclick="closeReportModal()" class="text-gray-600 hover:text-gray-800 transition">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
       </div>
+      
+      <form id="reportForm" class="space-y-6" onsubmit="event.preventDefault(); saveReport();">
+        <input type="hidden" id="reportId">
+        
+        <!-- Avis utilisateur sélectionné -->
+        <div id="userSelectionAlert" class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+          <div class="flex items-center">
+            <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
+            <div>
+              <p class="font-medium text-yellow-800">Utilisateur actuel : <span id="currentReportUser" class="font-bold"></span></p>
+              <p class="text-sm text-yellow-700 mt-1">Ce compte rendu sera attribué à cet utilisateur</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- En-tête -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-indigo-50 rounded-lg">
+          <div>
+            <label class="block text-sm font-medium mb-1 text-indigo-700">N° Enregistrement*</label>
+            <input type="text" id="reportNumero" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-indigo-700">Date Compte Rendu*</label>
+            <input type="date" id="reportDateCR" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+          </div>
+        </div>
+
+        <!-- Médecin et Patient -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Médecin Demandeur*</label>
+            <select id="reportMedecin" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Service Hospitalier</label>
+            <input type="text" id="reportService" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Patient*</label>
+            <select id="reportPatient" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePatientInfo()">
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Âge</label>
+            <input type="number" id="reportAge" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Sexe</label>
+            <input type="text" id="reportSexe" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
+          </div>
+        </div>
+
+        <!-- Prélèvement -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-1">Nature/Siège du Prélèvement*</label>
+            <div class="flex gap-2">
+              <input type="text" id="reportNature" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Ex: Nodule thyroïdien, Biopsie hépatique..." required>
+              <button type="button" onclick="openTemplateSelector()" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition flex items-center gap-1 whitespace-nowrap" title="Charger depuis un template">
+                <i class="fas fa-clone"></i> <span class="hidden sm:inline">Template</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Date Prélèvement*</label>
+            <input type="date" id="reportDatePrelevement" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+          </div>
+        </div>
+
+        <!-- Renseignements Cliniques -->
+        <div>
+          <label class="block text-sm font-medium mb-1 flex items-center">
+            <i class="fas fa-clipboard-list mr-2 text-indigo-500"></i>Renseignements Cliniques Fournis
+          </label>
+          <textarea id="reportRenseignements" rows="3" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Antécédents, symptômes, traitement en cours..."></textarea>
+        </div>
+
+        <!-- MACROSCOPIE -->
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
+            <i class="fas fa-eye mr-2"></i>MACROSCOPIE
+          </h3>
+          <textarea id="reportMacro" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Description macroscopique : aspect, couleur, dimensions, poids..."></textarea>
+        </div>
+
+        <!-- MICROSCOPIE -->
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
+            <i class="fas fa-microscope mr-2"></i>MICROSCOPIE
+          </h3>
+          <textarea id="reportMicro" rows="6" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Étude cytologique, architecture, cellules, mitoses, nécrose, emboles..."></textarea>
+        </div>
+
+        <!-- CONCLUSION -->
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
+            <i class="fas fa-diagnoses mr-2"></i>CONCLUSION
+          </h3>
+          <textarea id="reportConclusion" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Diagnostic, classification, grade, recommandations..."></textarea>
+        </div>
+
+        <!-- Statut -->
+        <div>
+          <label class="block text-sm font-medium mb-1">Statut*</label>
+          <select id="reportStatut" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+            <option value="en_cours">En cours</option>
+            <option value="terminé">Terminé</option>
+            <option value="validé">Validé</option>
+            <option value="signé">Signé</option>
+          </select>
+        </div>
+
+        <!-- Boutons -->
+        <div class="flex justify-end space-x-3 pt-6 border-t">
+          <button type="button" onclick="closeReportModal()" class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 transition">
+            Annuler
+          </button>
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition flex items-center gap-2">
+            <i class="fas fa-save"></i> Enregistrer
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
   <!-- Modal Sélection Template -->
-  <div id="templateSelectorModal" class="fixed inset-0 z-[100] hidden">
-    <div class="modal-overlay">
-      <div class="modal-content">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-6 pb-4 border-b">
-            <h2 class="text-2xl font-semibold text-indigo-700">Sélectionner un Template</h2>
-            <button onclick="closeTemplateSelector()" class="text-gray-600 hover:text-gray-800 transition">
-              <i class="fas fa-times text-2xl"></i>
-            </button>
-          </div>
-          
-          <!-- Filtres rapides -->
-          <div class="mb-6">
-            <div class="flex flex-wrap gap-2 mb-4">
-              <button onclick="filterTemplatesByOrgane('')" class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm hover:bg-indigo-200 transition">
-                Tous
-              </button>
-              <button onclick="filterTemplatesByOrgane('thyroide')" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition">
-                Thyroïde
-              </button>
-              <button onclick="filterTemplatesByOrgane('sein')" class="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm hover:bg-pink-200 transition">
-                Sein
-              </button>
-              <button onclick="filterTemplatesByOrgane('prostate')" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition">
-                Prostate
-              </button>
-              <button onclick="filterTemplatesByOrgane('poumon')" class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 transition">
-                Poumon
-              </button>
-            </div>
-            
-            <div class="flex gap-2">
-              <input type="text" id="templateSearch" placeholder="Rechercher par code, titre, tag..." 
-                     class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                     onkeyup="searchTemplates()">
-              <button onclick="clearTemplateSearch()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Liste des templates -->
-          <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-2" id="templatesListContainer">
-            <div class="text-center py-8 text-gray-500">
-              <i class="fas fa-spinner fa-spin mr-2"></i> Chargement des templates...
-            </div>
-          </div>
-          
-          <div class="mt-6 pt-6 border-t flex justify-between items-center">
-            <div class="text-sm text-gray-600">
-              <span id="templatesCount">0</span> template(s) trouvé(s)
-            </div>
-            <div>
-              <button onclick="closeTemplateSelector()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition mr-2">
-                Annuler
-              </button>
-            </div>
-          </div>
+  <div id="templateSelectorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto modal-content">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <h2 class="text-2xl font-semibold text-indigo-700">Sélectionner un Template</h2>
+        <button onclick="closeTemplateSelector()" class="text-gray-600 hover:text-gray-800 transition">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <div class="mb-6">
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="filterTemplatesByOrgane('')" class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm hover:bg-indigo-200 transition">
+            Tous
+          </button>
+          <button onclick="filterTemplatesByOrgane('thyroide')" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition">
+            Thyroïde
+          </button>
+          <button onclick="filterTemplatesByOrgane('sein')" class="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm hover:bg-pink-200 transition">
+            Sein
+          </button>
+          <button onclick="filterTemplatesByOrgane('prostate')" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition">
+            Prostate
+          </button>
         </div>
+        
+        <div class="flex gap-2">
+          <input type="text" id="templateSearch" placeholder="Rechercher..." 
+                 class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                 onkeyup="searchTemplates()">
+          <button onclick="clearTemplateSearch()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-2" id="templatesListContainer">
+        <div class="text-center py-8 text-gray-500">
+          <i class="fas fa-spinner fa-spin mr-2"></i> Chargement des templates...
+        </div>
+      </div>
+      
+      <div class="mt-6 pt-6 border-t flex justify-between items-center">
+        <div class="text-sm text-gray-600">
+          <span id="templatesCount">0</span> template(s) trouvé(s)
+        </div>
+        <button onclick="closeTemplateSelector()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
+          Annuler
+        </button>
       </div>
     </div>
   </div>
 
   <script>
-    // Configuration API
     const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
     let currentUser = null;
     let allReports = [];
@@ -955,6 +774,7 @@
     let allUtilisateurs = [];
     let allTemplates = [];
     let filteredTemplates = [];
+    let currentPdfUrl = null;
 
     function cleanupLocalStorage() {
       const selectedUserStr = localStorage.getItem('selectedUtilisateur');
@@ -965,33 +785,10 @@
             localStorage.removeItem('selectedUtilisateur');
             console.log("Nettoyage : Suppression de l'utilisateur avec numero='null'");
           }
-        } catch (e) {
-          // Ignorer les erreurs de parsing
-        }
+        } catch (e) {}
       }
     }
     
-    // Gestion du bouton "Remonter en haut"
-    function initBackToTopButton() {
-      const backToTopBtn = document.getElementById('backToTop');
-      
-      window.addEventListener('scroll', () => {
-        if (window.scrollY > 300) {
-          backToTopBtn.classList.add('show');
-        } else {
-          backToTopBtn.classList.remove('show');
-        }
-      });
-      
-      backToTopBtn.addEventListener('click', () => {
-        window.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
-      });
-    }
-    
-    // Initialiser l'affichage de l'utilisateur sélectionné
     function updateSelectedUserDisplay() {
       const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
       const selectedUtilisateurId = selectedUtilisateur.numero;
@@ -1000,13 +797,11 @@
       
       document.getElementById('currentUserName').textContent = `${selectedUtilisateurNom}${selectedUtilisateurStatut ? ` (${selectedUtilisateurStatut})` : ''}`;
       
-      // Mettre à jour dans le modal des comptes rendus
       const currentReportUserElement = document.getElementById('currentReportUser');
       if (currentReportUserElement) {
         currentReportUserElement.textContent = selectedUtilisateurNom;
       }
       
-      // Afficher/masquer l'alerte si aucun utilisateur n'est sélectionné
       const alertElement = document.getElementById('userSelectionAlert');
       if (alertElement) {
         if (!selectedUtilisateurId) {
@@ -1019,7 +814,6 @@
       return { id: selectedUtilisateurId, nom: selectedUtilisateurNom };
     }
 
-    // Fonctions d'utilité
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
       const icon = document.getElementById('toastIcon');
@@ -1040,47 +834,38 @@
     function toggleSection(sectionId) {
       const content = document.getElementById(`${sectionId.replace('Section', 'Content')}`);
       const chevron = document.getElementById(`${sectionId.replace('Section', 'Chevron')}`);
-      const isOpen = content.classList.contains('open');
+      const section = document.getElementById(sectionId);
+      const isHidden = content.classList.contains('hidden');
       
-      // Fermer toutes les sections d'abord
-      document.querySelectorAll('.section-content.open').forEach(el => {
-        if (el !== content) {
-          el.classList.remove('open');
-          const otherChevron = el.closest('[id$="Section"]').querySelector('.chevron-icon');
-          if (otherChevron) otherChevron.classList.remove('rotate');
-        }
-      });
+      content.classList.toggle('hidden');
+      chevron.classList.toggle('rotate');
       
-      // Basculer l'état de la section actuelle
-      if (isOpen) {
-        content.classList.remove('open');
-        chevron.classList.remove('rotate');
-      } else {
+      if (isHidden) {
         content.classList.add('open');
-        chevron.classList.add('rotate');
-        
-        // Centrer la section dépliée
+        // Scroll fluide vers la section avec focus
         setTimeout(() => {
-          content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          section.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
         
-        // Charger les données si nécessaire
         if (sectionId === 'patientsSection') loadPatients();
         if (sectionId === 'medecinsSection') loadMedecins();
         if (sectionId === 'utilisateursSection') loadUtilisateurs();
+      } else {
+        content.classList.remove('open');
       }
     }
 
     function toggleLogin() {
-      const modal = document.getElementById('loginModal');
-      modal.classList.toggle('hidden');
+      document.getElementById('loginModal').classList.toggle('hidden');
     }
 
     function togglePatientForm() {
       const form = document.getElementById('patientForm');
       form.classList.toggle('open');
       if (form.classList.contains('open')) {
-        form.style.maxHeight = form.scrollHeight + 'px';
+        setTimeout(() => {
+          form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       }
     }
 
@@ -1088,7 +873,9 @@
       const form = document.getElementById('medecinForm');
       form.classList.toggle('open');
       if (form.classList.contains('open')) {
-        form.style.maxHeight = form.scrollHeight + 'px';
+        setTimeout(() => {
+          form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       }
     }
 
@@ -1096,16 +883,22 @@
       const form = document.getElementById('utilisateurForm');
       form.classList.toggle('open');
       if (form.classList.contains('open')) {
-        form.style.maxHeight = form.scrollHeight + 'px';
+        setTimeout(() => {
+          form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       }
     }
 
     function toggleSearchPanel() {
-      const panel = document.getElementById('searchSection');
-      panel.classList.toggle('hidden');
+      const searchSection = document.getElementById('searchSection');
+      searchSection.classList.toggle('hidden');
+      if (!searchSection.classList.contains('hidden')) {
+        setTimeout(() => {
+          searchSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
     }
 
-    // Connexion
     async function login() {
       const email = document.getElementById('userEmail').value.trim();
       const password = document.getElementById('userPassword').value;
@@ -1132,7 +925,6 @@
       }
     }
 
-    // Chargement du dashboard
     async function loadDashboard() {
       await Promise.all([
         loadPatients(),
@@ -1143,7 +935,6 @@
       updateKPIs();
     }
 
-    // Mise à jour des KPI
     function updateKPIs() {
       document.getElementById('totalPatients').textContent = allPatients.length;
       document.getElementById('totalMedecins').textContent = allMedecins.length;
@@ -1153,15 +944,11 @@
       const pending = allReports.filter(r => r.statut === 'en_cours').length;
       document.getElementById('pendingReports').textContent = pending;
       
-      // Mettre à jour les compteurs dans les sections
       document.getElementById('patientCount').textContent = allPatients.length;
       document.getElementById('medecinCount').textContent = allMedecins.length;
       document.getElementById('utilisateurCount').textContent = allUtilisateurs.length;
     }
 
-    // ────────────────────────────────────────────
-    // GESTION DES UTILISATEURS
-    // ────────────────────────────────────────────
     async function loadUtilisateurs() {
       try {
         const userId = localStorage.getItem('userId');
@@ -1171,7 +958,9 @@
           headers: { 'X-User-ID': userId }
         });
         
-        if (!res.ok) throw new Error('Erreur lors du chargement des utilisateurs');
+        if (!res.ok) {
+          throw new Error('Erreur lors du chargement des utilisateurs');
+        }
         
         const users = await res.json();
         allUtilisateurs = users;
@@ -1182,15 +971,15 @@
         } else {
           tbody.innerHTML = users.map(u => `
             <tr class="hover:bg-gray-50">
-              <td class="px-6 py-4 text-sm font-medium">${u.numero}</td>
-              <td class="px-6 py-4 text-sm">${u.nom}</td>
-              <td class="px-6 py-4 text-sm">
+              <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">${u.numero}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${u.nom}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
                 <span class="px-2 py-1 rounded-full text-xs ${u.statut === 'admin' ? 'bg-purple-100 text-purple-800' : u.statut === 'medecin' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
                   ${u.statut}
                 </span>
               </td>
-              <td class="px-6 py-4 text-sm">${new Date().toLocaleDateString('fr-FR')}</td>
-              <td class="px-6 py-4 text-sm">
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${new Date().toLocaleDateString('fr-FR')}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
                 <button onclick='editUtilisateur(${JSON.stringify(u)})' class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
                   <i class="fas fa-edit"></i>
                 </button>
@@ -1204,8 +993,8 @@
         
         updateKPIs();
       } catch (err) {
-        console.error(err);
-        showToast('Erreur lors du chargement des utilisateurs', 'error');
+        console.error('Erreur chargement utilisateurs:', err);
+        showToast('Erreur lors du chargement des utilisateurs: ' + err.message, 'error');
       }
     }
 
@@ -1225,14 +1014,12 @@
         
         let res;
         if (id) {
-          // Mise à jour (à adapter selon votre API)
           res = await fetch(`${API_BASE_URL}/utilisateurs/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
             body: JSON.stringify(data)
           });
         } else {
-          // Création
           res = await fetch(`${API_BASE_URL}/ajouter_utilisateur`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-User-ID': userId },
@@ -1250,6 +1037,7 @@
           throw new Error(err.erreur || 'Erreur lors de la sauvegarde');
         }
       } catch (err) {
+        console.error('Erreur sauvegarde utilisateur:', err);
         showToast(err.message, 'error');
       }
     }
@@ -1279,7 +1067,6 @@
       
       try {
         const userId = localStorage.getItem('userId');
-        // À adapter selon votre API
         const res = await fetch(`${API_BASE_URL}/utilisateurs/${numero}`, {
           method: 'DELETE',
           headers: { 'X-User-ID': userId }
@@ -1296,9 +1083,6 @@
       }
     }
 
-    // ────────────────────────────────────────────
-    // GESTION DES PATIENTS
-    // ────────────────────────────────────────────
     async function loadPatients() {
       try {
         const userId = localStorage.getItem('userId');
@@ -1322,12 +1106,12 @@
         } else {
           tbody.innerHTML = patients.map(p => `
             <tr class="hover:bg-gray-50">
-              <td class="px-6 py-4 text-sm font-medium">${p.nom}</td>
-              <td class="px-6 py-4 text-sm">${p.age || '-'}</td>
-              <td class="px-6 py-4 text-sm">${p.sexe === 'M' ? '♂' : p.sexe === 'F' ? '♀' : '-'}</td>
-              <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
-              <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
-              <td class="px-6 py-4 text-sm">
+              <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">${p.nom}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${p.age || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${p.sexe === 'M' ? '♂' : p.sexe === 'F' ? '♀' : '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${p.telephone || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${p.adresse || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
                 <button onclick='editPatient(${JSON.stringify(p)})' class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
                   <i class="fas fa-edit"></i>
                 </button>
@@ -1338,7 +1122,6 @@
             </tr>
           `).join('');
           
-          // Mettre à jour le select dans le modal des comptes rendus
           select.innerHTML = '<option value="">Sélectionner...</option>' + 
             patients.map(p => `<option value="${p.id}" data-age="${p.age || ''}" data-sexe="${p.sexe || ''}">${p.nom}</option>`).join('');
         }
@@ -1438,9 +1221,6 @@
       }
     }
 
-    // ────────────────────────────────────────────
-    // GESTION DES MÉDECINS
-    // ────────────────────────────────────────────
     async function loadMedecins() {
       try {
         const userId = localStorage.getItem('userId');
@@ -1464,11 +1244,11 @@
         } else {
           tbody.innerHTML = medecins.map(m => `
             <tr class="hover:bg-gray-50">
-              <td class="px-6 py-4 text-sm font-medium">${m.nom}</td>
-              <td class="px-6 py-4 text-sm">${m.specialite || '-'}</td>
-              <td class="px-6 py-4 text-sm">${m.service || '-'}</td>
-              <td class="px-6 py-4 text-sm">${m.telephone || '-'}</td>
-              <td class="px-6 py-4 text-sm">
+              <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">${m.nom}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${m.specialite || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${m.service || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${m.telephone || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
                 <button onclick='editMedecin(${JSON.stringify(m)})' class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
                   <i class="fas fa-edit"></i>
                 </button>
@@ -1479,7 +1259,6 @@
             </tr>
           `).join('');
           
-          // Mettre à jour le select dans le modal des comptes rendus
           select.innerHTML = '<option value="">Sélectionner...</option>' + 
             medecins.map(m => `<option value="${m.id}">${m.nom}${m.specialite ? ` - ${m.specialite}` : ''}</option>`).join('');
         }
@@ -1576,9 +1355,6 @@
       }
     }
 
-    // ────────────────────────────────────────────
-    // GESTION DES COMPTES RENDUS
-    // ────────────────────────────────────────────
     async function loadReports() {
       try {
         const userId = localStorage.getItem('userId');
@@ -1599,22 +1375,22 @@
         } else {
           tbody.innerHTML = reports.map(r => `
             <tr class="hover:bg-gray-50">
-              <td class="px-6 py-4 text-sm font-medium">${r.numero_enregistrement}</td>
-              <td class="px-6 py-4 text-sm">${r.patient_nom || '-'}</td>
-              <td class="px-6 py-4 text-sm">${r.medecin_nom || '-'}</td>
-              <td class="px-6 py-4 text-sm">${r.utilisateur_nom || '-'}</td>
-              <td class="px-6 py-4 text-sm">${r.date_prelevement || '-'}</td>
-              <td class="px-6 py-4 text-sm">
+              <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">${r.numero_enregistrement}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${r.patient_nom || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${r.medecin_nom || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${r.utilisateur_nom || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">${r.date_prelevement || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
                 <span class="status-badge status-${r.statut}">${r.statut}</span>
               </td>
-              <td class="px-6 py-4 text-sm">
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
                 <button onclick='viewReport(${JSON.stringify(r)})' class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
                   <i class="fas fa-eye"></i>
                 </button>
                 <button onclick='editReport(${JSON.stringify(r)})' class="text-green-600 hover:text-green-800 mr-2" title="Modifier">
                   <i class="fas fa-edit"></i>
                 </button>
-                <button onclick="printReport(${r.id})" class="text-purple-600 hover:text-purple-800 mr-2" title="Imprimer">
+                <button onclick="printReport(${r.id})" class="text-purple-600 hover:text-purple-800 mr-2" title="Aperçu">
                   <i class="fas fa-print"></i>
                 </button>
                 <button onclick="deleteReport(${r.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
@@ -1657,56 +1433,39 @@
       resetReportForm();
       document.getElementById('reportModal').classList.remove('hidden');
       document.getElementById('currentReportUser').textContent = selectedUser.nom;
-      
-      // Centrer le modal
-      setTimeout(() => {
-        const modal = document.querySelector('#reportModal .modal-content');
-        if (modal) {
-          modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
     }
 
     function editReport(report) {
       const selectedUser = updateSelectedUserDisplay();
       
-      console.log('📋 Édition compte rendu:', report.id);
-      console.log('📅 date_compte_rendu:', report.date_compte_rendu);
-      console.log('📅 date_prelevement:', report.date_prelevement);
-      
       document.getElementById('reportId').value = report.id;
       document.getElementById('reportNumero').value = report.numero_enregistrement;
       
-      // Fonction pour formater les dates
       function formatDateForInput(dateString) {
         if (!dateString) return '';
         
         try {
-          // Si la date est déjà au format YYYY-MM-DD
           if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
             return dateString;
           }
           
-          // Si c'est une date complète avec heure
           const date = new Date(dateString);
           if (isNaN(date.getTime())) {
             console.warn('Date invalide:', dateString);
             return '';
           }
           
-          // Formater en YYYY-MM-DD
           const year = date.getFullYear();
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
           
           return `${year}-${month}-${day}`;
         } catch (error) {
-          console.error('Erreur formatage date:', error, 'dateString:', dateString);
+          console.error('Erreur formatage date:', error);
           return '';
         }
       }
       
-      // Formater les dates
       document.getElementById('reportDateCR').value = formatDateForInput(report.date_compte_rendu);
       document.getElementById('reportDatePrelevement').value = formatDateForInput(report.date_prelevement);
       
@@ -1720,47 +1479,29 @@
       document.getElementById('reportConclusion').value = report.conclusion || '';
       document.getElementById('reportStatut').value = report.statut;
       
-      // Mettre à jour l'âge et le sexe
       const patient = allPatients.find(p => p.id == report.patient_id);
       if (patient) {
         document.getElementById('reportAge').value = patient.age || '';
         document.getElementById('reportSexe').value = patient.sexe === 'M' ? 'Masculin' : 
                                                      patient.sexe === 'F' ? 'Féminin' : '';
-      } else {
-        document.getElementById('reportAge').value = '';
-        document.getElementById('reportSexe').value = '';
       }
       
       document.getElementById('reportModal').classList.remove('hidden');
       document.getElementById('currentReportUser').textContent = selectedUser.nom || report.utilisateur_nom || 'Non spécifié';
-      
-      // Centrer le modal
-      setTimeout(() => {
-        const modal = document.querySelector('#reportModal .modal-content');
-        if (modal) {
-          modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-      
-      console.log('✅ Formulaire rempli avec succès');
     }
 
     function viewReport(report) {
-      // Ouvrir en mode lecture seule
       editReport(report);
-      // Rendre tous les champs en lecture seule
       const form = document.getElementById('reportForm');
       const inputs = form.querySelectorAll('input, select, textarea');
       inputs.forEach(input => input.disabled = true);
       
-      // Changer le bouton d'enregistrement
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.innerHTML = '<i class="fas fa-times"></i> Fermer';
       submitBtn.onclick = closeReportModal;
     }
 
     async function saveReport() {
-      // 1. Récupérer et valider l'utilisateur de manière robuste
       const selectedUserStr = localStorage.getItem('selectedUtilisateur');
       let utilisateur_id = null;
       
@@ -1768,32 +1509,27 @@
         try {
           const selectedUser = JSON.parse(selectedUserStr);
           
-          // Vérifier que le numéro existe et est un nombre valide
           if (selectedUser && selectedUser.numero !== undefined && selectedUser.numero !== null) {
             utilisateur_id = parseInt(selectedUser.numero, 10);
             
-            // Si ce n'est pas un nombre valide
             if (isNaN(utilisateur_id)) {
-              showToast('ERREUR : ID utilisateur invalide. Veuillez re-sélectionner un utilisateur.', 'error');
-              localStorage.removeItem('selectedUtilisateur'); // Nettoyer le mauvais stockage
+              showToast('ERREUR : ID utilisateur invalide', 'error');
+              localStorage.removeItem('selectedUtilisateur');
               setTimeout(() => window.location.href = 'selection.html', 2000);
               return;
             }
           }
         } catch (e) {
-          console.error("Erreur de parsing de selectedUtilisateur :", e);
+          console.error("Erreur parsing utilisateur:", e);
         }
       }
       
-      // 2. Si aucun utilisateur n'est défini
       if (utilisateur_id === null || utilisateur_id === undefined) {
-        showToast('Veuillez d\'abord sélectionner un utilisateur valide depuis la page de sélection.', 'error');
+        showToast('Veuillez sélectionner un utilisateur valide', 'error');
         setTimeout(() => window.location.href = 'selection.html', 1500);
         return;
       }
       
-      // 3. Construire les données avec l'ID utilisateur valide
-      // CORRECTION : Récupérer l'ID du compte rendu si on est en mode édition
       const reportIdElement = document.getElementById('reportId');
       const reportId = reportIdElement ? reportIdElement.value : '';
       
@@ -1813,7 +1549,6 @@
         statut: document.getElementById('reportStatut').value
       };
       
-      // Validation des champs obligatoires
       if (!data.numero_enregistrement || !data.date_compte_rendu || !data.medecin_id || 
           !data.patient_id || !data.nature_prelevement || !data.date_prelevement) {
         return showToast('Veuillez remplir tous les champs obligatoires', 'error');
@@ -1822,19 +1557,14 @@
       try {
         const userId = localStorage.getItem('userId');
         
-        // CORRECTION : Déterminer l'URL et la méthode en fonction du mode
         let url, method;
         if (reportId && reportId !== '') {
-          // Mode édition
           url = `${API_BASE_URL}/comptes-rendus/${reportId}`;
           method = 'PUT';
         } else {
-          // Mode création
           url = `${API_BASE_URL}/comptes-rendus`;
           method = 'POST';
         }
-        
-        console.log('Envoi des données:', { url, method, data });
         
         const res = await fetch(url, {
           method: method,
@@ -1846,552 +1576,83 @@
         });
         
         if (res.ok) {
-          const result = await res.json();
-          showToast(reportId ? 'Compte rendu modifié avec succès' : 'Compte rendu créé avec succès');
-          closeReportModal();
-          loadReports();
-        } else {
-          const err = await res.json();
-          console.error('Erreur serveur:', err);
-          throw new Error(err.erreur || 'Erreur lors de la sauvegarde');
-        }
-      } catch (err) {
-        console.error('Erreur sauvegarde:', err);
-        showToast(err.message, 'error');
-      }
-    }
-    
-    function resetReportForm() {
-      document.getElementById('reportForm').reset();
-      document.getElementById('reportId').value = '';
-      document.getElementById('reportAge').value = '';
-      document.getElementById('reportSexe').value = '';
-      
-      // Réactiver tous les champs (au cas où ils étaient désactivés en mode vue)
-      const form = document.getElementById('reportForm');
-      const inputs = form.querySelectorAll('input, select, textarea');
-      inputs.forEach(input => input.disabled = false);
-      
-      // Restaurer le bouton d'enregistrement
-      const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
-      submitBtn.onclick = null;
-      submitBtn.type = 'submit';
-    }
-
-    function closeReportModal() {
-      document.getElementById('reportModal').classList.add('hidden');
-      resetReportForm();
-    }
-
-    async function printReport(id) {
-      try {
-        const userId = localStorage.getItem('userId');
-        const res = await fetch(`${API_BASE_URL}/comptes-rendus/${id}/print?user_id=${encodeURIComponent(userId)}`);
-        
-        if (res.ok) {
-          const blob = await res.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `Compte_Rendu_${id}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        } else {
-          throw new Error('Erreur lors de la génération du PDF');
-        }
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    }
-
-    async function deleteReport(id) {
-      if (!confirm('Supprimer ce compte rendu ? Cette action est irréversible.')) return;
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const res = await fetch(`${API_BASE_URL}/comptes-rendus/${id}`, {
-          method: 'DELETE',
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (res.ok) {
-          showToast('Compte rendu supprimé');
-          loadReports();
-        } else {
-          throw new Error('Erreur lors de la suppression');
-        }
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    }
-
-    // ────────────────────────────────────────────
-    // FONCTIONS POUR LES TEMPLATES
-    // ────────────────────────────────────────────
-    async function openTemplateSelector() {
-      try {
-        document.getElementById('templateSelectorModal').classList.remove('hidden');
-        
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
-          showToast('Veuillez vous connecter', 'error');
-          closeTemplateSelector();
-          return;
-        }
-        
-        // Charger les templates
-        const response = await fetch(`${API_BASE_URL}/api/templates`, {
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (response.ok) {
-          allTemplates = await response.json();
-          filteredTemplates = [...allTemplates];
-          renderTemplatesList();
-        } else {
-          throw new Error('Erreur lors du chargement des templates');
-        }
-        
-        // Centrer le modal
-        setTimeout(() => {
-          const modal = document.querySelector('#templateSelectorModal .modal-content');
-          if (modal) {
-            modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
-        
-      } catch (error) {
-        console.error('Erreur chargement templates:', error);
-        showToast('Erreur lors du chargement des templates', 'error');
-      }
-    }
-
-    function closeTemplateSelector() {
-      document.getElementById('templateSelectorModal').classList.add('hidden');
-    }
-
-    function renderTemplatesList() {
-      const container = document.getElementById('templatesListContainer');
-      const countElement = document.getElementById('templatesCount');
-      
-      if (filteredTemplates.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-8 text-gray-500">
-            <i class="fas fa-inbox text-3xl mb-2"></i>
-            <p>Aucun template trouvé</p>
-          </div>
-        `;
-        countElement.textContent = '0';
-        return;
-      }
-      
-      countElement.textContent = filteredTemplates.length;
-      
-      container.innerHTML = filteredTemplates.map(template => `
-        <div class="template-card bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="applyTemplate(${template.id})">
-          <div class="flex justify-between items-start mb-2">
-            <div>
-              <h4 class="font-semibold text-gray-900">${template.titre}</h4>
-              <div class="flex items-center gap-2 mt-1">
-                <span class="text-xs font-mono text-gray-600">${template.code}</span>
-                ${template.organe ? `<span class="organe-badge">${template.organe}</span>` : ''}
-                ${template.user_id === 'system' ? 
-                  '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Système</span>' : 
-                  '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Utilisateur</span>'}
+          showToast(reportId ? '  <label class="block text-sm font-medium mb-1">Nom*</label>
+                  <input type="text" id="utilisateurNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Mot de passe*</label>
+                  <input type="password" id="utilisateurPassword" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Statut</label>
+                  <select id="utilisateurStatut" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <option value="utilisateur">Utilisateur</option>
+                    <option value="admin">Administrateur</option>
+                    <option value="medecin">Médecin</option>
+                    <option value="technicien">Technicien</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex justify-end space-x-3 mt-4">
+                <button onclick="toggleUtilisateurForm()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+                  Annuler
+                </button>
+                <button onclick="saveUtilisateur()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center gap-1">
+                  <i class="fas fa-save"></i> Enregistrer
+                </button>
               </div>
             </div>
-            <button onclick="previewTemplateInSelector(${template.id}); event.stopPropagation();" 
-                    class="text-blue-600 hover:text-blue-800 ml-2" title="Prévisualiser">
-              <i class="fas fa-eye"></i>
+          </div>
+          
+          <div class="table-container border rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">N°</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nom</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Statut</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Date Création</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="utilisateursList" class="bg-white divide-y divide-gray-200">
+                <tr><td colspan="5" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Patients -->
+    <div id="patientsSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in section-expanded">
+      <div class="p-6 flex justify-between items-center border-b cursor-pointer hover:bg-gray-50 transition" onclick="toggleSection('patientsSection')">
+        <h2 class="text-xl font-semibold flex items-center">
+          <i class="fas fa-user-injured mr-2 text-indigo-500"></i> Gestion des Patients
+          <span id="patientCount" class="ml-2 text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">0</span>
+        </h2>
+        <i id="patientsChevron" class="fas fa-chevron-down text-gray-600 chevron-icon"></i>
+      </div>
+      <div id="patientsContent" class="section-content hidden">
+        <div class="p-6">
+          <div class="mb-4 flex gap-2">
+            <input type="text" id="searchPatient" placeholder="Rechercher un patient..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button onclick="togglePatientForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
+              <i class="fas fa-plus"></i> <span class="hidden sm:inline">Ajouter</span>
             </button>
           </div>
           
-          <!-- Aperçu du contenu -->
-          <div class="mt-2 text-sm text-gray-600 line-clamp-2">
-            ${getTemplatePreview(template)}
-          </div>
-          
-          <!-- Tags -->
-          ${template.tags && template.tags.length > 0 ? `
-            <div class="mt-3 flex flex-wrap gap-1">
-              ${Array.isArray(template.tags) ? 
-                template.tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('') : 
-                `<span class="tag-badge">${template.tags}</span>`}
-            </div>
-          ` : ''}
-          
-          <div class="mt-3 text-xs text-gray-500 flex justify-between">
-            <span>Cliquez pour appliquer</span>
-            <span>${new Date(template.created_at).toLocaleDateString('fr-FR')}</span>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function getTemplatePreview(template) {
-      // Retourne un aperçu du contenu du template
-      if (template.conclusion && template.conclusion.length > 0) {
-        return template.conclusion.substring(0, 100) + '...';
-      }
-      if (template.microscopie && template.microscopie.length > 0) {
-        return template.microscopie.substring(0, 100) + '...';
-      }
-      if (template.macroscopie && template.macroscopie.length > 0) {
-        return template.macroscopie.substring(0, 100) + '...';
-      }
-      return 'Aucun contenu disponible';
-    }
-
-    async function applyTemplate(templateId) {
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (!response.ok) throw new Error('Template non trouvé');
-        
-        const template = await response.json();
-        
-        // Appliquer le template aux champs du formulaire
-        if (template.renseignements_cliniques) {
-          document.getElementById('reportRenseignements').value = template.renseignements_cliniques;
-        }
-        
-        if (template.macroscopie) {
-          document.getElementById('reportMacro').value = template.macroscopie;
-        }
-        
-        if (template.microscopie) {
-          document.getElementById('reportMicro').value = template.microscopie;
-        }
-        
-        if (template.conclusion) {
-          document.getElementById('reportConclusion').value = template.conclusion;
-        }
-        
-        // Mettre à jour le champ nature avec le titre du template
-        if (template.titre) {
-          const natureField = document.getElementById('reportNature');
-          if (!natureField.value || natureField.value.trim() === '') {
-            natureField.value = template.titre;
-          }
-        }
-        
-        closeTemplateSelector();
-        showToast(`Template "${template.code}" appliqué avec succès`, 'success');
-        
-      } catch (error) {
-        console.error('Erreur application template:', error);
-        showToast('Erreur lors de l\'application du template', 'error');
-      }
-    }
-
-    async function previewTemplateInSelector(templateId) {
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/api/templates/${templateId}`, {
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (!response.ok) throw new Error('Template non trouvé');
-        
-        const template = await response.json();
-        
-        // Créer une prévisualisation modale
-        const previewHTML = `
-          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[150]">
-            <div class="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[80vh] overflow-y-auto modal-content">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold">${template.titre}</h3>
-                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-gray-600 hover:text-gray-800">
-                  <i class="fas fa-times text-xl"></i>
-                </button>
-              </div>
-              
-              <div class="space-y-4">
-                ${template.renseignements_cliniques ? `
-                  <div>
-                    <h4 class="font-medium text-gray-700 mb-1">Renseignements Cliniques:</h4>
-                    <div class="bg-gray-50 p-3 rounded text-sm">${template.renseignements_cliniques}</div>
-                  </div>
-                ` : ''}
-                
-                ${template.macroscopie ? `
-                  <div>
-                    <h4 class="font-medium text-gray-700 mb-1">Macroscopie:</h4>
-                    <div class="bg-gray-50 p-3 rounded text-sm">${template.macroscopie}</div>
-                  </div>
-                ` : ''}
-                
-                ${template.microscopie ? `
-                  <div>
-                    <h4 class="font-medium text-gray-700 mb-1">Microscopie:</h4>
-                    <div class="bg-gray-50 p-3 rounded text-sm">${template.microscopie}</div>
-                  </div>
-                ` : ''}
-                
-                ${template.conclusion ? `
-                  <div>
-                    <h4 class="font-medium text-gray-700 mb-1">Conclusion:</h4>
-                    <div class="bg-gray-50 p-3 rounded text-sm">${template.conclusion}</div>
-                  </div>
-                ` : ''}
-              </div>
-              
-              <div class="mt-6 pt-4 border-t flex justify-end">
-                <button onclick="applyTemplate(${templateId}); this.closest('.modal-overlay').remove();" 
-                        class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
-                  <i class="fas fa-check mr-2"></i> Appliquer ce template
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', previewHTML);
-        
-      } catch (error) {
-        console.error('Erreur prévisualisation:', error);
-        showToast('Erreur lors de la prévisualisation', 'error');
-      }
-    }
-
-    function filterTemplatesByOrgane(organe) {
-      if (!organe) {
-        filteredTemplates = [...allTemplates];
-      } else {
-        filteredTemplates = allTemplates.filter(t => t.organe === organe);
-      }
-      renderTemplatesList();
-    }
-
-    function searchTemplates() {
-      const searchTerm = document.getElementById('templateSearch').value.toLowerCase();
-      
-      if (!searchTerm) {
-        filteredTemplates = [...allTemplates];
-      } else {
-        filteredTemplates = allTemplates.filter(template => {
-          const searchFields = [
-            template.code,
-            template.titre,
-            template.organe,
-            template.renseignements_cliniques,
-            template.macroscopie,
-            template.microscopie,
-            template.conclusion,
-            ...(Array.isArray(template.tags) ? template.tags : [template.tags || ''])
-          ].filter(Boolean).join(' ').toLowerCase();
-          
-          return searchFields.includes(searchTerm);
-        });
-      }
-      
-      renderTemplatesList();
-    }
-
-    function clearTemplateSearch() {
-      document.getElementById('templateSearch').value = '';
-      filteredTemplates = [...allTemplates];
-      renderTemplatesList();
-    }
-
-    // Raccourci clavier Ctrl+T pour ouvrir le sélecteur de templates
-    document.addEventListener('keydown', (e) => {
-      // Vérifier si on est dans le modal de compte rendu
-      const reportModal = document.getElementById('reportModal');
-      if (reportModal && !reportModal.classList.contains('hidden')) {
-        // Ctrl+T ou Cmd+T
-        if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-          e.preventDefault();
-          openTemplateSelector();
-        }
-      }
-    });
-
-    // ────────────────────────────────────────────
-    // RECHERCHE
-    // ────────────────────────────────────────────
-    async function performSearch() {
-      const type = document.getElementById('searchType').value;
-      const term = document.getElementById('searchTerm').value.trim();
-      
-      if (!term) {
-        return showToast('Veuillez entrer un terme de recherche', 'warning');
-      }
-      
-      try {
-        let results = [];
-        let isPatientSearch = false;
-        
-        if (type === 'numero') {
-          results = allReports.filter(r => 
-            r.numero_enregistrement.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'patient') {
-          results = allReports.filter(r => 
-            r.patient_nom && r.patient_nom.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'medecin') {
-          results = allReports.filter(r => 
-            r.medecin_nom && r.medecin_nom.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'utilisateur') {
-          results = allReports.filter(r => 
-            r.utilisateur_nom && r.utilisateur_nom.toLowerCase().includes(term.toLowerCase())
-          );
-        } else if (type === 'telephone') {
-          results = allPatients.filter(p => 
-            p.telephone && p.telephone.includes(term)
-          );
-          isPatientSearch = true;
-        }
-        
-        const container = document.getElementById('searchResults');
-        if (results.length === 0) {
-          container.innerHTML = '<div class="text-center py-8 text-gray-500">Aucun résultat trouvé</div>';
-        } else {
-          container.innerHTML = `
-            <div class="bg-gray-50 p-4 rounded-lg">
-              <div class="flex justify-between items-center mb-3">
-                <h4 class="font-medium">${results.length} résultat(s) trouvé(s)</h4>
-                <button onclick="clearSearch()" class="text-gray-600 hover:text-gray-800 text-sm">
-                  <i class="fas fa-times mr-1"></i> Effacer
-                </button>
-              </div>
-              <div id="searchResultsList" class="space-y-3 max-h-60 overflow-y-auto">
-                ${results.map(r => `
-                  <div class="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all search-result-item">
-                    <div class="flex justify-between items-start">
-                      <div class="flex-1">
-                        <div class="flex items-start gap-3">
-                          <div class="mt-1">
-                            <i class="fas ${isPatientSearch ? 'fa-user-injured text-blue-500' : 'fa-file-medical text-green-500'}"></i>
-                          </div>
-                          <div class="flex-1">
-                            <p class="font-medium text-gray-900">${r.numero_enregistrement || r.nom}</p>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                              ${r.patient_nom ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Patient: ${r.patient_nom}</span>` : ''}
-                              ${r.medecin_nom ? `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Médecin: ${r.medecin_nom}</span>` : ''}
-                              ${r.date_prelevement ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">${r.date_prelevement}</span>` : ''}
-                              ${r.statut ? `<span class="status-badge status-${r.statut}">${r.statut}</span>` : ''}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="flex gap-2 ml-4">
-                        ${r.id ? `
-                          <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'view')" 
-                            class="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
-                            title="Voir le détail">
-                            <i class="fas fa-eye"></i>
-                            <span class="text-xs">Voir</span>
-                          </button>
-                          <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'edit')" 
-                            class="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
-                            title="Éditer">
-                            <i class="fas fa-edit"></i>
-                            <span class="text-xs">Éditer</span>
-                          </button>
-                        ` : ''}
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `;
-        }
-      } catch (err) {
-        console.error(err);
-        showToast('Erreur lors de la recherche', 'error');
-      }
-    }
-
-    // Fonction pour gérer les résultats de recherche
-    function handleSearchResult(resultId, resultType, action) {
-      if (resultType === 'report') {
-        const report = allReports.find(r => r.id == resultId);
-        if (report) {
-          if (action === 'view') {
-            viewReport(report);
-          } else if (action === 'edit') {
-            editReport(report);
-          }
-          document.getElementById('searchSection').classList.add('hidden');
-        }
-      } else if (resultType === 'patient') {
-        const patient = allPatients.find(p => p.id == resultId);
-        if (patient) {
-          if (action === 'view') {
-            showToast(`Patient: ${patient.nom}`, 'success');
-          } else if (action === 'edit') {
-            if (document.getElementById('patientsContent').classList.contains('open')) {
-              toggleSection('patientsSection');
-            }
-            setTimeout(() => editPatient(patient), 300);
-          }
-        }
-      }
-    }
-
-    // Fonction pour effacer la recherche
-    function clearSearch() {
-      document.getElementById('searchTerm').value = '';
-      document.getElementById('searchResults').innerHTML = '';
-      showToast('Recherche effacée', 'success');
-    }
-
-    // ────────────────────────────────────────────
-    // INITIALISATION
-    // ────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
-      cleanupLocalStorage();
-      const userId = localStorage.getItem('userId');
-      const userEmail = localStorage.getItem('userEmail');
-      
-      // Initialiser le bouton "Remonter en haut"
-      initBackToTopButton();
-      
-      // Mettre à jour l'affichage de l'utilisateur sélectionné
-      updateSelectedUserDisplay();
-      
-      if (userId && userEmail) {
-        currentUser = { userId, email: userEmail };
-        document.getElementById('userDisplay').textContent = userEmail;
-        document.getElementById('userDisplay').classList.remove('hidden');
-        document.getElementById('loginButton').innerHTML = '<i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Déconnexion</span>';
-        loadDashboard();
-      } else {
-        document.getElementById('loginModal').classList.remove('hidden');
-      }
-      
-      // Gestion du bouton de connexion/déconnexion
-      document.getElementById('loginButton').addEventListener('click', () => {
-        if (localStorage.getItem('userId')) {
-          if (confirm('Déconnexion ?')) {
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('selectedUtilisateur');
-            location.reload();
-          }
-        } else {
-          toggleLogin();
-        }
-      });
-      
-      // Date par défaut pour les champs date
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('reportDateCR').value = today;
-      document.getElementById('reportDatePrelevement').value = today;
-      
-      // Vérifier périodiquement si un utilisateur est sélectionné
-      setInterval(updateSelectedUserDisplay, 1000);
-    });
-  </script>
-</body>
-</html>
+          <div id="patientForm" class="drawer-content mb-6">
+            <div class="p-4 bg-gray-50 rounded-lg border">
+              <h3 class="font-medium mb-3 text-lg">Nouveau Patient</h3>
+              <input type="hidden" id="patientId">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Nom & Prénom*</label>
+                  <input type="text" id="patientNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Âge</label>
+                  <input type="number" id="patientAge" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" max="150">
+                </div>
+                <div>
