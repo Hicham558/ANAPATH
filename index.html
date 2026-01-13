@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -13,6 +14,8 @@
     @keyframes toastSlideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @keyframes toastFadeOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes slideDown { from { max-height: 0; opacity: 0; } to { max-height: 2000px; opacity: 1; } }
+    @keyframes slideUp { from { max-height: 2000px; opacity: 1; } to { max-height: 0; opacity: 0; } }
     
     .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
     .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
@@ -24,6 +27,7 @@
       max-height: 500px; 
       overflow-y: auto; 
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .table-container thead { 
       position: sticky; 
@@ -38,8 +42,17 @@
     .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
     .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
     
-    .drawer-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
-    .drawer-content.open { max-height: 2000px; }
+    .drawer-content { 
+      max-height: 0; 
+      overflow: hidden; 
+      transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
+      opacity: 0;
+    }
+    .drawer-content.open { 
+      max-height: 2000px; 
+      opacity: 1;
+      animation: slideDown 0.4s ease-out;
+    }
     
     .toast { 
       position: fixed; bottom: 20px; right: 20px; padding: 16px 24px; border-radius: 8px; 
@@ -51,12 +64,30 @@
     .toast.show { display: flex; align-items: center; animation: toastSlideIn 0.3s ease-out; }
     .toast.hide { animation: toastFadeOut 0.3s ease-out; }
     
-    .section-content { transition: all 0.3s ease-in-out; }
+    .section-content { 
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease 0.1s;
+      opacity: 0;
+    }
+    .section-content.open { 
+      max-height: 5000px;
+      opacity: 1;
+      animation: slideDown 0.5s ease-out;
+    }
+    
     .chevron-icon { transition: transform 0.3s ease; }
     .chevron-icon.rotate { transform: rotate(180deg); }
     
-    .modal-overlay { background: rgba(0,0,0,0.75); }
-    .modal-content { max-height: 85vh; overflow-y: auto; }
+    .modal-overlay { 
+      background: rgba(0,0,0,0.75);
+      animation: fadeIn 0.3s ease-out;
+    }
+    .modal-content { 
+      max-height: 85vh; 
+      overflow-y: auto;
+      animation: slideIn 0.3s ease-out;
+    }
     
     .user-selected-badge { 
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -111,6 +142,72 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+    
+    /* Bouton flottant pour remonter en haut */
+    .back-to-top {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 999;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      transition: all 0.3s ease;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .back-to-top.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .back-to-top:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+    }
+    
+    /* Améliorations pour mobile */
+    @media (max-width: 768px) {
+      .table-container {
+        max-height: 400px;
+      }
+      .search-bar-container {
+        flex-direction: column;
+      }
+      .search-bar-container input,
+      .search-bar-container select {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .actions-buttons-container {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .add-button {
+        width: 100%;
+        justify-content: center;
+        order: 2;
+      }
+      .search-input {
+        order: 1;
+      }
+    }
+    
+    /* Animation pour les modales */
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    
+    .modal-fade-in {
+      animation: modalFadeIn 0.3s ease-out;
+    }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -154,9 +251,14 @@
     </div>
   </nav>
 
+  <!-- Bouton flottant pour remonter en haut -->
+  <div id="backToTop" class="back-to-top" title="Remonter en haut">
+    <i class="fas fa-chevron-up text-xl"></i>
+  </div>
+
   <!-- Modal Connexion -->
   <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 modal-fade-in">
       <h2 class="text-xl font-semibold mb-4">Connexion</h2>
       <div class="mb-4">
         <label class="block text-sm font-medium mb-1">Email</label>
@@ -267,7 +369,7 @@
         </h2>
       </div>
       <div class="p-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 search-bar-container">
           <div>
             <label class="block text-sm font-medium mb-1">Rechercher par</label>
             <select id="searchType" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
@@ -280,7 +382,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Terme de recherche</label>
-            <input type="text" id="searchTerm" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Entrez votre recherche...">
+            <input type="text" id="searchTerm" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input" placeholder="Entrez votre recherche...">
           </div>
           <div class="flex items-end">
             <button onclick="performSearch()" class="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition flex items-center justify-center">
@@ -301,11 +403,11 @@
         </h2>
         <i id="utilisateursChevron" class="fas fa-chevron-down text-gray-600 chevron-icon"></i>
       </div>
-      <div id="utilisateursContent" class="section-content hidden">
+      <div id="utilisateursContent" class="section-content">
         <div class="p-6">
-          <div class="mb-4 flex gap-2">
-            <input type="text" id="searchUtilisateur" placeholder="Rechercher un utilisateur..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            <button onclick="toggleUtilisateurForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
+          <div class="mb-4 flex gap-2 actions-buttons-container">
+            <input type="text" id="searchUtilisateur" placeholder="Rechercher un utilisateur..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input">
+            <button onclick="toggleUtilisateurForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1 add-button">
               <i class="fas fa-plus"></i> Ajouter
             </button>
           </div>
@@ -373,11 +475,11 @@
         </h2>
         <i id="patientsChevron" class="fas fa-chevron-down text-gray-600 chevron-icon"></i>
       </div>
-      <div id="patientsContent" class="section-content hidden">
+      <div id="patientsContent" class="section-content">
         <div class="p-6">
-          <div class="mb-4 flex gap-2">
-            <input type="text" id="searchPatient" placeholder="Rechercher un patient..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            <button onclick="togglePatientForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
+          <div class="mb-4 flex gap-2 actions-buttons-container">
+            <input type="text" id="searchPatient" placeholder="Rechercher un patient..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input">
+            <button onclick="togglePatientForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1 add-button">
               <i class="fas fa-plus"></i> Ajouter
             </button>
           </div>
@@ -453,11 +555,11 @@
         </h2>
         <i id="medecinsChevron" class="fas fa-chevron-down text-gray-600 chevron-icon"></i>
       </div>
-      <div id="medecinsContent" class="section-content hidden">
+      <div id="medecinsContent" class="section-content">
         <div class="p-6">
-          <div class="mb-4 flex gap-2">
-            <input type="text" id="searchMedecin" placeholder="Rechercher un médecin..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            <button onclick="toggleMedecinForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
+          <div class="mb-4 flex gap-2 actions-buttons-container">
+            <input type="text" id="searchMedecin" placeholder="Rechercher un médecin..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent search-input">
+            <button onclick="toggleMedecinForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1 add-button">
               <i class="fas fa-plus"></i> Ajouter
             </button>
           </div>
@@ -787,6 +889,26 @@
       }
     }
     
+    // Gestion du bouton "Remonter en haut"
+    function initBackToTopButton() {
+      const backToTopBtn = document.getElementById('backToTop');
+      
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+          backToTopBtn.classList.add('show');
+        } else {
+          backToTopBtn.classList.remove('show');
+        }
+      });
+      
+      backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      });
+    }
+    
     // Initialiser l'affichage de l'utilisateur sélectionné
     function updateSelectedUserDisplay() {
       const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
@@ -836,12 +958,26 @@
     function toggleSection(sectionId) {
       const content = document.getElementById(`${sectionId.replace('Section', 'Content')}`);
       const chevron = document.getElementById(`${sectionId.replace('Section', 'Chevron')}`);
-      const isHidden = content.classList.contains('hidden');
+      const isOpen = content.classList.contains('open');
       
-      content.classList.toggle('hidden');
-      chevron.classList.toggle('rotate');
+      // Fermer toutes les sections d'abord
+      document.querySelectorAll('.section-content.open').forEach(el => {
+        if (el !== content) {
+          el.classList.remove('open');
+          const otherChevron = el.closest('[id$="Section"]').querySelector('.chevron-icon');
+          if (otherChevron) otherChevron.classList.remove('rotate');
+        }
+      });
       
-      if (isHidden) {
+      // Basculer l'état de la section actuelle
+      if (isOpen) {
+        content.classList.remove('open');
+        chevron.classList.remove('rotate');
+      } else {
+        content.classList.add('open');
+        chevron.classList.add('rotate');
+        
+        // Charger les données si nécessaire
         if (sectionId === 'patientsSection') loadPatients();
         if (sectionId === 'medecinsSection') loadMedecins();
         if (sectionId === 'utilisateursSection') loadUtilisateurs();
@@ -849,23 +985,37 @@
     }
 
     function toggleLogin() {
-      document.getElementById('loginModal').classList.toggle('hidden');
+      const modal = document.getElementById('loginModal');
+      modal.classList.toggle('hidden');
     }
 
     function togglePatientForm() {
-      document.getElementById('patientForm').classList.toggle('open');
+      const form = document.getElementById('patientForm');
+      form.classList.toggle('open');
+      if (form.classList.contains('open')) {
+        form.style.maxHeight = form.scrollHeight + 'px';
+      }
     }
 
     function toggleMedecinForm() {
-      document.getElementById('medecinForm').classList.toggle('open');
+      const form = document.getElementById('medecinForm');
+      form.classList.toggle('open');
+      if (form.classList.contains('open')) {
+        form.style.maxHeight = form.scrollHeight + 'px';
+      }
     }
 
     function toggleUtilisateurForm() {
-      document.getElementById('utilisateurForm').classList.toggle('open');
+      const form = document.getElementById('utilisateurForm');
+      form.classList.toggle('open');
+      if (form.classList.contains('open')) {
+        form.style.maxHeight = form.scrollHeight + 'px';
+      }
     }
 
     function toggleSearchPanel() {
-      document.getElementById('searchSection').classList.toggle('hidden');
+      const panel = document.getElementById('searchSection');
+      panel.classList.toggle('hidden');
     }
 
     // Connexion
@@ -2069,7 +2219,7 @@
           if (action === 'view') {
             showToast(`Patient: ${patient.nom}`, 'success');
           } else if (action === 'edit') {
-            if (document.getElementById('patientsContent').classList.contains('hidden')) {
+            if (document.getElementById('patientsContent').classList.contains('open')) {
               toggleSection('patientsSection');
             }
             setTimeout(() => editPatient(patient), 300);
@@ -2092,6 +2242,9 @@
       cleanupLocalStorage();
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
+      
+      // Initialiser le bouton "Remonter en haut"
+      initBackToTopButton();
       
       // Mettre à jour l'affichage de l'utilisateur sélectionné
       updateSelectedUserDisplay();
