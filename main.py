@@ -43,7 +43,25 @@ def get_db():
     except Exception as e:
         print(f"? ERREUR CONNEXION DB: {str(e)}")
         raise
+# Fonction pour formater les dates
+def format_date(date_str):
+    if not date_str:
+        return "-"
+    try:
+        date_obj = datetime.strptime(str(date_str), '%Y-%m-%d')
+        return date_obj.strftime('%d/%m/%Y')
+    except:
+        return str(date_str)
 
+# Fonction pour formater le sexe
+def format_sexe(sexe_code):
+    if sexe_code == 'M':
+        return 'Masculin'
+    elif sexe_code == 'F':
+        return 'Féminin'
+    else:
+        return '-'
+        
 def init_db():
     """Initialisation des tables"""
     try:
@@ -708,215 +726,308 @@ def print_compte_rendu(id):
         if not report:
             return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
         
-        # === NOUVELLE FONCTIONNALITÉ : GÉNÉRATION AVANCÉE ===
-        
+        # === GÉNÉRATION DU PDF DANS LE STYLE ANAPATH ELYOUSR ===
         buffer = BytesIO()
         doc = SimpleDocTemplate(
             buffer, 
             pagesize=A4,
-            rightMargin=72,  # 1 inch = 72 points
-            leftMargin=72,
-            topMargin=72,
-            bottomMargin=72
+            rightMargin=40,    # Marges réduites pour plus d'espace
+            leftMargin=40,
+            topMargin=40,
+            bottomMargin=40
         )
         
-        # Styles professionnels
+        story = []
         styles = getSampleStyleSheet()
         
-        # Style personnalisé pour en-tête
-        header_style = ParagraphStyle(
-            'Header',
+        # === STYLES PERSONNALISÉS ===
+        # Style pour en-tête principal
+        entete_principal_style = ParagraphStyle(
+            'EntetePrincipal',
             parent=styles['Normal'],
             fontName='Helvetica-Bold',
-            fontSize=16,
-            textColor=colors.HexColor('#2c3e50'),
-            alignment=1,  # TA_CENTER
-            spaceAfter=12
+            fontSize=14,
+            textColor=colors.black,
+            alignment=1,  # Centré
+            spaceAfter=4
         )
         
         # Style pour sous-titre
-        subheader_style = ParagraphStyle(
-            'SubHeader',
+        sous_titre_style = ParagraphStyle(
+            'SousTitre',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=11,
+            textColor=colors.black,
+            alignment=1,
+            spaceAfter=16
+        )
+        
+        # Style pour informations patient/médecin
+        info_style = ParagraphStyle(
+            'InfoStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=10,
+            textColor=colors.black,
+            leading=12
+        )
+        
+        # Style pour étiquettes (labels)
+        label_style = ParagraphStyle(
+            'LabelStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=9,
+            textColor=colors.black,
+            leading=12
+        )
+        
+        # Style pour titre principal du CR
+        titre_cr_style = ParagraphStyle(
+            'TitreCR',
             parent=styles['Normal'],
             fontName='Helvetica-Bold',
             fontSize=12,
-            textColor=colors.HexColor('#2c3e50'),
+            textColor=colors.black,
             alignment=1,
-            spaceAfter=6
+            spaceBefore=20,
+            spaceAfter=20,
+            borderWidth=1,
+            borderColor=colors.black,
+            borderPadding=(10, 5, 10, 5)
         )
         
-        # Style pour les sections
+        # Style pour sections (MACROSCOPIE, MICROSCOPIE, CONCLUSION)
         section_style = ParagraphStyle(
-            'Section',
+            'SectionStyle',
             parent=styles['Normal'],
             fontName='Helvetica-Bold',
             fontSize=11,
             textColor=colors.black,
-            leftIndent=0,
-            spaceBefore=12,
-            spaceAfter=6,
-            borderWidth=1,
-            borderColor=colors.HexColor('#3498db'),
-            borderPadding=(3, 6, 3, 6),
-            borderRadius=2,
-            backgroundColor=colors.HexColor('#f8f9fa')
+            spaceBefore=15,
+            spaceAfter=8,
+            leftIndent=0
         )
         
-        # Style pour contenu
-        content_style = ParagraphStyle(
-            'Content',
+        # Style pour contenu des sections
+        contenu_style = ParagraphStyle(
+            'ContenuStyle',
             parent=styles['Normal'],
             fontName='Helvetica',
             fontSize=10,
             textColor=colors.black,
             leftIndent=20,
-            spaceAfter=6,
-            leading=14  # Interligne
+            leading=14,
+            spaceAfter=5
         )
         
         # Style pour signature
         signature_style = ParagraphStyle(
-            'Signature',
+            'SignatureStyle',
             parent=styles['Normal'],
-            fontName='Helvetica-Oblique',
+            fontName='Helvetica',
             fontSize=10,
-            textColor=colors.grey,
-            alignment=2,  # TA_RIGHT
+            textColor=colors.black,
+            alignment=2,  # Aligné à droite
             spaceBefore=40
         )
         
-        # Construction du document
-        story = []
+        # === CONSTRUCTION DU DOCUMENT ===
         
-        # === EN-TÊTE PROFESSIONNEL ===
-        story.append(Paragraph("ANAPATH ELYOUSR", header_style))
-        story.append(Paragraph("Laboratoire d'Anatomie & Cytologie Pathologiques", subheader_style))
-        story.append(Paragraph("Dr. BENFOULA Amel épouse ERROUANE", styles['Normal']))
+        # 1. EN-TÊTE ANAPATH ELYOUSR
+        story.append(Paragraph("<b>ANAPATH ELYOUSR</b>", entete_principal_style))
+        story.append(Paragraph("<b>LABORATOIRE D'ANATOMIE & DE CYTOLOGIE PATHOLOGIQUES</b>", sous_titre_style))
+        story.append(Paragraph("<b>Dr. BENFOULA Amel épouse ERROUANE</b>", sous_titre_style))
+        
         story.append(Spacer(1, 20))
         
-        # === TITRE PRINCIPAL ===
-        title_style = ParagraphStyle(
-            'Title',
-            parent=styles['Normal'],
-            fontName='Helvetica-Bold',
-            fontSize=14,
-            textColor=colors.HexColor('#2980b9'),
-            alignment=1,
-            spaceAfter=20,
-            borderWidth=1,
-            borderColor=colors.HexColor('#2980b9'),
-            borderPadding=5,
-            borderRadius=3
-        )
-        story.append(Paragraph("COMPTE RENDU CYTO-PATHOLOGIQUE", title_style))
-        
-        # === TABLEAU D'INFORMATIONS ===
-        info_data = [
-            ['N° Enregistrement', report['numero_enregistrement'], 
-             'Date Compte Rendu', report['date_compte_rendu']],
-            ['Patient', report['patient_nom'] or 'Non renseigné', 
-             'Âge/Sexe', f"{report['patient_age'] or '-'} ans / {report['patient_sexe'] or '-'}"],
-            ['Médecin', f"{report['medecin_nom'] or 'Non renseigné'}<br/>{report.get('medecin_specialite', '')}", 
-             'Service', report.get('service_hospitalier', '-')],
-            ['Date Prélèvement', report['date_prelevement'] or '-', 
-             'Utilisateur', report.get('utilisateur_nom', 'Non spécifié')],
+        # 2. TABLEAU DES INFORMATIONS (comme dans le document Word)
+        # Première ligne
+        info_data1 = [
+            [
+                Paragraph("<b>N d'enregistrement :</b>", label_style),
+                Paragraph(f"{report['numero_enregistrement']}", info_style),
+                Paragraph("<b>Médecin Demandeur :</b>", label_style),
+                Paragraph(f"{report['medecin_nom'] or 'Non renseigné'}", info_style),
+                Paragraph("<b>Date du Compte Rendu :</b>", label_style),
+                Paragraph(f"{report['date_compte_rendu']}", info_style)
+            ]
         ]
         
-        info_table = Table(info_data, colWidths=[4*cm, 7*cm, 3*cm, 6*cm])
-        info_table.setStyle(TableStyle([
-            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f8ff')),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('PADDING', (0,0), (-1,-1), 6),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        table1 = Table(info_data1, colWidths=[3*cm, 4*cm, 3*cm, 4*cm, 3*cm, 3*cm])
+        table1.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
         ]))
-        story.append(info_table)
-        story.append(Spacer(1, 20))
+        story.append(table1)
         
-        # === FONCTION POUR AJOUTER DES SECTIONS ===
-        def add_section(title, content, style=content_style):
-            # Titre de section
-            story.append(Paragraph(title, section_style))
+        # Deuxième ligne
+        info_data2 = [
+            [
+                Paragraph("<b>Service Hospitalier :</b>", label_style),
+                Paragraph(f"{report.get('service_hospitalier', '-')}", info_style),
+                Paragraph("<b>PATIENT :</b>", label_style),
+                Paragraph("<b>Nom & Prénom :</b>", label_style),
+                Paragraph(f"{report['patient_nom'] or 'Non renseigné'}", info_style),
+                Paragraph("<b>Age :</b>", label_style),
+                Paragraph(f"{report['patient_age'] or '-'}", info_style),
+                Paragraph("<b>Sexe :</b>", label_style),
+                Paragraph(f"{'M' if report['patient_sexe'] == 'M' else 'F' if report['patient_sexe'] == 'F' else '-'}", info_style)
+            ]
+        ]
+        
+        table2 = Table(info_data2, colWidths=[2.5*cm, 4*cm, 2*cm, 2*cm, 3.5*cm, 1.5*cm, 1.5*cm, 1.5*cm, 1.5*cm])
+        table2.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ]))
+        story.append(table2)
+        
+        # Troisième ligne
+        info_data3 = [
+            [
+                Paragraph("<b>Nature / Siège du Prélèvement :</b>", label_style),
+                Paragraph(f"{report['nature_prelevement'] or 'Non renseigné'}", info_style),
+                Paragraph("<b>Date Prélèvement :</b>", label_style),
+                Paragraph(f"{report['date_prelevement'] or '-'}", info_style),
+                Paragraph("<b>Réception :</b>", label_style),
+                Paragraph(f"{report.get('date_reception', '-')}", info_style)
+            ]
+        ]
+        
+        table3 = Table(info_data3, colWidths=[4*cm, 6*cm, 3*cm, 3*cm, 2*cm, 3*cm])
+        table3.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ]))
+        story.append(table3)
+        
+        story.append(Spacer(1, 15))
+        
+        # 3. RENSEIGNEMENTS CLINIQUES
+        if report.get('renseignements_cliniques'):
+            story.append(Paragraph("<b>Renseignements Cliniques Fournis :</b>", label_style))
+            story.append(Spacer(1, 5))
             
-            # Contenu avec gestion des sauts de ligne
-            if content and str(content).strip():
-                # Conserver les sauts de ligne existants
-                content_lines = str(content).split('\n')
-                for line in content_lines:
+            # Gestion du texte avec sauts de ligne
+            renseignements = str(report['renseignements_cliniques']).strip()
+            if renseignements:
+                for line in renseignements.split('\n'):
                     if line.strip():
-                        story.append(Paragraph(line.strip(), style))
-                    else:
-                        story.append(Spacer(1, 6))  # Espace pour ligne vide
+                        story.append(Paragraph(line.strip(), contenu_style))
             else:
-                story.append(Paragraph("<i>Non renseigné</i>", 
-                    ParagraphStyle('Italic', parent=styles['Normal'], fontName='Helvetica-Oblique')))
+                story.append(Paragraph("-", contenu_style))
             
-            story.append(Spacer(1, 12))
+            story.append(Spacer(1, 15))
         
-        # === SECTIONS DU COMPTE RENDU ===
-        add_section("NATURE DU PRÉLÈVEMENT", report.get('nature_prelevement'))
-        add_section("RENSEIGNEMENTS CLINIQUES", report.get('renseignements_cliniques'))
-        add_section("MACROSCOPIE", report.get('macroscopie'))
-        add_section("MICROSCOPIE", report.get('microscopie'))
+        # 4. TITRE PRINCIPAL
+        story.append(Paragraph("COMPTE RENDU CYTO-PATHOLOGIQUE", titre_cr_style))
         
-        # Conclusion avec style spécial
-        conclusion_style = ParagraphStyle(
-            'Conclusion',
-            parent=content_style,
-            fontName='Helvetica-Bold',
-            textColor=colors.HexColor('#c0392b'),
-            leftIndent=0,
-            borderWidth=1,
-            borderColor=colors.HexColor('#e74c3c'),
-            borderPadding=10,
-            backgroundColor=colors.HexColor('#fff5f5')
-        )
-        add_section("CONCLUSION", report.get('conclusion'), conclusion_style)
+        # 5. MACROSCOPIE
+        if report.get('macroscopie'):
+            story.append(Paragraph("MACROSCOPIE :", section_style))
+            story.append(Spacer(1, 5))
+            
+            macroscopie_text = str(report['macroscopie']).strip()
+            if macroscopie_text:
+                # Formater avec tirets comme dans le document Word
+                lines = macroscopie_text.split('\n')
+                for line in lines:
+                    if line.strip():
+                        if line.strip().startswith('-'):
+                            story.append(Paragraph(line.strip(), contenu_style))
+                        else:
+                            story.append(Paragraph(f"- {line.strip()}", contenu_style))
+            else:
+                story.append(Paragraph("-", contenu_style))
+            
+            story.append(Spacer(1, 10))
         
-        # === SIGNATURE ===
-        today = datetime.now().strftime('%d/%m/%Y')
-        signature_text = f'''
-        Fait à El Oued, le {today}<br/>
-        _________________________<br/>
-        <b>Dr. BENFOULA Amel épouse ERROUANE</b><br/>
-        Anatomopathologiste
+        # 6. MICROSCOPIE
+        if report.get('microscopie'):
+            story.append(Paragraph("MICROSCOPIE :", section_style))
+            story.append(Spacer(1, 5))
+            
+            microscopie_text = str(report['microscopie']).strip()
+            if microscopie_text:
+                # Conserver la mise en forme originale
+                lines = microscopie_text.split('\n')
+                for line in lines:
+                    if line.strip():
+                        story.append(Paragraph(line.strip(), contenu_style))
+            else:
+                story.append(Paragraph("-", contenu_style))
+            
+            story.append(Spacer(1, 10))
+        
+        # 7. CONCLUSION
+        if report.get('conclusion'):
+            story.append(Paragraph("CONCLUSION :", section_style))
+            story.append(Spacer(1, 5))
+            
+            conclusion_text = str(report['conclusion']).strip()
+            if conclusion_text:
+                lines = conclusion_text.split('\n')
+                for line in lines:
+                    if line.strip():
+                        # Style spécial pour les lignes importantes
+                        if line.strip().upper().startswith(('ASPECT', 'DIAGNOSTIC', 'RECOMMANDATION', 'CATÉGORIE', 'CLASSIFICATION')):
+                            bold_style = ParagraphStyle(
+                                'ConclusionBold',
+                                parent=contenu_style,
+                                fontName='Helvetica-Bold'
+                            )
+                            story.append(Paragraph(line.strip(), bold_style))
+                        else:
+                            story.append(Paragraph(line.strip(), contenu_style))
+            else:
+                story.append(Paragraph("-", contenu_style))
+        
+        # 8. SIGNATURE
+        story.append(Spacer(1, 30))
+        
+        signature_text = '''
+        <b>Confraternellement</b><br/>
+        Dr. BENFOULA Amel
         '''
         story.append(Paragraph(signature_text, signature_style))
         
-        # === PIED DE PAGE ===
+        # 9. INFORMATIONS DE BAS DE PAGE
         story.append(Spacer(1, 30))
+        
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
             fontName='Helvetica',
             fontSize=8,
             textColor=colors.grey,
-            alignment=1  # Centré
+            alignment=1
         )
         
-        footer_text = '''
-        <b>Document généré électroniquement - Valable sans signature manuscrite</b><br/>
-        Conservation obligatoire : 30 ans - N° RPPS : XXXXXXXXX<br/>
-        Tél: XX XX XX XX XX - Email: contact@anapath-elyousr.dz
+        footer_text = f'''
+        Document généré le {datetime.now().strftime('%d/%m/%Y %H:%M')} | 
+        Compte rendu N° {report['numero_enregistrement']} |
+        Page <page/>
         '''
         story.append(Paragraph(footer_text, footer_style))
         
-        # === GÉNÉRATION DU PDF ===
-        doc.build(story)
+        # === CONSTRUCTION FINALE ===
+        doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
         buffer.seek(0)
         
-        # Journalisation
-        print(f"[PRINT SUCCESS] PDF généré pour CR {id} - {report['numero_enregistrement']}")
+        # Nom du fichier PDF
+        nom_fichier = f"CR_{report['numero_enregistrement']}_{report['patient_nom'].replace(' ', '_') if report['patient_nom'] else id}.pdf"
         
         return send_file(
             buffer,
             as_attachment=True,
-            download_name=f"CR_{report['numero_enregistrement']}_{today.replace('/', '-')}.pdf",
+            download_name=nom_fichier,
             mimetype='application/pdf'
         )
         
     except Exception as e:
-        print(f"[PRINT ERROR] CR {id}: {str(e)}")
+        print(f"[ERREUR PDF] CR {id}: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'erreur': f'Erreur génération PDF: {str(e)}'}), 500
@@ -927,6 +1038,16 @@ def print_compte_rendu(id):
         if conn:
             conn.close()
 
+def add_page_number(canvas, doc):
+    """Ajoute le numéro de page au PDF"""
+    page_num = canvas.getPageNumber()
+    canvas.setFont('Helvetica', 8)
+    canvas.setFillColor(colors.grey)
+    canvas.drawRightString(
+        doc.pagesize[0] - 40,  # Position X
+        30,                     # Position Y
+        f"Page {page_num}"
+    )
 # ================================================
 # DÉMARRAGE
 # ================================================
