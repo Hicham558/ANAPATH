@@ -1048,6 +1048,93 @@ def add_page_number(canvas, doc):
         30,                     # Position Y
         f"Page {page_num}"
     )
+
+
+@app.route('/api/templates', methods=['GET'])
+def get_templates():
+    """Récupère les templates de l'utilisateur"""
+    user_id = request.headers.get('X-User-ID')
+    
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Récupérer tous les templates de l'utilisateur + templates système
+    cur.execute("""
+        SELECT id, code, titre, organe, tags
+        FROM templates 
+        WHERE user_id = %s OR user_id = 'system'
+        ORDER BY titre
+    """, (user_id,))
+    
+    templates = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return jsonify(templates)
+
+@app.route('/api/templates/<string:code>', methods=['GET'])
+def get_template_content(code):
+    """Récupère le contenu complet d'un template"""
+    user_id = request.headers.get('X-User-ID')
+    
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("""
+        SELECT renseignements_cliniques, macroscopie, microscopie, conclusion
+        FROM templates 
+        WHERE code = %s AND (user_id = %s OR user_id = 'system')
+    """, (code, user_id))
+    
+    template = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if not template:
+        return jsonify({'erreur': 'Template non trouvé'}), 404
+    
+    return jsonify(template)
+
+@app.route('/api/templates', methods=['POST'])
+def create_template():
+    """Crée un nouveau template"""
+    user_id = request.headers.get('X-User-ID')
+    data = request.json
+    
+    required_fields = ['code', 'titre', 'renseignements_cliniques', 'macroscopie', 'microscopie', 'conclusion']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'erreur': f'Champ {field} manquant'}), 400
+    
+    conn = get_db()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute("""
+            INSERT INTO templates 
+            (code, user_id, titre, organe, tags, renseignements_cliniques, macroscopie, microscopie, conclusion)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data['code'],
+            user_id,
+            data['titre'],
+            data.get('organe'),
+            data.get('tags', []),
+            data['renseignements_cliniques'],
+            data['macroscopie'],
+            data['microscopie'],
+            data['conclusion']
+        ))
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Template créé'})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()    
 # ================================================
 # DÉMARRAGE
 # ================================================
