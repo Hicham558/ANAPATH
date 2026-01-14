@@ -129,38 +129,73 @@
     .toast.hide { animation: toastFadeOut 0.4s ease-out forwards; }
 
     /* ──────────────────────────────── Amélioration TABLEAUX MOBILE ──────────────────────────────── */
-    .table-responsive-wrapper {
-      width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;           /* défilement fluide iOS */
-      scrollbar-width: thin;
-      scrollbar-color: #a0aec0 #f7fafc;
-    }
+/* Version mobile-friendly renforcée */
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;           /* défilement fluide iOS */
+  scrollbar-width: thin;                        /* Firefox */
+  scrollbar-color: #a0aec0 #f7fafc;            /* Firefox */
+  -ms-overflow-style: -ms-autohiding-scrollbar; /* Edge/IE */
+  touch-action: pan-x;                          /* autorise le scroll horizontal au doigt */
+}
 
-    .table-responsive-wrapper::-webkit-scrollbar {
-      height: 10px;
-    }
-    .table-responsive-wrapper::-webkit-scrollbar-track {
-      background: #f7fafc;
-      border-radius: 10px;
-    }
-    .table-responsive-wrapper::-webkit-scrollbar-thumb {
-      background: #a0aec0;
-      border-radius: 10px;
-    }
+/* Barre de défilement visible et stylée sur WebKit (Chrome/Safari) */
+.table-responsive-wrapper::-webkit-scrollbar {
+  height: 12px;                                 /* plus visible que 10px */
+  background: transparent;
+}
 
-    /* On force un minimum très large sur mobile pour obliger le scroll horizontal */
-    @media (max-width: 767px) {
-      .force-wide-on-mobile table {
-        min-width: 1100px !important;   /* ← Ajustez selon vos colonnes */
-      }
-      .force-wide-on-mobile th, .force-wide-on-mobile td {
-        white-space: nowrap;
-        padding-left: 1.25rem !important;
-        padding-right: 1.25rem !important;
-      }
-    }
+.table-responsive-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;                          /* gris clair visible */
+  border-radius: 10px;
+  margin: 0 4px;
+}
 
+.table-responsive-wrapper::-webkit-scrollbar-thumb {
+  background: #94a3b8;                          /* plus foncé et visible */
+  border-radius: 10px;
+  border: 3px solid #f1f5f9;                    /* effet "flottant" */
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Force le scroll horizontal sur petits écrans */
+@media (max-width: 767px) {
+  .force-wide-on-mobile table {
+    min-width: 1200px !important;               /* ← augmente si besoin (selon tes colonnes) */
+  }
+  
+  .force-wide-on-mobile th,
+  .force-wide-on-mobile td {
+    white-space: nowrap !important;
+    min-width: 140px;                           /* largeur minimale par colonne */
+    padding: 0.75rem 1rem !important;
+  }
+  
+  /* Indicateur visuel que ça scroll horizontalement */
+  .table-responsive-wrapper {
+    position: relative;
+  }
+  
+  .table-responsive-wrapper::after {
+    content: "→→ Glissez vers la droite →→";
+    position: absolute;
+    bottom: 8px;
+    right: 16px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 10;
+    animation: pulse 2s infinite;
+    opacity: 0.9;
+  }
+}
     /* Animation ouverture panneaux + recentrage léger */
     .section-content {
       max-height: 0;
