@@ -6,6 +6,8 @@
   <title>Gestion ANAPATH</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
     @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -818,6 +820,295 @@
     </div>
   </div>
   <script>
+     * FONCTION PRINCIPALE - Génère le PDF d'un compte rendu
+     * À appeler depuis printReport()
+     */
+    async function generateAnaPDF(reportId) {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/comptes-rendus/${reportId}/data`, {
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des données');
+        }
+        
+        const data = await response.json();
+        const pdf = createAnaPDFReport(data);
+        
+        const filename = `CR_${data.numero_enregistrement}_${data.patient.nom.replace(/\s+/g, '_')}.pdf`;
+        pdf.save(filename);
+        
+        return true;
+      } catch (error) {
+        console.error('Erreur génération PDF:', error);
+        throw error;
+      }
+    }
+
+    /**
+     * Crée le PDF au style ANAPATH ELYOUSR
+     */
+    function createAnaPDFReport(data) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      const margin = 15;
+      let yPos = margin;
+
+      // EN-TÊTE
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ANAPATH ELYOUSR', pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 6;
+      doc.setFontSize(11);
+      doc.text("LABORATOIRE D'ANATOMIE & DE CYTOLOGIE PATHOLOGIQUES", pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 5;
+      doc.text('Dr. BENFOULA Amel épouse ERROUANE', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 10;
+
+      // TABLEAU INFORMATIONS - Ligne 1
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      
+      const info1 = [
+        ['N° enregistrement:', data.numero_enregistrement, 'Médecin Demandeur:', data.medecin.nom, 'Date CR:', formatDate(data.date_compte_rendu)]
+      ];
+      
+      doc.autoTable({
+        startY: yPos,
+        body: info1,
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 1 },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 30 },
+          1: { cellWidth: 35 },
+          2: { fontStyle: 'bold', cellWidth: 30 },
+          3: { cellWidth: 35 },
+          4: { fontStyle: 'bold', cellWidth: 25 },
+          5: { cellWidth: 25 }
+        }
+      });
+
+      yPos = doc.lastAutoTable.finalY + 3;
+
+      // Ligne 2
+      const sexe = data.patient.sexe === 'M' ? 'M' : data.patient.sexe === 'F' ? 'F' : '-';
+      const info2 = [
+        ['Service:', data.service_hospitalier || '-', 'PATIENT:', 'Nom & Prénom:', data.patient.nom, 'Âge:', data.patient.age || '-', 'Sexe:', sexe]
+      ];
+      
+      doc.autoTable({
+        startY: yPos,
+        body: info2,
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 1 },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 22 },
+          1: { cellWidth: 33 },
+          2: { fontStyle: 'bold', cellWidth: 20 },
+          3: { fontStyle: 'bold', cellWidth: 25 },
+          4: { cellWidth: 40 },
+          5: { fontStyle: 'bold', cellWidth: 12 },
+          6: { cellWidth: 15 },
+          7: { fontStyle: 'bold', cellWidth: 12 },
+          8: { cellWidth: 11 }
+        }
+      });
+
+      yPos = doc.lastAutoTable.finalY + 3;
+
+      // Ligne 3
+      const info3 = [
+        ['Nature/Siège Prélèvement:', data.nature_prelevement, 'Date Prélèvement:', formatDate(data.date_prelevement), 'Réception:', formatDate(data.date_reception)]
+      ];
+      
+      doc.autoTable({
+        startY: yPos,
+        body: info3,
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 1 },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 45 },
+          1: { cellWidth: 50 },
+          2: { fontStyle: 'bold', cellWidth: 30 },
+          3: { cellWidth: 25 },
+          4: { fontStyle: 'bold', cellWidth: 20 },
+          5: { cellWidth: 20 }
+        }
+      });
+
+      yPos = doc.lastAutoTable.finalY + 8;
+
+      // RENSEIGNEMENTS CLINIQUES
+      if (data.renseignements_cliniques) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('Renseignements Cliniques Fournis :', margin, yPos);
+        yPos += 5;
+        
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(data.renseignements_cliniques, pageWidth - 2 * margin - 5);
+        doc.text(lines, margin + 5, yPos);
+        yPos += lines.length * 4 + 5;
+      }
+
+      // TITRE PRINCIPAL
+      yPos += 3;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.5);
+      doc.rect(margin, yPos - 5, pageWidth - 2 * margin, 10);
+      doc.text('COMPTE RENDU CYTO-PATHOLOGIQUE', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
+
+      // MACROSCOPIE
+      if (data.macroscopie) {
+        yPos = checkPageBreak(doc, yPos, 30);
+        
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('MACROSCOPIE :', margin, yPos);
+        yPos += 6;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const macroLines = formatTextWithBullets(doc, data.macroscopie, pageWidth - 2 * margin - 5);
+        macroLines.forEach(line => {
+          yPos = checkPageBreak(doc, yPos, 10);
+          doc.text(line, margin + 5, yPos);
+          yPos += 5;
+        });
+        yPos += 5;
+      }
+
+      // MICROSCOPIE
+      if (data.microscopie) {
+        yPos = checkPageBreak(doc, yPos, 30);
+        
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('MICROSCOPIE :', margin, yPos);
+        yPos += 6;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const microLines = doc.splitTextToSize(data.microscopie, pageWidth - 2 * margin - 5);
+        microLines.forEach(line => {
+          yPos = checkPageBreak(doc, yPos, 10);
+          doc.text(line, margin + 5, yPos);
+          yPos += 5;
+        });
+        yPos += 5;
+      }
+
+      // CONCLUSION
+      if (data.conclusion) {
+        yPos = checkPageBreak(doc, yPos, 30);
+        
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CONCLUSION :', margin, yPos);
+        yPos += 6;
+        
+        const conclusionLines = data.conclusion.split('\n');
+        conclusionLines.forEach(line => {
+          if (!line.trim()) return;
+          
+          yPos = checkPageBreak(doc, yPos, 10);
+          
+          const isBold = /^(ASPECT|DIAGNOSTIC|RECOMMANDATION|CATÉGORIE|CLASSIFICATION)/i.test(line.trim());
+          doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+          doc.setFontSize(10);
+          
+          const wrapped = doc.splitTextToSize(line.trim(), pageWidth - 2 * margin - 5);
+          wrapped.forEach(wLine => {
+            doc.text(wLine, margin + 5, yPos);
+            yPos += 5;
+          });
+        });
+        yPos += 10;
+      }
+
+      // SIGNATURE
+      yPos = checkPageBreak(doc, yPos, 30);
+      yPos += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Confraternellement', pageWidth - margin - 50, yPos);
+      yPos += 5;
+      doc.text('Dr. BENFOULA Amel', pageWidth - margin - 50, yPos);
+
+      // FOOTER
+      addFooter(doc, data);
+
+      return doc;
+    }
+
+    // FONCTIONS UTILITAIRES
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('fr-FR');
+      } catch {
+        return dateStr;
+      }
+    }
+
+    function formatTextWithBullets(doc, text, maxWidth) {
+      const lines = text.split('\n');
+      const result = [];
+      
+      lines.forEach(line => {
+        if (!line.trim()) return;
+        const hasBullet = line.trim().startsWith('-');
+        const cleanLine = hasBullet ? line.trim() : '- ' + line.trim();
+        const wrapped = doc.splitTextToSize(cleanLine, maxWidth);
+        result.push(...wrapped);
+      });
+      
+      return result;
+    }
+
+    function checkPageBreak(doc, currentY, requiredSpace) {
+      const pageHeight = doc.internal.pageSize.height;
+      if (currentY + requiredSpace > pageHeight - 30) {
+        doc.addPage();
+        return 15;
+      }
+      return currentY;
+    }
+
+    function addFooter(doc, data) {
+      const pageCount = doc.internal.getNumberOfPages();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(128);
+        
+        const footerText = `Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} | CR N° ${data.numero_enregistrement}`;
+        doc.text(footerText, pageWidth / 2, pageHeight - 10, { align: 'center' });
+        doc.text(`Page ${i} / ${pageCount}`, pageWidth - 15, pageHeight - 10, { align: 'right' });
+        
+        doc.setTextColor(0);
+      }
+    }
+
     // Configuration API
     const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
     let currentUser = null;
@@ -1658,40 +1949,14 @@
       document.getElementById('reportModal').classList.add('hidden');
       resetReportForm();
     }
-    async function printReport(id) {
+     async function printReport(id) {
       try {
-        const userId = localStorage.getItem('userId');
-        const res = await fetch(`${API_BASE_URL}/comptes-rendus/${id}/print?user_id=${encodeURIComponent(userId)}`);
-       
-        if (res.ok) {
-          const blob = await res.blob();
-          const url = window.URL.createObjectURL(blob);
-          const printWindow = window.open(url, '_blank');
-          if (printWindow) {
-            printWindow.onload = () => {
-              setTimeout(() => {
-                printWindow.focus();
-                printWindow.print();
-              }, 800); 
-            };
-          } else {
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            document.body.appendChild(iframe);
-            iframe.onload = () => {
-              setTimeout(() => {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-              }, 1000);
-            };
-          }
-          setTimeout(() => URL.revokeObjectURL(url), 60000);
-        } else {
-          throw new Error('Erreur lors de la génération du PDF');
-        }
+        showToast('Génération du PDF en cours...', 'success');
+        await generateAnaPDF(id);
+        showToast('PDF généré avec succès', 'success');
       } catch (err) {
-        showToast(err.message, 'error');
+        console.error('Erreur génération PDF:', err);
+        showToast('Erreur lors de la génération du PDF', 'error');
       }
     }
     async function deleteReport(id) {
