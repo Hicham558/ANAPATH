@@ -129,43 +129,78 @@
     .toast.hide { animation: toastFadeOut 0.4s ease-out forwards; }
 
     /* ──────────────────────────────── Amélioration TABLEAUX MOBILE ──────────────────────────────── */
-/* Version mobile-friendly renforcée */
+/* Conteneur principal pour tableaux responsifs – version mobile 2026 */
 .table-responsive-wrapper {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;           /* défilement fluide iOS */
-  scrollbar-width: thin;                        /* Firefox */
-  scrollbar-color: #a0aec0 #f7fafc;            /* Firefox */
-  -ms-overflow-style: -ms-autohiding-scrollbar; /* Edge/IE */
-  touch-action: pan-x;                          /* autorise le scroll horizontal au doigt */
+  overflow-y: hidden;                           /* ← IMPORTANT : bloque le scroll vertical ici */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y pinch-zoom;         /* ← AUTORISE explicitement le scroll horizontal */
+  -ms-touch-action: pan-x pan-y pinch-zoom;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
 }
 
-/* Barre de défilement visible et stylée sur WebKit (Chrome/Safari) */
+/* Barre visible et plus épaisse sur Chrome/Safari */
 .table-responsive-wrapper::-webkit-scrollbar {
-  height: 12px;                                 /* plus visible que 10px */
-  background: transparent;
+  height: 14px;                                 /* Plus visible */
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-track {
-  background: #f1f5f9;                          /* gris clair visible */
-  border-radius: 10px;
-  margin: 0 4px;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  margin: 0 6px;
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-thumb {
-  background: #94a3b8;                          /* plus foncé et visible */
-  border-radius: 10px;
-  border: 3px solid #f1f5f9;                    /* effet "flottant" */
+  background: #64748b;
+  border-radius: 9999px;
+  border: 4px solid #f1f5f9;                    /* Effet "flottant" */
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #475569;
 }
 
+/* Force largeur + indicateur visuel fort sur mobile */
+@media (max-width: 767px) {
+  .force-wide-on-mobile table {
+    min-width: 1300px !important;               /* ← Augmente si tes tableaux sont très larges */
+  }
+  
+  .force-wide-on-mobile th,
+  .force-wide-on-mobile td {
+    white-space: nowrap !important;
+    min-width: 160px;                           /* ← Largeur mini par colonne */
+    padding: 0.75rem 1.25rem !important;
+  }
+
+  /* Indicateur visuel très visible pour dire "scrolle à droite" */
+  .table-responsive-wrapper {
+    position: relative;
+  }
+  
+  .table-responsive-wrapper::after {
+    content: "→→ Glissez vers la droite pour voir plus →→";
+    position: absolute;
+    bottom: 12px;
+    right: 20px;
+    background: rgba(30, 58, 138, 0.85);        /* bleu foncé visible */
+    color: white;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 20;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    animation: pulse 2.5s infinite;
+  }
+}
 /* Force le scroll horizontal sur petits écrans */
 @media (max-width: 767px) {
   .force-wide-on-mobile table {
-    min-width: 1200px !important;               /* ← augmente si besoin (selon tes colonnes) */
+    min-width: 1600px !important;               /* ← augmente si besoin (selon tes colonnes) */
   }
   
   .force-wide-on-mobile th,
