@@ -78,6 +78,23 @@
     }
     .status-system { background-color: #dbeafe; color: #1e40af; }
     .status-user { background-color: #d1fae5; color: #065f46; }
+/* CORRECTION URGENTE POUR LE DÉFILEMENT HORIZONTAL */
+@media (max-width: 767px) {
+  .table-container {
+    overflow-x: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table-container table {
+    min-width: 1200px !important; /* Augmentez à 1400px ou 1600px si besoin */
+  }
+  
+  .table-container th,
+  .table-container td {
+    white-space: nowrap !important;
+    padding: 12px 8px !important;
+  }
+}
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
