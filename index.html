@@ -69,26 +69,56 @@
     /* ──────────────────────────────── TABLEAUX RESPONSIFS – VERSION QUI MARCHE VRAIMENT ──────────────────────────────── */
    /* Remplacer tout le bloc @media (max-width: 767px) existant par : */
 @media (max-width: 767px) {
-  .table-responsive-wrapper {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+/* ──────────────────────────────── TABLEAUX RESPONSIFS ──────────────────────────────── */
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #f1f5f9;
+}
+
+.table-responsive-wrapper::-webkit-scrollbar {
+  height: 12px;
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 6px;
+  border: 3px solid #f1f5f9;
+}
+
+.table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Règles spécifiques pour mobile */
+@media (max-width: 767px) {
+  .force-wide-on-mobile {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
     position: relative;
   }
   
-  .table-responsive-wrapper table {
-    width: 100%;
-    min-width: 1200px; /* À ajuster selon le nombre de colonnes */
+  .force-wide-on-mobile table {
+    min-width: 1200px !important; /* AUGMENTER SI NÉCESSAIRE : 1400px, 1600px */
+    width: auto !important;
   }
   
-  .table-responsive-wrapper th,
-  .table-responsive-wrapper td {
-    padding: 12px 8px !important;
-    font-size: 0.8rem;
+  .force-wide-on-mobile th,
+  .force-wide-on-mobile td {
+    white-space: nowrap !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.85rem !important;
+    min-width: 140px; /* Largeur minimale pour chaque cellule */
   }
   
-  /* Indicateur de défilement */
+  /* Indicateur visuel qu'on peut scroller (optionnel) */
   .table-responsive-wrapper:after {
     content: "↔";
     position: absolute;
@@ -104,6 +134,26 @@
     justify-content: center;
     font-size: 12px;
     z-index: 10;
+    opacity: 0.7;
+  }
+}
+/* Ajoutez ces règles APRÈS le bloc @media (max-width: 767px) */
+
+@media (max-width: 767px) {
+  .force-wide-on-mobile {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .force-wide-on-mobile table {
+    min-width: 1200px !important; /* Ajustez cette valeur selon vos besoins */
+  }
+  
+  .force-wide-on-mobile th,
+  .force-wide-on-mobile td {
+    white-space: nowrap !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.85rem !important;
   }
 }
     /* Animation ouverture panneaux + recentrage léger */
