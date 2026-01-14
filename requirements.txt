@@ -1,9 +1,5 @@
-# ============================================
-# FICHIER: requirements.txt
-# ============================================
-Flask==3.0.0
-Flask-CORS==4.0.0
-psycopg2-binary>=2.9.11     # ← ou ==2.9.11 pour être précis
-reportlab==4.0.7
-python-dotenv==1.0.0
-gunicorn==21.2.0
+flask==3.0.3
+flask-cors==5.0.0
+psycopg2-binary==2.9.9
+gunicorn==23.0.0
+gevent==24.10.3   # très important pour éviter blocages
