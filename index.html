@@ -13,20 +13,18 @@
     @keyframes toastSlideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @keyframes toastFadeOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-   
+
     .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
     .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
     .animate-pulse { animation: pulse 2s infinite ease-in-out; }
     .animate-blink { animation: blink 1.5s infinite; }
-   
-  
-   
+
     .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
     .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
-   
+
     .drawer-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
     .drawer-content.open { max-height: 2000px; }
-   
+
     .toast {
       position: fixed; bottom: 20px; right: 20px; padding: 16px 24px; border-radius: 8px;
       color: white; display: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
@@ -36,129 +34,78 @@
     .toast.warning { background: #f59e0b; }
     .toast.show { display: flex; align-items: center; animation: toastSlideIn 0.3s ease-out; }
     .toast.hide { animation: toastFadeOut 0.3s ease-out; }
-   
+
     .section-content { transition: all 0.3s ease-in-out; }
     .chevron-icon { transition: transform 0.3s ease; }
     .chevron-icon.rotate { transform: rotate(180deg); }
-   
+
     .modal-overlay { background: rgba(0,0,0,0.75); }
-    .modal-content { max-height: 85vh; overflow-y: auto; }
-   
+    .modal-content { max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
     .user-selected-badge {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
+      padding: 4px 12px; border-radius: 20px; font-size: 0.75rem;
     }
-   
+
     .status-badge {
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
     }
     .status-en_cours { background-color: #fef3c7; color: #92400e; }
     .status-terminé { background-color: #d1fae5; color: #065f46; }
     .status-validé { background-color: #dbeafe; color: #1e40af; }
-   
+
     /* Styles pour les templates */
-    .organe-badge {
-      background: #e0e7ff;
-      color: #4f46e5;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      display: inline-block;
-    }
-   
-    .tag-badge {
-      background: #dbeafe;
-      color: #1e40af;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-size: 0.65rem;
-      display: inline-block;
-    }
-   
-    .template-card {
-      transition: all 0.3s ease;
-      border-left: 4px solid #4f46e5;
-    }
-    .template-card:hover {
-      transform: translateX(5px);
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
-    }
-   
+    .organe-badge { background: #e0e7ff; color: #4f46e5; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; display: inline-block; }
+    .tag-badge { background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 10px; font-size: 0.65rem; display: inline-block; }
+
+    .template-card { transition: all 0.3s ease; border-left: 4px solid #4f46e5; }
+    .template-card:hover { transform: translateX(5px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1); }
+
     .line-clamp-2 {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    @keyframes slideInFromTop    { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0);   opacity: 1; } }
-    @keyframes fadeInUp          { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pulse             { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-    @keyframes toastSlideIn      { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes toastFadeOut      { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
 
-    .animate-slide-in-top  { animation: slideInFromTop  0.6s cubic-bezier(0.22, 1, 0.36, 1); }
-    .animate-fade-in-up    { animation: fadeInUp        0.7s cubic-bezier(0.4, 0, 0.2, 1); }
-
-    .toast {
-      position: fixed; bottom: 24px; right: 24px; padding: 14px 22px; border-radius: 10px;
-      color: white; z-index: 1000; box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-      display: none; min-width: 280px;
+    /* ──────────────────────────────── TABLEAUX RESPONSIFS – VERSION QUI MARCHE VRAIMENT ──────────────────────────────── */
+    .table-responsive-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #64748b #f1f5f9;
     }
-    .toast.show { display: flex; align-items: center; animation: toastSlideIn 0.4s ease-out; }
-    .toast.hide { animation: toastFadeOut 0.4s ease-out forwards; }
 
-    /* ──────────────────────────────── Amélioration TABLEAUX MOBILE ──────────────────────────────── */
-/* ──────────────────────────────── TABLEAUX RESPONSIFS – VERSION QUI MARCHE VRAIMENT ──────────────────────────────── */
-.table-responsive-wrapper {
-  width: 100%;
-  overflow-x: auto;                             /* Seulement horizontal */
-  -webkit-overflow-scrolling: touch;            /* Smooth scroll iOS */
-  -ms-overflow-style: -ms-autohiding-scrollbar;
-  scrollbar-width: thin;
-  scrollbar-color: #64748b #f1f5f9;
-}
+    .table-responsive-wrapper::-webkit-scrollbar {
+      height: 12px;
+    }
 
-/* Barre visible et tactile */
-.table-responsive-wrapper::-webkit-scrollbar {
-  height: 12px;
-}
+    .table-responsive-wrapper::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 6px;
+    }
 
-.table-responsive-wrapper::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 6px;
-}
+    .table-responsive-wrapper::-webkit-scrollbar-thumb {
+      background: #64748b;
+      border-radius: 6px;
+      border: 3px solid #f1f5f9;
+    }
 
-.table-responsive-wrapper::-webkit-scrollbar-thumb {
-  background: #64748b;
-  border-radius: 6px;
-  border: 3px solid #f1f5f9;
-}
+    .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
 
-.table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
+    @media (max-width: 767px) {
+      .force-wide-on-mobile table {
+        min-width: 1200px !important; /* Ajuste si besoin : 1400px ou 1600px */
+      }
 
-/* Sur mobile : force largeur + cellules lisibles */
-@media (max-width: 767px) {
-  .force-wide-on-mobile table {
-    min-width: 1200px !important;               /* Ajuste selon tes colonnes (1200–1600px souvent parfait) */
-  }
-
-  .force-wide-on-mobile th,
-  .force-wide-on-mobile td {
-    white-space: nowrap !important;
-    padding: 0.75rem 1rem !important;
-    min-width: 140px;                           /* Garde les cellules lisibles */
-  }
-}
-    /* Animation ouverture panneaux + recentrage léger */
+      .force-wide-on-mobile th,
+      .force-wide-on-mobile td {
+        white-space: nowrap !important;
+        padding: 0.75rem 1rem !important;
+        min-width: 140px; /* Garde les cellules lisibles */
+      }
+    }    /* Animation ouverture panneaux + recentrage léger */
     .section-content {
       max-height: 0;
       overflow: hidden;
