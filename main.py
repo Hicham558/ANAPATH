@@ -801,6 +801,79 @@ def compte_rendu_detail(id):
         if conn:
             conn.close()
 
+@app.route('/comptes-rendus/<int:id>/data', methods=['GET'])
+def get_compte_rendu_data(id):
+    """
+    Endpoint optimisé qui retourne uniquement les données du compte rendu
+    La génération du PDF se fait côté client
+    """
+    user_id = request.headers.get('X-User-ID') or request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT cr.*,
+                   p.nom as patient_nom, p.age as patient_age, p.sexe as patient_sexe,
+                   m.nom as medecin_nom, m.specialite as medecin_specialite,
+                   u.nom as utilisateur_nom
+            FROM comptes_rendus cr
+            LEFT JOIN patients p ON cr.patient_id = p.id
+            LEFT JOIN medecins m ON cr.medecin_id = m.id
+            LEFT JOIN utilisateurs u ON cr.utilisateur_id = u.numero AND cr.user_id = u.user_id
+            WHERE cr.user_id = %s AND cr.id = %s
+        ''', (user_id, id))
+        
+        report = cur.fetchone()
+        
+        if not report:
+            return jsonify({'erreur': 'Compte rendu non trouvé'}), 404
+        
+        # Retourner les données au format JSON
+        return jsonify({
+            'id': report['id'],
+            'numero_enregistrement': report['numero_enregistrement'],
+            'date_compte_rendu': report['date_compte_rendu'],
+            'date_prelevement': report['date_prelevement'],
+            'date_reception': report.get('date_reception', ''),
+            'service_hospitalier': report.get('service_hospitalier', ''),
+            'nature_prelevement': report['nature_prelevement'],
+            'renseignements_cliniques': report.get('renseignements_cliniques', ''),
+            'macroscopie': report.get('macroscopie', ''),
+            'microscopie': report.get('microscopie', ''),
+            'conclusion': report.get('conclusion', ''),
+            'statut': report['statut'],
+            'patient': {
+                'nom': report['patient_nom'] or 'Non renseigné',
+                'age': report['patient_age'] or '',
+                'sexe': report['patient_sexe'] or ''
+            },
+            'medecin': {
+                'nom': report['medecin_nom'] or 'Non renseigné',
+                'specialite': report.get('medecin_specialite', '')
+            },
+            'utilisateur': {
+                'nom': report['utilisateur_nom'] or 'Non renseigné'
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERREUR] Récupération CR {id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'erreur': f'Erreur lors de la récupération: {str(e)}'}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 
 # ============================================
