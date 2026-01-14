@@ -129,72 +129,78 @@
     .toast.hide { animation: toastFadeOut 0.4s ease-out forwards; }
 
     /* ──────────────────────────────── Amélioration TABLEAUX MOBILE ──────────────────────────────── */
-/* Conteneur principal pour tableaux responsifs – version mobile 2026 */
+/* Conteneur tableaux responsive – version corrigée scroll tactile mobile 2026 */
 .table-responsive-wrapper {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;                           /* ← IMPORTANT : bloque le scroll vertical ici */
+  overflow-y: hidden;                           /* ← bloque le scroll vertical ici → évite conflit */
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y pinch-zoom;         /* ← AUTORISE explicitement le scroll horizontal */
-  -ms-touch-action: pan-x pan-y pinch-zoom;
+  touch-action: pan-x;                          /* ← FORCE le scroll horizontal au doigt */
+  -webkit-tap-highlight-color: transparent;     /* évite surbrillance gênante */
   scrollbar-width: thin;
-  scrollbar-color: #94a3b8 #f1f5f9;
+  scrollbar-color: #64748b #f1f5f9;
+  padding-bottom: 16px;                         /* espace pour la barre */
 }
 
-/* Barre visible et plus épaisse sur Chrome/Safari */
+/* Barre très visible sur Chrome/Safari/Android */
 .table-responsive-wrapper::-webkit-scrollbar {
-  height: 14px;                                 /* Plus visible */
+  height: 16px;                                 /* bien visible */
+  background: transparent;
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #e2e8f0;
   border-radius: 9999px;
-  margin: 0 6px;
+  margin: 0 8px;
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-thumb {
-  background: #64748b;
+  background: #475569;
   border-radius: 9999px;
-  border: 4px solid #f1f5f9;                    /* Effet "flottant" */
+  border: 5px solid #e2e8f0;                    /* effet "flottant" */
 }
 
 .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #334155;
 }
 
-/* Force largeur + indicateur visuel fort sur mobile */
+/* Sur petits écrans : force largeur + indicateur fort */
 @media (max-width: 767px) {
   .force-wide-on-mobile table {
-    min-width: 1300px !important;               /* ← Augmente si tes tableaux sont très larges */
+    min-width: 1400px !important;               /* ← monte à 1600px si besoin */
   }
   
   .force-wide-on-mobile th,
   .force-wide-on-mobile td {
     white-space: nowrap !important;
-    min-width: 160px;                           /* ← Largeur mini par colonne */
-    padding: 0.75rem 1.25rem !important;
+    min-width: 180px;                           /* ← colonne plus large = plus facile à voir */
+    padding: 1rem 1.25rem !important;
   }
 
-  /* Indicateur visuel très visible pour dire "scrolle à droite" */
+  /* Indicateur animé très visible */
   .table-responsive-wrapper {
     position: relative;
+    margin-bottom: 2.5rem;                      /* espace pour l’indicateur */
   }
   
   .table-responsive-wrapper::after {
-    content: "→→ Glissez vers la droite pour voir plus →→";
+    content: "←→ Glissez horizontalement →→";
     position: absolute;
-    bottom: 12px;
-    right: 20px;
-    background: rgba(30, 58, 138, 0.85);        /* bleu foncé visible */
+    bottom: -2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e40af;
     color: white;
-    padding: 8px 16px;
+    padding: 10px 20px;
     border-radius: 9999px;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 600;
+    white-space: nowrap;
     pointer-events: none;
     z-index: 20;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    animation: pulse 2.5s infinite;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    animation: pulse 2s infinite;
   }
 }
 /* Force le scroll horizontal sur petits écrans */
