@@ -910,73 +910,212 @@
             }).join('');
         }
 
-        async function loadDettes() {
-            try {
-                // Récupérer les patients avec solde négatif
-                const response = await fetch(`${API_BASE_URL}/patients`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
+       async function loadDettes() {
+    try {
+        // Récupérer les dettes actives depuis la nouvelle route
+        const response = await fetch(`${API_BASE_URL}/paiements/dettes-actives`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
 
-                if (response.ok) {
-                    const patients = await response.json();
-                    allDettes = patients.filter(p => parseFloat(p.solde || 0) < 0);
-                    renderDettesList();
-                }
-            } catch (error) {
-                console.error('Erreur chargement dettes:', error);
-            }
-        }
-
-        function renderDettesList() {
-            const tbody = document.getElementById('listeDettes');
+        if (response.ok) {
+            const dettes = await response.json();
+            allDettes = dettes;
+            renderDettesList();
             
-            if (allDettes.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                            <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
-                            <p class="mt-2">Aucune dette active</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = allDettes.map(patient => {
-                const dette = Math.abs(parseFloat(patient.solde || 0));
-                
-                return `
-                    <tr class="hover:bg-red-50">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-user text-red-600"></i>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">${patient.nom}</div>
-                                    <div class="text-sm text-gray-500">${patient.prenom || ''}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-500">-</div>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-medium">
-                            <button onclick="payerDette(${patient.id})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                                <i class="fas fa-money-bill-wave mr-2"></i>Régler
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+            // Charger les statistiques
+            loadStatistiquesDettes();
         }
+    } catch (error) {
+        console.error('Erreur chargement dettes:', error);
+        showToast('Erreur lors du chargement des dettes', 'error');
+    }
+}
 
+async function loadStatistiquesDettes() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/paiements/statistiques-dettes`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const stats = await response.json();
+            
+            // Mettre à jour les KPI
+            if (stats.statistiques) {
+                const stat = stats.statistiques;
+                document.getElementById('dettesEnAttente').textContent = stat.nombre_patients_dette || 0;
+                document.getElementById('montantTotalDu').textContent = `${(stat.montant_total_dettes || 0).toFixed(2)} DA`;
+                document.getElementById('patientsConcernes').textContent = stat.nombre_patients_dette || 0;
+                
+                // Mettre à jour les KPI principaux
+                document.getElementById('totalDettes').textContent = stat.nombre_patients_dette || 0;
+                document.getElementById('montantDettes').textContent = `${(stat.montant_total_dettes || 0).toFixed(2)} DA`;
+                document.getElementById('patientsDetteurs').textContent = stat.nombre_patients_dette || 0;
+            }
+        }
+    } catch (error) {
+        console.error('Erreur chargement statistiques:', error);
+    }
+}
+
+       function renderDettesList() {
+    const tbody = document.getElementById('listeDettes');
+    
+    if (allDettes.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
+                    <p class="mt-2">Aucune dette active</p>
+                    <p class="text-sm mt-1">Tous les patients sont à jour dans leurs paiements</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = allDettes.map(patient => {
+        const dette = patient.montant_dette || Math.abs(parseFloat(patient.solde || 0));
+        const nomComplet = `${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}`;
+        const dernierPaiement = patient.dernier_paiement ? 
+            new Date(patient.dernier_paiement).toLocaleDateString('fr-FR') : 'Aucun';
+        
+        return `
+            <tr class="hover:bg-red-50 transition-colors">
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-red-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${nomComplet}</div>
+                            ${patient.age ? `<div class="text-xs text-gray-500">${patient.age} ans</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-money-bill-wave text-red-500 mr-2"></i>
+                        <div>
+                            <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
+                            ${patient.nombre_paiements ? 
+                                `<div class="text-xs text-gray-500">${patient.nombre_paiements} paiement(s)</div>` : 
+                                ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-500">${dernierPaiement}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex space-x-2">
+                        <button onclick="payerDette(${patient.id})" 
+                                class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md hover:shadow-lg">
+                            <i class="fas fa-money-bill-wave mr-2"></i>Régler
+                        </button>
+                        <button onclick="voirHistoriquePatient(${patient.id})" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                            <i class="fas fa-history mr-2"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+async function voirHistoriquePatient(patientId) {
+    try {
+        // Charger l'historique des paiements du patient
+        const response = await fetch(`${API_BASE_URL}/paiements?patient_id=${patientId}`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const paiements = await response.json();
+            const patient = allPatients.find(p => p.id == patientId);
+            
+            if (patient && paiements.length > 0) {
+                const modalContent = `
+                    <div class="space-y-6">
+                        <div class="p-4 bg-indigo-50 rounded-lg">
+                            <h4 class="text-lg font-semibold text-indigo-800 mb-2">
+                                <i class="fas fa-user-clock mr-2"></i>Historique des paiements
+                            </h4>
+                            <p class="text-indigo-700">${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}</p>
+                            <p class="text-sm text-gray-600">Solde actuel: <span class="font-bold ${patient.solde < 0 ? 'text-red-600' : 'text-green-600'}">${parseFloat(patient.solde || 0).toFixed(2)} DA</span></p>
+                        </div>
+                        
+                        <div class="overflow-y-auto max-h-80">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reçu</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${paiements.map(p => `
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                                ${new Date(p.date_paiement).toLocaleDateString('fr-FR')}
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <span class="text-sm text-gray-900">${p.type_paiement}</span>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                ${p.mode_paiement === 'espece' ? 
+                                                    '<span class="badge-espece px-2 py-1 rounded-full text-xs">Comptant</span>' : 
+                                                    p.mode_paiement === 'a_terme' ? 
+                                                    '<span class="badge-a_terme px-2 py-1 rounded-full text-xs">À terme</span>' : 
+                                                    '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>'}
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-sm font-medium ${p.mode_paiement === 'paiement_partiel' ? 'text-blue-600' : 'text-gray-900'}">
+                                                    ${parseFloat(p.montant).toFixed(2)} DA
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                ${p.numero_cr || '-'}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-gray-200">
+                            <div class="flex justify-between">
+                                <div class="text-sm text-gray-600">
+                                    Total des paiements: <span class="font-bold text-green-600">
+                                        ${paiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0).toFixed(2)} DA
+                                    </span>
+                                </div>
+                                <button onclick="closeModalDetail()" 
+                                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('modalDetailContent').innerHTML = modalContent;
+                document.getElementById('modalDetail').classList.remove('hidden');
+            } else {
+                showToast('Aucun historique de paiement pour ce patient', 'warning');
+            }
+        }
+    } catch (error) {
+        console.error('Erreur chargement historique:', error);
+        showToast('Erreur lors du chargement de l\'historique', 'error');
+    }
+}
         async function viewPaymentDetail(paymentId) {
             try {
                 const response = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
