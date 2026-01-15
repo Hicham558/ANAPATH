@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANAPATH - Gestion des Paiements</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
+    .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+    
+    .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    
+    .modal-overlay { background: rgba(0,0,0,0.75); }
+    .modal-content { max-height: 85vh; overflow-y: auto; }
+    
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; padding: 16px 24px; border-radius: 8px;
+      color: white; display: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+    .toast.warning { background: #f59e0b; }
+    .toast.show { display: flex; align-items: center; animation: slideIn 0.3s ease-out; }
+    
+    .payment-type-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .payment-espece { background: #dcfce7; color: #166534; }
+    .payment-cheque { background: #dbeafe; color: #1e40af; }
+    .payment-carte { background: #fce7f3; color: #9f1239; }
+    .payment-virement { background: #fef3c7; color: #92400e; }
+    
+    @media (max-width: 767px) {
+      .table-responsive-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .table-responsive-wrapper table {
+        min-width: 1000px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Navigation -->
+  <nav class="bg-indigo-600 text-white p-4 fixed w-full top-0 z-50 shadow-md animate-slide-in">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <h1 class="text-2xl font-bold flex items-center">
+          <i class="fas fa-cash-register mr-2 text-green-300"></i> ANAPATH - Paiements
+        </h1>
+      </div>
+      <div class="flex gap-2 items-center">
+        <a href="index.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs">
+          <i class="fas fa-arrow-left mr-1"></i> Retour
+        </a>
+        <span id="currentUserDisplay" class="bg-indigo-700 px-3 py-2 rounded-md text-xs"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenu Principal -->
+  <div class="container mx-auto px-4 py-16 mt-16">
+    
+    <!-- KPI Section -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 animate-fade-in">
+      <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Caisse du Jour</p>
+            <p id="caisseJour" class="text-3xl font-bold">0 DA</p>
+          </div>
+          <i class="fas fa-cash-register text-4xl opacity-50"></i>
+        </div>
+      </div>
+      
+      <div class="kpi-card bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Total Encaissé</p>
+            <p id="totalEncaisse" class="text-3xl font-bold">0 DA</p>
+          </div>
+          <i class="fas fa-coins text-4xl opacity-50"></i>
+        </div>
+      </div>
+      
+      <div class="kpi-card bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Soldes Restants</p>
+            <p id="soldesRestants" class="text-3xl font-bold">0 DA</p>
+          </div>
+          <i class="fas fa-wallet text-4xl opacity-50"></i>
+        </div>
+      </div>
+      
+      <div class="kpi-card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm opacity-90">Paiements Jour</p>
+            <p id="paymentsJour" class="text-3xl font-bold">0</p>
+          </div>
+          <i class="fas fa-receipt text-4xl opacity-50"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions Rapides -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i class="fas fa-bolt mr-2 text-indigo-500"></i> Actions Rapides
+      </h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <button onclick="openNewPayment()" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
+          <i class="fas fa-plus-circle text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Nouveau Paiement</span>
+        </button>
+        
+        <button onclick="openCaisseReport()" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition flex flex-col items-center group">
+          <i class="fas fa-chart-line text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Rapport Caisse</span>
+        </button>
+        
+        <button onclick="openSoldesManager()" class="bg-orange-600 text-white p-4 rounded-lg hover:bg-orange-700 transition flex flex-col items-center group">
+          <i class="fas fa-balance-scale text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Gérer Soldes</span>
+        </button>
+        
+        <button onclick="exportCaisse()" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition flex flex-col items-center group">
+          <i class="fas fa-file-export text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Exporter</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtre par date -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Date Début</label>
+          <input type="date" id="filterDateDebut" class="w-full px-3 py-2 border rounded-md">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Date Fin</label>
+          <input type="date" id="filterDateFin" class="w-full px-3 py-2 border rounded-md">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Type Paiement</label>
+          <select id="filterTypePaiement" class="w-full px-3 py-2 border rounded-md">
+            <option value="">Tous</option>
+            <option value="espece">Espèce</option>
+            <option value="cheque">Chèque</option>
+            <option value="carte">Carte</option>
+            <option value="virement">Virement</option>
+          </select>
+        </div>
+        <div class="flex items-end gap-2">
+          <button onclick="applyFilters()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+            <i class="fas fa-filter mr-2"></i> Filtrer
+          </button>
+          <button onclick="resetFilters()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Liste des paiements -->
+    <div class="bg-white rounded-lg shadow-md animate-fade-in">
+      <div class="p-6 border-b flex justify-between items-center">
+        <h2 class="text-xl font-semibold flex items-center">
+          <i class="fas fa-list mr-2 text-indigo-500"></i> Liste des Paiements
+        </h2>
+        <button onclick="loadPayments()" class="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded hover:bg-indigo-200 transition">
+          <i class="fas fa-sync-alt"></i> Actualiser
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="table-responsive-wrapper border rounded-lg overflow-hidden">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° CR</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Utilisateur</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsList" class="bg-white divide-y divide-gray-200">
+              <tr><td colspan="7" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nouveau Paiement -->
+  <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 modal-content">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <h2 class="text-2xl font-semibold text-indigo-700">Nouveau Paiement</h2>
+        <button onclick="closePaymentModal()" class="text-gray-600 hover:text-gray-800">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <form id="paymentForm" onsubmit="event.preventDefault(); savePayment();" class="space-y-4">
+        <input type="hidden" id="paymentId">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Patient*</label>
+            <select id="paymentPatient" class="w-full px-3 py-2 border rounded-md" required onchange="updatePatientSolde()">
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">Solde Actuel</label>
+            <input type="text" id="displaySolde" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Montant*</label>
+            <input type="number" id="paymentMontant" class="w-full px-3 py-2 border rounded-md" min="0" step="0.01" required>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">Type de Paiement*</label>
+            <select id="paymentType" class="w-full px-3 py-2 border rounded-md" required>
+              <option value="espece">Espèce</option>
+              <option value="cheque">Chèque</option>
+              <option value="carte">Carte Bancaire</option>
+              <option value="virement">Virement</option>
+            </select>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium mb-1">N° Compte Rendu (optionnel)</label>
+          <input type="text" id="paymentNumCR" class="w-full px-3 py-2 border rounded-md">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium mb-1">Notes</label>
+          <textarea id="paymentNotes" rows="3" class="w-full px-3 py-2 border rounded-md"></textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-3 pt-4 border-t">
+          <button type="button" onclick="closePaymentModal()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
+            Annuler
+          </button>
+          <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition">
+            <i class="fas fa-save mr-2"></i> Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">
+    <i id="toastIcon" class="mr-2"></i>
+    <span id="toastMessage"></span>
+  </div>
+
+  <script>
+    const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
+    let allPayments = [];
+    let allPatients = [];
+    
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toastIcon');
+      const msg = document.getElementById('toastMessage');
+      
+      toast.className = `toast ${type}`;
+      icon.className = `fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2`;
+      msg.textContent = message;
+      
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+    
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('fr-DZ', {
+        style: 'currency',
+        currency: 'DZD',
+        minimumFractionDigits: 2
+      }).format(amount).replace('DZD', 'DA');
+    }
+    
+    async function loadPatients() {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/patients`, {
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) throw new Error('Erreur chargement patients');
+        
+        allPatients = await response.json();
+        const select = document.getElementById('paymentPatient');
+        select.innerHTML = '<option value="">Sélectionner...</option>' +
+          allPatients.map(p => `<option value="${p.id}" data-solde="${p.solde || 0}">${p.nom}</option>`).join('');
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur lors du chargement des patients', 'error');
+      }
+    }
+    
+    function updatePatientSolde() {
+      const select = document.getElementById('paymentPatient');
+      const soldeInput = document.getElementById('displaySolde');
+      
+      if (select.value) {
+        const solde = select.options[select.selectedIndex].dataset.solde || 0;
+        soldeInput.value = formatCurrency(parseFloat(solde));
+      } else {
+        soldeInput.value = '';
+      }
+    }
+    
+    async function loadPayments() {
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/paiements`, {
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) throw new Error('Erreur chargement paiements');
+        
+        allPayments = await response.json();
+        renderPayments(allPayments);
+        updateKPIs();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur lors du chargement des paiements', 'error');
+      }
+    }
+    
+    function renderPayments(payments) {
+      const tbody = document.getElementById('paymentsList');
+      
+      if (payments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">Aucun paiement trouvé</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = payments.map(p => `
+        <tr class="hover:bg-gray-50">
+          <td class="px-6 py-4 text-sm">${new Date(p.date_paiement).toLocaleDateString('fr-FR')}</td>
+          <td class="px-6 py-4 text-sm font-medium">${p.patient_nom}</td>
+          <td class="px-6 py-4 text-sm">${p.numero_cr || '-'}</td>
+          <td class="px-6 py-4 text-sm font-bold text-green-600">${formatCurrency(p.montant)}</td>
+          <td class="px-6 py-4 text-sm">
+            <span class="payment-type-badge payment-${p.type_paiement}">${p.type_paiement}</span>
+          </td>
+          <td class="px-6 py-4 text-sm">${p.utilisateur_nom || '-'}</td>
+          <td class="px-6 py-4 text-sm">
+            <button onclick="viewPayment(${p.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button onclick="deletePayment(${p.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    function updateKPIs() {
+      const today = new Date().toDateString();
+      const todayPayments = allPayments.filter(p => 
+        new Date(p.date_paiement).toDateString() === today
+      );
+      
+      const caisseJour = todayPayments.reduce((sum, p) => sum + parseFloat(p.montant), 0);
+      const totalEncaisse = allPayments.reduce((sum, p) => sum + parseFloat(p.montant), 0);
+      const soldesRestants = allPatients.reduce((sum, p) => sum + parseFloat(p.solde || 0), 0);
+      
+      document.getElementById('caisseJour').textContent = formatCurrency(caisseJour);
+      document.getElementById('totalEncaisse').textContent = formatCurrency(totalEncaisse);
+      document.getElementById('soldesRestants').textContent = formatCurrency(soldesRestants);
+      document.getElementById('paymentsJour').textContent = todayPayments.length;
+    }
+    
+    function openNewPayment() {
+      document.getElementById('paymentForm').reset();
+      document.getElementById('paymentId').value = '';
+      document.getElementById('paymentModal').classList.remove('hidden');
+    }
+    
+    function closePaymentModal() {
+      document.getElementById('paymentModal').classList.add('hidden');
+    }
+    
+    async function savePayment() {
+      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+      const utilisateurId = selectedUtilisateur.numero;
+      
+      if (!utilisateurId) {
+        showToast('Veuillez sélectionner un utilisateur', 'error');
+        return;
+      }
+      
+      const data = {
+        patient_id: parseInt(document.getElementById('paymentPatient').value),
+        montant: parseFloat(document.getElementById('paymentMontant').value),
+        type_paiement: document.getElementById('paymentType').value,
+        numero_cr: document.getElementById('paymentNumCR').value || null,
+        notes: document.getElementById('paymentNotes').value || null,
+        utilisateur_id: utilisateurId
+      };
+      
+      if (!data.patient_id || !data.montant) {
+        showToast('Veuillez remplir tous les champs obligatoires', 'error');
+        return;
+      }
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/paiements`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) throw new Error('Erreur lors de l\'enregistrement');
+        
+        showToast('Paiement enregistré avec succès');
+        closePaymentModal();
+        loadPayments();
+        loadPatients();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur lors de l\'enregistrement du paiement', 'error');
+      }
+    }
+    
+    async function deletePayment(id) {
+      if (!confirm('Supprimer ce paiement ?')) return;
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/paiements/${id}`, {
+          method: 'DELETE',
+          headers: { 'X-User-ID': userId }
+        });
+        
+        if (!response.ok) throw new Error('Erreur lors de la suppression');
+        
+        showToast('Paiement supprimé');
+        loadPayments();
+        loadPatients();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur lors de la suppression', 'error');
+      }
+    }
+    
+    function applyFilters() {
+      let filtered = [...allPayments];
+      
+      const dateDebut = document.getElementById('filterDateDebut').value;
+      const dateFin = document.getElementById('filterDateFin').value;
+      const type = document.getElementById('filterTypePaiement').value;
+      
+      if (dateDebut) {
+        filtered = filtered.filter(p => new Date(p.date_paiement) >= new Date(dateDebut));
+      }
+      
+      if (dateFin) {
+        filtered = filtered.filter(p => new Date(p.date_paiement) <= new Date(dateFin));
+      }
+      
+      if (type) {
+        filtered = filtered.filter(p => p.type_paiement === type);
+      }
+      
+      renderPayments(filtered);
+    }
+    
+    function resetFilters() {
+      document.getElementById('filterDateDebut').value = '';
+      document.getElementById('filterDateFin').value = '';
+      document.getElementById('filterTypePaiement').value = '';
+      renderPayments(allPayments);
+    }
+    
+    function openCaisseReport() {
+      showToast('Fonctionnalité en développement', 'warning');
+    }
+    
+    function openSoldesManager() {
+      showToast('Fonctionnalité en développement', 'warning');
+    }
+    
+    function exportCaisse() {
+      showToast('Fonctionnalité en développement', 'warning');
+    }
+    
+    function viewPayment(id) {
+      const payment = allPayments.find(p => p.id === id);
+      if (payment) {
+        alert(`Détails du paiement:\n\nPatient: ${payment.patient_nom}\nMontant: ${formatCurrency(payment.montant)}\nType: ${payment.type_paiement}\nDate: ${new Date(payment.date_paiement).toLocaleDateString('fr-FR')}`);
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      const userId = localStorage.getItem('userId');
+      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+      
+      if (!userId) {
+        window.location.href = 'index.html';
+        return;
+      }
+      
+      document.getElementById('currentUserDisplay').textContent = selectedUtilisateur.nom || 'Utilisateur';
+      
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('filterDateDebut').value = today;
+      document.getElementById('filterDateFin').value = today;
+      
+      loadPatients();
+      loadPayments();
+    });
+  </script>
+</body>
+</html>
