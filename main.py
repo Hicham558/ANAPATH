@@ -1030,7 +1030,7 @@ def delete_template(id):
     finally:
         cur.close()
         conn.close()
-# ENDPOINTS CORRIGÉS POUR LA GESTION DES PAIEMENTS ET SOLDES
+# ENDPOINTS CORRIGÉS - GESTION PAIEMENTS ESPÈCE ET À TERME
 
 @app.route('/paiements', methods=['GET', 'POST'])
 def paiements():
@@ -1061,31 +1061,22 @@ def paiements():
         
         elif request.method == 'POST':
             data = request.json
-            required = ['patient_id', 'montant', 'type_paiement']
+            required = ['patient_id', 'montant', 'type_paiement', 'mode_paiement']
             
             if not data or any(k not in data for k in required):
                 return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
             
             montant_paye = float(data['montant'])
-            
-            # Récupérer le solde actuel du patient
-            cur.execute('''
-                SELECT solde FROM patients 
-                WHERE id = %s AND user_id = %s
-            ''', (data['patient_id'], user_id))
-            
-            patient = cur.fetchone()
-            if not patient:
-                return jsonify({'erreur': 'Patient non trouvé'}), 404
-            
-            solde_actuel = float(patient['solde'] or 0)
+            mode_paiement = data['mode_paiement']  # 'espece' ou 'a_terme'
+            montant_total = float(data.get('montant_total', 0))  # Seulement pour à terme
             
             # Insérer le paiement
             cur.execute('''
                 INSERT INTO paiements (
                     user_id, patient_id, utilisateur_id, montant, 
-                    type_paiement, numero_cr, notes
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    type_paiement, mode_paiement, montant_total,
+                    numero_cr, notes
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             ''', (
                 user_id,
@@ -1093,30 +1084,37 @@ def paiements():
                 data.get('utilisateur_id'),
                 montant_paye,
                 data['type_paiement'],
+                mode_paiement,
+                montant_total if mode_paiement == 'a_terme' else None,
                 data.get('numero_cr'),
                 data.get('notes')
             ))
             
             new_payment = cur.fetchone()
             
-            # CORRECTION : Mettre à jour le solde
-            # Si le solde est négatif (dette), on ajoute le montant payé
-            # Exemple : solde = -1500 DA (dette), paiement = 500 DA
-            # Nouveau solde = -1500 + 500 = -1000 DA (reste à payer)
-            nouveau_solde = solde_actuel + montant_paye
-            
-            cur.execute('''
-                UPDATE patients 
-                SET solde = %s
-                WHERE id = %s AND user_id = %s
-            ''', (nouveau_solde, data['patient_id'], user_id))
+            # Gérer le solde selon le mode
+            if mode_paiement == 'a_terme':
+                # Mode à terme : créer/mettre à jour la dette
+                reste_a_payer = montant_total - montant_paye
+                nouveau_solde = -abs(reste_a_payer)  # Solde négatif = dette
+                
+                cur.execute('''
+                    UPDATE patients 
+                    SET solde = %s
+                    WHERE id = %s AND user_id = %s
+                ''', (nouveau_solde, data['patient_id'], user_id))
+                
+                message = f'Paiement à terme enregistré. Reste à payer: {reste_a_payer} DA'
+            else:
+                # Mode espèce : pas de modification du solde
+                message = 'Paiement comptant enregistré'
+                nouveau_solde = 0
             
             conn.commit()
             
-            # Retourner les informations avec le nouveau solde
             result = dict(new_payment)
             result['nouveau_solde'] = nouveau_solde
-            result['message'] = f'Paiement enregistré. Nouveau solde: {nouveau_solde} DA'
+            result['message'] = message
             
             return jsonify(result), 201
     
@@ -1165,7 +1163,7 @@ def paiement_detail(id):
         elif request.method == 'DELETE':
             # Récupérer le paiement avant suppression
             cur.execute('''
-                SELECT montant, patient_id 
+                SELECT montant, patient_id, mode_paiement, montant_total
                 FROM paiements 
                 WHERE user_id = %s AND id = %s
             ''', (user_id, id))
@@ -1174,23 +1172,19 @@ def paiement_detail(id):
             if not payment:
                 return jsonify({'erreur': 'Paiement non trouvé'}), 404
             
-            montant_a_annuler = float(payment['montant'])
-            
-            # CORRECTION : Annuler le paiement = soustraire le montant du solde
-            # Si on avait payé 500 DA, on remet la dette
-            # Exemple : solde = -1000 DA, on annule 500 DA
-            # Nouveau solde = -1000 - 500 = -1500 DA
-            cur.execute('''
-                UPDATE patients 
-                SET solde = COALESCE(solde, 0) - %s
-                WHERE id = %s AND user_id = %s
-            ''', (montant_a_annuler, payment['patient_id'], user_id))
+            # Si c'était un paiement à terme, rétablir le solde
+            if payment['mode_paiement'] == 'a_terme':
+                cur.execute('''
+                    UPDATE patients 
+                    SET solde = 0
+                    WHERE id = %s AND user_id = %s
+                ''', (payment['patient_id'], user_id))
             
             # Supprimer le paiement
             cur.execute('DELETE FROM paiements WHERE user_id = %s AND id = %s', (user_id, id))
             
             conn.commit()
-            return jsonify({'message': 'Paiement supprimé et solde rétabli'})
+            return jsonify({'message': 'Paiement supprimé'})
     
     except Exception as e:
         if conn:
@@ -1205,16 +1199,21 @@ def paiement_detail(id):
             conn.close()
 
 
-# Endpoint pour initialiser/modifier le solde d'un patient
-@app.route('/patients/<int:id>/solde', methods=['PUT'])
-def update_patient_solde(id):
+# Endpoint pour gérer un paiement partiel sur une dette existante
+@app.route('/paiements/paiement-partiel', methods=['POST'])
+def paiement_partiel():
+    """
+    Pour un patient ayant déjà une dette, enregistrer un nouveau paiement partiel
+    """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
     data = request.json
-    if not data or 'solde' not in data:
-        return jsonify({'erreur': 'Solde manquant'}), 400
+    required = ['patient_id', 'montant', 'type_paiement']
+    
+    if not data or any(k not in data for k in required):
+        return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
     
     conn = None
     cur = None
@@ -1222,28 +1221,66 @@ def update_patient_solde(id):
         conn = get_db()
         cur = conn.cursor()
         
-        # Le solde peut être initialisé comme un montant négatif (dette)
-        # Exemple : Patient doit payer 2000 DA -> solde = -2000
-        nouveau_solde = float(data['solde'])
+        montant_paye = float(data['montant'])
         
+        # Récupérer le solde actuel (dette)
         cur.execute('''
-            UPDATE patients
-            SET solde = %s
-            WHERE user_id = %s AND id = %s
-            RETURNING id, nom, solde
-        ''', (nouveau_solde, user_id, id))
+            SELECT solde FROM patients 
+            WHERE id = %s AND user_id = %s
+        ''', (data['patient_id'], user_id))
         
-        updated = cur.fetchone()
-        if not updated:
+        patient = cur.fetchone()
+        if not patient:
             return jsonify({'erreur': 'Patient non trouvé'}), 404
         
+        solde_actuel = float(patient['solde'] or 0)
+        
+        if solde_actuel >= 0:
+            return jsonify({'erreur': 'Ce patient n\'a pas de dette'}), 400
+        
+        # Insérer le paiement partiel
+        cur.execute('''
+            INSERT INTO paiements (
+                user_id, patient_id, utilisateur_id, montant, 
+                type_paiement, mode_paiement, numero_cr, notes
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        ''', (
+            user_id,
+            data['patient_id'],
+            data.get('utilisateur_id'),
+            montant_paye,
+            data['type_paiement'],
+            'paiement_partiel',
+            data.get('numero_cr'),
+            data.get('notes')
+        ))
+        
+        new_payment = cur.fetchone()
+        
+        # Réduire la dette
+        nouveau_solde = solde_actuel + montant_paye
+        
+        cur.execute('''
+            UPDATE patients 
+            SET solde = %s
+            WHERE id = %s AND user_id = %s
+        ''', (nouveau_solde, data['patient_id'], user_id))
+        
         conn.commit()
-        return jsonify(dict(updated))
+        
+        result = dict(new_payment)
+        result['ancien_solde'] = solde_actuel
+        result['nouveau_solde'] = nouveau_solde
+        result['reste_a_payer'] = abs(nouveau_solde) if nouveau_solde < 0 else 0
+        result['message'] = f'Paiement partiel enregistré. Reste à payer: {abs(nouveau_solde) if nouveau_solde < 0 else 0} DA'
+        
+        return jsonify(result), 201
     
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"❌ Erreur update_solde: {str(e)}")
+        print(f"❌ Erreur paiement_partiel: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -1253,64 +1290,7 @@ def update_patient_solde(id):
             conn.close()
 
 
-# Nouvel endpoint pour définir une dette initiale
-@app.route('/patients/<int:id>/definir-dette', methods=['POST'])
-def definir_dette_patient(id):
-    """
-    Définit le montant total à payer pour un patient
-    Exemple : montant_total = 2000 DA -> crée un solde de -2000 DA
-    """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        return jsonify({'erreur': 'X-User-ID manquant'}), 401
-    
-    data = request.json
-    if not data or 'montant_total' not in data:
-        return jsonify({'erreur': 'montant_total manquant'}), 400
-    
-    conn = None
-    cur = None
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        
-        montant_total = float(data['montant_total'])
-        
-        # Définir le solde comme négatif (dette)
-        solde_dette = -abs(montant_total)
-        
-        cur.execute('''
-            UPDATE patients
-            SET solde = %s
-            WHERE user_id = %s AND id = %s
-            RETURNING id, nom, solde
-        ''', (solde_dette, user_id, id))
-        
-        updated = cur.fetchone()
-        if not updated:
-            return jsonify({'erreur': 'Patient non trouvé'}), 404
-        
-        conn.commit()
-        
-        result = dict(updated)
-        result['message'] = f'Dette de {montant_total} DA définie pour le patient'
-        
-        return jsonify(result)
-    
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"❌ Erreur definir_dette: {str(e)}")
-        return jsonify({'erreur': str(e)}), 500
-    
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-
-
-# Endpoint pour le rapport de caisse (inchangé)
+# Endpoint pour le rapport de caisse
 @app.route('/paiements/rapport-caisse', methods=['GET'])
 def rapport_caisse():
     user_id = request.headers.get('X-User-ID')
@@ -1360,6 +1340,8 @@ def rapport_caisse():
             cur.close()
         if conn:
             conn.close()
+
+
 # ================================================
 # DÉMARRAGE
 # ================================================
