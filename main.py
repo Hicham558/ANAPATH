@@ -1341,7 +1341,116 @@ def rapport_caisse():
         if conn:
             conn.close()
 
-
+# Nouvelle route pour récupérer les dettes actives
+@app.route('/paiements/dettes-actives', methods=['GET'])
+def dettes_actives():
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Récupérer tous les patients avec solde négatif (dette)
+        cur.execute('''
+            SELECT 
+                p.id,
+                p.nom,
+                p.prenom,
+                p.telephone,
+                p.age,
+                p.sexe,
+                p.solde,
+                COUNT(pa.id) as nombre_paiements,
+                MAX(pa.date_paiement) as dernier_paiement
+            FROM patients p
+            LEFT JOIN paiements pa ON p.id = pa.patient_id AND p.user_id = pa.user_id
+            WHERE p.user_id = %s 
+            AND p.solde < 0  -- Seulement les patients avec solde négatif
+            GROUP BY p.id, p.nom, p.prenom, p.telephone, p.age, p.sexe, p.solde
+            ORDER BY ABS(p.solde) DESC  -- Trier par dette la plus élevée
+        ''', (user_id,))
+        
+        dettes = cur.fetchall()
+        
+        # Formater les résultats
+        dettes_formatees = []
+        for d in dettes:
+            dette = dict(d)
+            dette['montant_dette'] = abs(float(d['solde']))  # Convertir en positif pour l'affichage
+            dettes_formatees.append(dette)
+        
+        return jsonify(dettes_formatees)
+        
+    except Exception as e:
+        print(f"❌ Erreur dettes_actives: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+@app.route('/paiements/statistiques-dettes', methods=['GET'])
+def statistiques_dettes():
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Statistiques des dettes
+        cur.execute('''
+            SELECT 
+                COUNT(*) as nombre_patients_dette,
+                SUM(ABS(solde)) as montant_total_dettes,
+                AVG(ABS(solde)) as moyenne_dette,
+                MAX(ABS(solde)) as dette_maximale
+            FROM patients 
+            WHERE user_id = %s AND solde < 0
+        ''', (user_id,))
+        
+        stats = cur.fetchone()
+        
+        # Derniers paiements partiels
+        cur.execute('''
+            SELECT 
+                pa.id,
+                pa.date_paiement,
+                pa.montant,
+                p.nom as patient_nom,
+                p.prenom as patient_prenom
+            FROM paiements pa
+            JOIN patients p ON pa.patient_id = p.id AND pa.user_id = p.user_id
+            WHERE pa.user_id = %s 
+            AND pa.mode_paiement = 'paiement_partiel'
+            ORDER BY pa.date_paiement DESC
+            LIMIT 10
+        ''', (user_id,))
+        
+        derniers_paiements = cur.fetchall()
+        
+        return jsonify({
+            'statistiques': dict(stats) if stats else {},
+            'derniers_paiements_partiels': [dict(p) for p in derniers_paiements]
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur statistiques_dettes: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()            
 # ================================================
 # DÉMARRAGE
 # ================================================
