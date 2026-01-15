@@ -39,18 +39,18 @@ anapath/
 # Tables SQL à exécuter dans Supabase SQL Editor :
 
 
-    CREATE TABLE IF NOT EXISTS paiements (
-        id SERIAL PRIMARY KEY,
-        user_id VARCHAR(255) NOT NULL,
-        patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
-        utilisateur_id INTEGER REFERENCES utilisateurs(numero) ON DELETE SET NULL,
-        montant DECIMAL(10,2) NOT NULL,
-        type_paiement VARCHAR(50) NOT NULL,
-        numero_cr VARCHAR(100),
-        notes TEXT,
-        date_paiement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+  CREATE TABLE IF NOT EXISTS paiements (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id VARCHAR(255) NOT NULL,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    utilisateur_id INTEGER REFERENCES utilisateurs(numero) ON DELETE SET NULL,
+    montant DECIMAL(10,2) NOT NULL,
+    type_paiement VARCHAR(50) NOT NULL,
+    numero_cr VARCHAR(100),
+    notes TEXT,
+    date_paiement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS utilisateurs (
     id SERIAL PRIMARY KEY,
