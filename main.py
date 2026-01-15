@@ -1030,6 +1030,243 @@ def delete_template(id):
     finally:
         cur.close()
         conn.close()
+@app.route('/paiements', methods=['GET', 'POST'])
+def paiements():
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.method == 'GET':
+            cur.execute('''
+                SELECT p.*, 
+                       pat.nom as patient_nom,
+                       u.nom as utilisateur_nom
+                FROM paiements p
+                LEFT JOIN patients pat ON p.patient_id = pat.id
+                LEFT JOIN utilisateurs u ON p.utilisateur_id = u.numero AND p.user_id = u.user_id
+                WHERE p.user_id = %s
+                ORDER BY p.date_paiement DESC
+            ''', (user_id,))
+            
+            payments = cur.fetchall()
+            return jsonify([dict(p) for p in payments])
+        
+        elif request.method == 'POST':
+            data = request.json
+            required = ['patient_id', 'montant', 'type_paiement']
+            
+            if not data or any(k not in data for k in required):
+                return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
+            
+            # Insérer le paiement
+            cur.execute('''
+                INSERT INTO paiements (
+                    user_id, patient_id, utilisateur_id, montant, 
+                    type_paiement, numero_cr, notes
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (
+                user_id,
+                data['patient_id'],
+                data.get('utilisateur_id'),
+                data['montant'],
+                data['type_paiement'],
+                data.get('numero_cr'),
+                data.get('notes')
+            ))
+            
+            new_payment = cur.fetchone()
+            
+            # Mettre à jour le solde du patient (déduire le paiement)
+            cur.execute('''
+                UPDATE patients 
+                SET solde = COALESCE(solde, 0) - %s
+                WHERE id = %s AND user_id = %s
+            ''', (data['montant'], data['patient_id'], user_id))
+            
+            conn.commit()
+            return jsonify(dict(new_payment)), 201
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur paiements: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+@app.route('/paiements/<int:id>', methods=['GET', 'DELETE'])
+def paiement_detail(id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.method == 'GET':
+            cur.execute('''
+                SELECT p.*, 
+                       pat.nom as patient_nom,
+                       u.nom as utilisateur_nom
+                FROM paiements p
+                LEFT JOIN patients pat ON p.patient_id = pat.id
+                LEFT JOIN utilisateurs u ON p.utilisateur_id = u.numero AND p.user_id = u.user_id
+                WHERE p.user_id = %s AND p.id = %s
+            ''', (user_id, id))
+            
+            payment = cur.fetchone()
+            if not payment:
+                return jsonify({'erreur': 'Paiement non trouvé'}), 404
+            
+            return jsonify(dict(payment))
+        
+        elif request.method == 'DELETE':
+            # Récupérer le montant avant suppression pour rétablir le solde
+            cur.execute('''
+                SELECT montant, patient_id 
+                FROM paiements 
+                WHERE user_id = %s AND id = %s
+            ''', (user_id, id))
+            
+            payment = cur.fetchone()
+            if not payment:
+                return jsonify({'erreur': 'Paiement non trouvé'}), 404
+            
+            # Rétablir le solde du patient
+            cur.execute('''
+                UPDATE patients 
+                SET solde = COALESCE(solde, 0) + %s
+                WHERE id = %s AND user_id = %s
+            ''', (payment['montant'], payment['patient_id'], user_id))
+            
+            # Supprimer le paiement
+            cur.execute('DELETE FROM paiements WHERE user_id = %s AND id = %s', (user_id, id))
+            
+            conn.commit()
+            return jsonify({'message': 'Paiement supprimé et solde rétabli'})
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur paiement_detail: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+# Endpoint pour gérer le solde d'un patient
+@app.route('/patients/<int:id>/solde', methods=['PUT'])
+def update_patient_solde(id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    data = request.json
+    if not data or 'solde' not in data:
+        return jsonify({'erreur': 'Solde manquant'}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            UPDATE patients
+            SET solde = %s
+            WHERE user_id = %s AND id = %s
+            RETURNING id, nom, solde
+        ''', (data['solde'], user_id, id))
+        
+        updated = cur.fetchone()
+        if not updated:
+            return jsonify({'erreur': 'Patient non trouvé'}), 404
+        
+        conn.commit()
+        return jsonify(dict(updated))
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur update_solde: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+# Endpoint pour le rapport de caisse
+@app.route('/paiements/rapport-caisse', methods=['GET'])
+def rapport_caisse():
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    date_debut = request.args.get('date_debut')
+    date_fin = request.args.get('date_fin')
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        query = '''
+            SELECT 
+                type_paiement,
+                COUNT(*) as nombre_paiements,
+                SUM(montant) as total_montant
+            FROM paiements
+            WHERE user_id = %s
+        '''
+        params = [user_id]
+        
+        if date_debut:
+            query += ' AND date_paiement >= %s'
+            params.append(date_debut)
+        
+        if date_fin:
+            query += ' AND date_paiement <= %s'
+            params.append(date_fin)
+        
+        query += ' GROUP BY type_paiement'
+        
+        cur.execute(query, params)
+        rapport = cur.fetchall()
+        
+        return jsonify([dict(r) for r in rapport])
+    
+    except Exception as e:
+        print(f"❌ Erreur rapport_caisse: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 # ================================================
 # DÉMARRAGE
 # ================================================
