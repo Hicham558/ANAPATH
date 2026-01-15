@@ -29,43 +29,32 @@
     .toast.show { display: flex; align-items: center; animation: slideIn 0.3s ease-out; }
     
     .payment-type-badge {
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
+      padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;
+      font-weight: 600; text-transform: uppercase;
     }
     .payment-espece { background: #dcfce7; color: #166534; }
     .payment-cheque { background: #dbeafe; color: #1e40af; }
     .payment-carte { background: #fce7f3; color: #9f1239; }
     .payment-virement { background: #fef3c7; color: #92400e; }
     
-    .solde-positif { color: #10b981; font-weight: bold; }
-    .solde-negatif { color: #ef4444; font-weight: bold; }
-    .solde-zero { color: #6b7280; font-weight: bold; }
+    .mode-badge {
+      padding: 4px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 600;
+    }
+    .mode-espece { background: #d1fae5; color: #065f46; }
+    .mode-terme { background: #fed7aa; color: #9a3412; }
     
     @media (max-width: 767px) {
-      .table-responsive-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      
-      .table-responsive-wrapper table {
-        min-width: 1000px;
-      }
+      .table-responsive-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .table-responsive-wrapper table { min-width: 1000px; }
     }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
-  <!-- Navigation -->
   <nav class="bg-indigo-600 text-white p-4 fixed w-full top-0 z-50 shadow-md animate-slide-in">
     <div class="container mx-auto flex justify-between items-center">
-      <div class="flex items-center gap-4">
-        <h1 class="text-2xl font-bold flex items-center">
-          <i class="fas fa-cash-register mr-2 text-green-300"></i> ANAPATH - Paiements
-        </h1>
-      </div>
+      <h1 class="text-2xl font-bold flex items-center">
+        <i class="fas fa-cash-register mr-2 text-green-300"></i> ANAPATH - Paiements
+      </h1>
       <div class="flex gap-2 items-center">
         <a href="index.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs">
           <i class="fas fa-arrow-left mr-1"></i> Retour
@@ -75,9 +64,7 @@
     </div>
   </nav>
 
-  <!-- Contenu Principal -->
   <div class="container mx-auto px-4 py-16 mt-16">
-    
     <!-- KPI Section -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 animate-fade-in">
       <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
@@ -126,30 +113,25 @@
       <h2 class="text-xl font-semibold mb-4 flex items-center">
         <i class="fas fa-bolt mr-2 text-indigo-500"></i> Actions Rapides
       </h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button onclick="openNewPayment()" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
-          <i class="fas fa-plus-circle text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Nouveau Paiement</span>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <button onclick="openNewPayment('espece')" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
+          <i class="fas fa-money-bill-wave text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Paiement Espèce</span>
         </button>
         
-        <button onclick="openCaisseReport()" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition flex flex-col items-center group">
-          <i class="fas fa-chart-line text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Rapport Caisse</span>
+        <button onclick="openNewPayment('a_terme')" class="bg-orange-600 text-white p-4 rounded-lg hover:bg-orange-700 transition flex flex-col items-center group">
+          <i class="fas fa-calendar-alt text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Paiement À Terme</span>
         </button>
         
-        <button onclick="openSoldesManager()" class="bg-orange-600 text-white p-4 rounded-lg hover:bg-orange-700 transition flex flex-col items-center group">
-          <i class="fas fa-balance-scale text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Gérer Soldes</span>
-        </button>
-        
-        <button onclick="exportCaisse()" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition flex flex-col items-center group">
-          <i class="fas fa-file-export text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Exporter</span>
+        <button onclick="openPaiementPartiel()" class="bg-yellow-600 text-white p-4 rounded-lg hover:bg-yellow-700 transition flex flex-col items-center group">
+          <i class="fas fa-hand-holding-usd text-3xl mb-2 group-hover:scale-110 transition"></i>
+          <span>Paiement Partiel</span>
         </button>
       </div>
     </div>
 
-    <!-- Filtre par date -->
+    <!-- Filtre -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
@@ -198,15 +180,14 @@
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° CR</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Utilisateur</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody id="paymentsList" class="bg-white divide-y divide-gray-200">
-              <tr><td colspan="7" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
+              <tr><td colspan="6" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
             </tbody>
           </table>
         </div>
@@ -214,50 +195,38 @@
     </div>
   </div>
 
-  <!-- Modal Nouveau Paiement -->
-  <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+  <!-- Modal Paiement Espèce -->
+  <div id="paymentModalEspece" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
     <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 modal-content">
       <div class="flex justify-between items-center mb-6 pb-4 border-b">
-        <h2 class="text-2xl font-semibold text-indigo-700">Nouveau Paiement</h2>
-        <button onclick="closePaymentModal()" class="text-gray-600 hover:text-gray-800">
+        <h2 class="text-2xl font-semibold text-green-700 flex items-center">
+          <i class="fas fa-money-bill-wave mr-2"></i> Paiement Espèce (Comptant)
+        </h2>
+        <button onclick="closePaymentModal('espece')" class="text-gray-600 hover:text-gray-800">
           <i class="fas fa-times text-2xl"></i>
         </button>
       </div>
       
-      <form id="paymentForm" onsubmit="event.preventDefault(); savePayment();" class="space-y-4">
-        <input type="hidden" id="paymentId">
-        
+      <form id="paymentFormEspece" onsubmit="event.preventDefault(); savePayment('espece');" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">Patient*</label>
-            <select id="paymentPatient" class="w-full px-3 py-2 border rounded-md" required onchange="updatePatientSolde()">
+            <select id="paymentPatientEspece" class="w-full px-3 py-2 border rounded-md" required>
               <option value="">Sélectionner...</option>
             </select>
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-1">Solde Actuel (Dette)</label>
-            <input type="text" id="displaySolde" class="w-full px-3 py-2 border rounded-md bg-gray-50 font-bold" readonly>
-            <p class="text-xs text-gray-500 mt-1">Négatif = dette à payer</p>
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Montant à Payer*</label>
-            <input type="number" id="paymentMontant" class="w-full px-3 py-2 border rounded-md" min="0" step="0.01" required oninput="calculateNewSolde()">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">Nouveau Solde Après Paiement</label>
-            <input type="text" id="displayNewSolde" class="w-full px-3 py-2 border rounded-md bg-yellow-50 font-bold" readonly>
+            <label class="block text-sm font-medium mb-1">Montant Payé*</label>
+            <input type="number" id="paymentMontantEspece" class="w-full px-3 py-2 border rounded-md" 
+                   min="0" step="0.01" required placeholder="1000">
           </div>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">Type de Paiement*</label>
-            <select id="paymentType" class="w-full px-3 py-2 border rounded-md" required>
+            <select id="paymentTypeEspece" class="w-full px-3 py-2 border rounded-md" required>
               <option value="espece">Espèce</option>
               <option value="cheque">Chèque</option>
               <option value="carte">Carte Bancaire</option>
@@ -267,17 +236,24 @@
           
           <div>
             <label class="block text-sm font-medium mb-1">N° Compte Rendu</label>
-            <input type="text" id="paymentNumCR" class="w-full px-3 py-2 border rounded-md">
+            <input type="text" id="paymentNumCREspece" class="w-full px-3 py-2 border rounded-md">
           </div>
         </div>
         
         <div>
           <label class="block text-sm font-medium mb-1">Notes</label>
-          <textarea id="paymentNotes" rows="3" class="w-full px-3 py-2 border rounded-md"></textarea>
+          <textarea id="paymentNotesEspece" rows="2" class="w-full px-3 py-2 border rounded-md"></textarea>
+        </div>
+        
+        <div class="bg-green-50 border border-green-200 rounded p-3">
+          <p class="text-sm text-green-800">
+            <i class="fas fa-info-circle mr-1"></i>
+            <strong>Paiement comptant :</strong> Le montant sera ajouté à la caisse sans créer de dette.
+          </p>
         </div>
         
         <div class="flex justify-end space-x-3 pt-4 border-t">
-          <button type="button" onclick="closePaymentModal()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
+          <button type="button" onclick="closePaymentModal('espece')" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
             Annuler
           </button>
           <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition">
@@ -288,112 +264,163 @@
     </div>
   </div>
 
-  <!-- Modal Rapport Caisse -->
-  <div id="rapportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
-    <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 modal-content">
-      <div class="flex justify-between items-center mb-6 pb-4 border-b">
-        <h2 class="text-2xl font-semibold text-blue-700 flex items-center">
-          <i class="fas fa-chart-pie mr-2"></i> Rapport de Caisse
-        </h2>
-        <button onclick="closeRapportModal()" class="text-gray-600 hover:text-gray-800">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
-      </div>
-      
-      <div class="space-y-6">
-        <!-- Filtres de date pour le rapport -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Date Début</label>
-            <input type="date" id="rapportDateDebut" class="w-full px-3 py-2 border rounded-md">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Date Fin</label>
-            <input type="date" id="rapportDateFin" class="w-full px-3 py-2 border rounded-md">
-          </div>
-          <div class="flex items-end">
-            <button onclick="loadRapport()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
-              <i class="fas fa-sync mr-2"></i> Générer
-            </button>
-          </div>
-        </div>
-        
-        <!-- Résumé par type de paiement -->
-        <div id="rapportContent" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="text-center py-8 text-gray-500 col-span-2">
-            <i class="fas fa-info-circle mr-2"></i> Sélectionnez les dates et cliquez sur Générer
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Gestion des Soldes -->
-  <div id="soldesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
-    <div class="bg-white rounded-lg p-6 w-full max-w-5xl mx-4 modal-content">
+  <!-- Modal Paiement À Terme -->
+  <div id="paymentModalTerme" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 modal-content">
       <div class="flex justify-between items-center mb-6 pb-4 border-b">
         <h2 class="text-2xl font-semibold text-orange-700 flex items-center">
-          <i class="fas fa-users mr-2"></i> Gestion des Soldes Patients
+          <i class="fas fa-calendar-alt mr-2"></i> Paiement À Terme
         </h2>
-        <button onclick="closeSoldesModal()" class="text-gray-600 hover:text-gray-800">
+        <button onclick="closePaymentModal('a_terme')" class="text-gray-600 hover:text-gray-800">
           <i class="fas fa-times text-2xl"></i>
         </button>
       </div>
       
-      <div class="mb-4">
-        <input type="text" id="searchPatientSolde" placeholder="Rechercher un patient..." 
-               class="w-full px-4 py-2 border rounded-md" oninput="filterPatientsSoldes()">
-      </div>
-      
-      <div class="table-responsive-wrapper border rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Solde Actuel</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="soldesList" class="bg-white divide-y divide-gray-200">
-            <tr><td colspan="4" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Définir Dette -->
-  <div id="detteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-      <div class="flex justify-between items-center mb-6 pb-4 border-b">
-        <h2 class="text-xl font-semibold text-red-700">Définir Dette Patient</h2>
-        <button onclick="closeDetteModal()" class="text-gray-600 hover:text-gray-800">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
-      </div>
-      
-      <form id="detteForm" onsubmit="event.preventDefault(); saveDette();" class="space-y-4">
-        <input type="hidden" id="dettePatientId">
+      <form id="paymentFormTerme" onsubmit="event.preventDefault(); savePayment('a_terme');" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Patient*</label>
+            <select id="paymentPatientTerme" class="w-full px-3 py-2 border rounded-md" required>
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">Montant Total à Payer*</label>
+            <input type="number" id="paymentMontantTotal" class="w-full px-3 py-2 border rounded-md" 
+                   min="0" step="0.01" required placeholder="1000" oninput="calculateReste()">
+          </div>
+        </div>
         
-        <div>
-          <label class="block text-sm font-medium mb-1">Patient</label>
-          <input type="text" id="dettePatientNom" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Montant Versé Maintenant*</label>
+            <input type="number" id="paymentMontantVerse" class="w-full px-3 py-2 border rounded-md" 
+                   min="0" step="0.01" required placeholder="800" oninput="calculateReste()">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">Reste À Payer</label>
+            <input type="text" id="displayReste" class="w-full px-3 py-2 border rounded-md bg-red-50 text-red-700 font-bold" readonly>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Type de Paiement*</label>
+            <select id="paymentTypeTerme" class="w-full px-3 py-2 border rounded-md" required>
+              <option value="espece">Espèce</option>
+              <option value="cheque">Chèque</option>
+              <option value="carte">Carte Bancaire</option>
+              <option value="virement">Virement</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">N° Compte Rendu</label>
+            <input type="text" id="paymentNumCRTerme" class="w-full px-3 py-2 border rounded-md">
+          </div>
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-1">Montant Total à Payer (DA)*</label>
-          <input type="number" id="detteMontant" class="w-full px-3 py-2 border rounded-md" 
-                 min="0" step="0.01" required placeholder="Ex: 2000">
-          <p class="text-xs text-gray-500 mt-1">Ce montant sera enregistré comme une dette (solde négatif)</p>
+          <label class="block text-sm font-medium mb-1">Notes</label>
+          <textarea id="paymentNotesTerme" rows="2" class="w-full px-3 py-2 border rounded-md"></textarea>
+        </div>
+        
+        <div class="bg-orange-50 border border-orange-200 rounded p-3">
+          <p class="text-sm text-orange-800">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            <strong>Paiement à terme :</strong> Le reste à payer sera enregistré comme dette du patient.
+          </p>
         </div>
         
         <div class="flex justify-end space-x-3 pt-4 border-t">
-          <button type="button" onclick="closeDetteModal()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
+          <button type="button" onclick="closePaymentModal('a_terme')" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
             Annuler
           </button>
-          <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition">
-            <i class="fas fa-save mr-2"></i> Définir Dette
+          <button type="submit" class="bg-orange-600 text-white px-6 py-2 rounded-md hover:bg-orange-700 transition">
+            <i class="fas fa-save mr-2"></i> Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Paiement Partiel -->
+  <div id="paymentModalPartiel" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 modal-content">
+      <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <h2 class="text-2xl font-semibold text-yellow-700 flex items-center">
+          <i class="fas fa-hand-holding-usd mr-2"></i> Paiement Partiel (Dette Existante)
+        </h2>
+        <button onclick="closePaiementPartiel()" class="text-gray-600 hover:text-gray-800">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <form id="paymentFormPartiel" onsubmit="event.preventDefault(); savePaymentPartiel();" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Patient avec Dette*</label>
+            <select id="paymentPatientPartiel" class="w-full px-3 py-2 border rounded-md" required onchange="updateDetteActuelle()">
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">Dette Actuelle</label>
+            <input type="text" id="displayDetteActuelle" class="w-full px-3 py-2 border rounded-md bg-red-50 text-red-700 font-bold" readonly>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Montant Versé*</label>
+            <input type="number" id="paymentMontantPartiel" class="w-full px-3 py-2 border rounded-md" 
+                   min="0" step="0.01" required placeholder="500" oninput="calculateNouvelDette()">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">Nouvelle Dette</label>
+            <input type="text" id="displayNouvelDette" class="w-full px-3 py-2 border rounded-md bg-yellow-50 font-bold" readonly>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Type de Paiement*</label>
+            <select id="paymentTypePartiel" class="w-full px-3 py-2 border rounded-md" required>
+              <option value="espece">Espèce</option>
+              <option value="cheque">Chèque</option>
+              <option value="carte">Carte Bancaire</option>
+              <option value="virement">Virement</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-1">N° Compte Rendu</label>
+            <input type="text" id="paymentNumCRPartiel" class="w-full px-3 py-2 border rounded-md">
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium mb-1">Notes</label>
+          <textarea id="paymentNotesPartiel" rows="2" class="w-full px-3 py-2 border rounded-md"></textarea>
+        </div>
+        
+        <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
+          <p class="text-sm text-yellow-800">
+            <i class="fas fa-info-circle mr-1"></i>
+            <strong>Paiement partiel :</strong> Réduira la dette existante du patient.
+          </p>
+        </div>
+        
+        <div class="flex justify-end space-x-3 pt-4 border-t">
+          <button type="button" onclick="closePaiementPartiel()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
+            Annuler
+          </button>
+          <button type="submit" class="bg-yellow-600 text-white px-6 py-2 rounded-md hover:bg-yellow-700 transition">
+            <i class="fas fa-save mr-2"></i> Enregistrer
           </button>
         </div>
       </form>
@@ -410,7 +437,6 @@
     const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
     let allPayments = [];
     let allPatients = [];
-    let allPatientsSoldes = [];
     
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
@@ -422,26 +448,14 @@
       msg.textContent = message;
       
       setTimeout(() => toast.classList.add('show'), 10);
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
+      setTimeout(() => toast.classList.remove('show'), 3000);
     }
     
     function formatCurrency(amount) {
       return new Intl.NumberFormat('fr-DZ', {
-        style: 'currency',
-        currency: 'DZD',
-        minimumFractionDigits: 2
-      }).format(amount).replace('DZD', 'DA');
-    }
-    
-    function formatSolde(solde) {
-      const s = parseFloat(solde);
-      const formatted = formatCurrency(Math.abs(s));
-      
-      if (s < 0) return `<span class="solde-negatif">-${formatted}</span>`;
-      if (s > 0) return `<span class="solde-positif">+${formatted}</span>`;
-      return `<span class="solde-zero">${formatted}</span>`;
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount) + ' DA';
     }
     
     async function loadPatients() {
@@ -454,46 +468,23 @@
         if (!response.ok) throw new Error('Erreur chargement patients');
         
         allPatients = await response.json();
-        const select = document.getElementById('paymentPatient');
-        select.innerHTML = '<option value="">Sélectionner...</option>' +
-          allPatients.map(p => `<option value="${p.id}" data-solde="${p.solde || 0}">${p.nom}</option>`).join('');
+        
+        // Remplir tous les selects
+        ['paymentPatientEspece', 'paymentPatientTerme'].forEach(id => {
+          const select = document.getElementById(id);
+          select.innerHTML = '<option value="">Sélectionner...</option>' +
+            allPatients.map(p => `<option value="${p.id}">${p.nom}</option>`).join('');
+        });
+        
+        // Pour le paiement partiel, ne montrer que les patients avec dettes
+        const selectPartiel = document.getElementById('paymentPatientPartiel');
+        const patientsAvecDette = allPatients.filter(p => parseFloat(p.solde || 0) < 0);
+        selectPartiel.innerHTML = '<option value="">Sélectionner...</option>' +
+          patientsAvecDette.map(p => `<option value="${p.id}" data-solde="${p.solde}">${p.nom}</option>`).join('');
         
       } catch (error) {
         console.error('Erreur:', error);
         showToast('Erreur lors du chargement des patients', 'error');
-      }
-    }
-    
-    function updatePatientSolde() {
-      const select = document.getElementById('paymentPatient');
-      const soldeInput = document.getElementById('displaySolde');
-      
-      if (select.value) {
-        const solde = parseFloat(select.options[select.selectedIndex].dataset.solde || 0);
-        soldeInput.value = formatCurrency(Math.abs(solde));
-        soldeInput.className = `w-full px-3 py-2 border rounded-md bg-gray-50 font-bold ${solde < 0 ? 'text-red-600' : solde > 0 ? 'text-green-600' : 'text-gray-600'}`;
-      } else {
-        soldeInput.value = '';
-        soldeInput.className = 'w-full px-3 py-2 border rounded-md bg-gray-50 font-bold';
-      }
-      
-      calculateNewSolde();
-    }
-    
-    function calculateNewSolde() {
-      const select = document.getElementById('paymentPatient');
-      const montant = parseFloat(document.getElementById('paymentMontant').value) || 0;
-      const newSoldeInput = document.getElementById('displayNewSolde');
-      
-      if (select.value && montant > 0) {
-        const soldeActuel = parseFloat(select.options[select.selectedIndex].dataset.solde || 0);
-        const nouveauSolde = soldeActuel + montant;
-        
-        newSoldeInput.value = formatCurrency(Math.abs(nouveauSolde));
-        newSoldeInput.className = `w-full px-3 py-2 border rounded-md bg-yellow-50 font-bold ${nouveauSolde < 0 ? 'text-red-600' : nouveauSolde > 0 ? 'text-green-600' : 'text-gray-600'}`;
-      } else {
-        newSoldeInput.value = '';
-        newSoldeInput.className = 'w-full px-3 py-2 border rounded-md bg-yellow-50 font-bold';
       }
     }
     
@@ -520,30 +511,36 @@
       const tbody = document.getElementById('paymentsList');
       
       if (payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">Aucun paiement trouvé</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Aucun paiement trouvé</td></tr>';
         return;
       }
       
-      tbody.innerHTML = payments.map(p => `
-        <tr class="hover:bg-gray-50">
-          <td class="px-6 py-4 text-sm">${new Date(p.date_paiement).toLocaleDateString('fr-FR')}</td>
-          <td class="px-6 py-4 text-sm font-medium">${p.patient_nom}</td>
-          <td class="px-6 py-4 text-sm">${p.numero_cr || '-'}</td>
-          <td class="px-6 py-4 text-sm font-bold text-green-600">${formatCurrency(p.montant)}</td>
-          <td class="px-6 py-4 text-sm">
-            <span class="payment-type-badge payment-${p.type_paiement}">${p.type_paiement}</span>
-          </td>
-          <td class="px-6 py-4 text-sm">${p.utilisateur_nom || '-'}</td>
-          <td class="px-6 py-4 text-sm">
-            <button onclick="viewPayment(${p.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
-              <i class="fas fa-eye"></i>
-            </button>
-            <button onclick="deletePayment(${p.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = payments.map(p => {
+        const modeClass = p.mode_paiement === 'espece' ? 'mode-espece' : p.mode_paiement === 'a_terme' ? 'mode-terme' : 'mode-espece';
+        const modeText = p.mode_paiement === 'espece' ? 'Comptant' : p.mode_paiement === 'a_terme' ? 'À Terme' : 'Partiel';
+        
+        return `
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm">${new Date(p.date_paiement).toLocaleDateString('fr-FR')}</td>
+            <td class="px-6 py-4 text-sm font-medium">${p.patient_nom}</td>
+            <td class="px-6 py-4 text-sm">
+              <span class="mode-badge ${modeClass}">${modeText}</span>
+            </td>
+            <td class="px-6 py-4 text-sm font-bold text-green-600">${formatCurrency(p.montant)}</td>
+            <td class="px-6 py-4 text-sm">
+              <span class="payment-type-badge payment-${p.type_paiement}">${p.type_paiement}</span>
+            </td>
+            <td class="px-6 py-4 text-sm">
+              <button onclick="viewPayment(${p.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button onclick="deletePayment(${p.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
     
     function updateKPIs() {
@@ -565,19 +562,34 @@
       document.getElementById('paymentsJour').textContent = todayPayments.length;
     }
     
-    function openNewPayment() {
-      document.getElementById('paymentForm').reset();
-      document.getElementById('paymentId').value = '';
-      document.getElementById('displaySolde').value = '';
-      document.getElementById('displayNewSolde').value = '';
-      document.getElementById('paymentModal').classList.remove('hidden');
+    function openNewPayment(mode) {
+      if (mode === 'espece') {
+        document.getElementById('paymentFormEspece').reset();
+        document.getElementById('paymentModalEspece').classList.remove('hidden');
+      } else if (mode === 'a_terme') {
+        document.getElementById('paymentFormTerme').reset();
+        document.getElementById('displayReste').value = '';
+        document.getElementById('paymentModalTerme').classList.remove('hidden');
+      }
     }
     
-    function closePaymentModal() {
-      document.getElementById('paymentModal').classList.add('hidden');
+    function closePaymentModal(mode) {
+      if (mode === 'espece') {
+        document.getElementById('paymentModalEspece').classList.add('hidden');
+      } else if (mode === 'a_terme') {
+        document.getElementById('paymentModalTerme').classList.add('hidden');
+      }
     }
     
-    async function savePayment() {
+    function calculateReste() {
+      const total = parseFloat(document.getElementById('paymentMontantTotal').value) || 0;
+      const verse = parseFloat(document.getElementById('paymentMontantVerse').value) || 0;
+      const reste = total - verse;
+      
+      document.getElementById('displayReste').value = reste > 0 ? formatCurrency(reste) : '0 DA';
+    }
+    
+    async function savePayment(mode) {
       const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
       const utilisateurId = selectedUtilisateur.numero;
       
@@ -586,14 +598,33 @@
         return;
       }
       
-      const data = {
-        patient_id: parseInt(document.getElementById('paymentPatient').value),
-        montant: parseFloat(document.getElementById('paymentMontant').value),
-        type_paiement: document.getElementById('paymentType').value,
-        numero_cr: document.getElementById('paymentNumCR').value || null,
-        notes: document.getElementById('paymentNotes').value || null,
-        utilisateur_id: utilisateurId
+      let data = {
+        utilisateur_id: utilisateurId,
+        mode_paiement: mode
       };
+      
+      if (mode === 'espece') {
+        data.patient_id = parseInt(document.getElementById('paymentPatientEspece').value);
+        data.montant = parseFloat(document.getElementById('paymentMontantEspece').value);
+        data.type_paiement = document.getElementById('paymentTypeEspece').value;
+        data.numero_cr = document.getElementById('paymentNumCREspece').value || null;
+        data.notes = document.getElementById('paymentNotesEspece').value || null;
+      } else if (mode === 'a_terme') {
+        const montantTotal = parseFloat(document.getElementById('paymentMontantTotal').value);
+        const montantVerse = parseFloat(document.getElementById('paymentMontantVerse').value);
+        
+        if (montantVerse > montantTotal) {
+          showToast('Le montant versé ne peut pas dépasser le montant total', 'error');
+          return;
+        }
+        
+        data.patient_id = parseInt(document.getElementById('paymentPatientTerme').value);
+        data.montant = montantVerse;
+        data.montant_total = montantTotal;
+        data.type_paiement = document.getElementById('paymentTypeTerme').value;
+        data.numero_cr = document.getElementById('paymentNumCRTerme').value || null;
+        data.notes = document.getElementById('paymentNotesTerme').value || null;
+      }
       
       if (!data.patient_id || !data.montant) {
         showToast('Veuillez remplir tous les champs obligatoires', 'error');
@@ -611,22 +642,126 @@
           body: JSON.stringify(data)
         });
         
-        if (!response.ok) throw new Error('Erreur lors de l\'enregistrement');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
+        }
         
         const result = await response.json();
         showToast(result.message || 'Paiement enregistré avec succès');
-        closePaymentModal();
+        closePaymentModal(mode);
         loadPayments();
         loadPatients();
         
       } catch (error) {
         console.error('Erreur:', error);
-        showToast('Erreur lors de l\'enregistrement du paiement', 'error');
+        showToast(error.message || 'Erreur lors de l\'enregistrement du paiement', 'error');
+      }
+    }
+    
+    function openPaiementPartiel() {
+      document.getElementById('paymentFormPartiel').reset();
+      document.getElementById('displayDetteActuelle').value = '';
+      document.getElementById('displayNouvelDette').value = '';
+      document.getElementById('paymentModalPartiel').classList.remove('hidden');
+      loadPatients();
+    }
+    
+    function closePaiementPartiel() {
+      document.getElementById('paymentModalPartiel').classList.add('hidden');
+    }
+    
+    function updateDetteActuelle() {
+      const select = document.getElementById('paymentPatientPartiel');
+      const display = document.getElementById('displayDetteActuelle');
+      
+      if (select.value) {
+        const solde = parseFloat(select.options[select.selectedIndex].dataset.solde || 0);
+        display.value = formatCurrency(Math.abs(solde));
+        display.className = 'w-full px-3 py-2 border rounded-md bg-red-50 text-red-700 font-bold';
+      } else {
+        display.value = '';
+      }
+      
+      calculateNouvelDette();
+    }
+    
+    function calculateNouvelDette() {
+      const select = document.getElementById('paymentPatientPartiel');
+      const montant = parseFloat(document.getElementById('paymentMontantPartiel').value) || 0;
+      const displayNouveau = document.getElementById('displayNouvelDette');
+      
+      if (select.value && montant > 0) {
+        const soldeActuel = parseFloat(select.options[select.selectedIndex].dataset.solde || 0);
+        const nouveauSolde = soldeActuel + montant;
+        
+        displayNouveau.value = formatCurrency(Math.abs(nouveauSolde));
+        
+        if (nouveauSolde < 0) {
+          displayNouveau.className = 'w-full px-3 py-2 border rounded-md bg-yellow-50 text-red-700 font-bold';
+        } else if (nouveauSolde === 0) {
+          displayNouveau.className = 'w-full px-3 py-2 border rounded-md bg-green-50 text-green-700 font-bold';
+        } else {
+          displayNouveau.className = 'w-full px-3 py-2 border rounded-md bg-yellow-50 font-bold';
+        }
+      } else {
+        displayNouveau.value = '';
+      }
+    }
+    
+    async function savePaymentPartiel() {
+      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+      const utilisateurId = selectedUtilisateur.numero;
+      
+      if (!utilisateurId) {
+        showToast('Veuillez sélectionner un utilisateur', 'error');
+        return;
+      }
+      
+      const data = {
+        patient_id: parseInt(document.getElementById('paymentPatientPartiel').value),
+        montant: parseFloat(document.getElementById('paymentMontantPartiel').value),
+        type_paiement: document.getElementById('paymentTypePartiel').value,
+        numero_cr: document.getElementById('paymentNumCRPartiel').value || null,
+        notes: document.getElementById('paymentNotesPartiel').value || null,
+        utilisateur_id: utilisateurId
+      };
+      
+      if (!data.patient_id || !data.montant) {
+        showToast('Veuillez remplir tous les champs obligatoires', 'error');
+        return;
+      }
+      
+      try {
+        const userId = localStorage.getItem('userId');
+        const response = await fetch(`${API_BASE_URL}/paiements/paiement-partiel`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
+        }
+        
+        const result = await response.json();
+        showToast(result.message || 'Paiement partiel enregistré avec succès');
+        closePaiementPartiel();
+        loadPayments();
+        loadPatients();
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast(error.message || 'Erreur lors de l\'enregistrement du paiement', 'error');
       }
     }
     
     async function deletePayment(id) {
-      if (!confirm('Supprimer ce paiement ? Le solde du patient sera rétabli.')) return;
+      if (!confirm('Supprimer ce paiement ?')) return;
       
       try {
         const userId = localStorage.getItem('userId');
@@ -637,7 +772,7 @@
         
         if (!response.ok) throw new Error('Erreur lors de la suppression');
         
-        showToast('Paiement supprimé et solde rétabli');
+        showToast('Paiement supprimé');
         loadPayments();
         loadPatients();
         
@@ -674,307 +809,37 @@
       document.getElementById('filterDateDebut').value = today;
       document.getElementById('filterDateFin').value = today;
       document.getElementById('filterTypePaiement').value = '';
-      applyFilters();
-    }
-    
-    // Rapport Caisse
-    function openCaisseReport() {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('rapportDateDebut').value = today;
-      document.getElementById('rapportDateFin').value = today;
-      document.getElementById('rapportModal').classList.remove('hidden');
-    }
-    
-    function closeRapportModal() {
-      document.getElementById('rapportModal').classList.add('hidden');
-    }
-    
-    async function loadRapport() {
-      const dateDebut = document.getElementById('rapportDateDebut').value;
-      const dateFin = document.getElementById('rapportDateFin').value;
-      
-      if (!dateDebut || !dateFin) {
-        showToast('Veuillez sélectionner les dates', 'warning');
-        return;
-      }
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const url = `${API_BASE_URL}/paiements/rapport-caisse?date_debut=${dateDebut}&date_fin=${dateFin}`;
-        const response = await fetch(url, {
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (!response.ok) throw new Error('Erreur chargement rapport');
-        
-        const rapport = await response.json();
-        renderRapport(rapport);
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors du chargement du rapport', 'error');
-      }
-    }
-    
-    function renderRapport(rapport) {
-      const content = document.getElementById('rapportContent');
-      
-      if (rapport.length === 0) {
-        content.innerHTML = '<div class="text-center py-8 text-gray-500 col-span-2">Aucun paiement pour cette période</div>';
-        return;
-      }
-      
-      const total = rapport.reduce((sum, r) => sum + parseFloat(r.total_montant), 0);
-      
-      const typeColors = {
-        espece: 'bg-green-100 text-green-800 border-green-300',
-        cheque: 'bg-blue-100 text-blue-800 border-blue-300',
-        carte: 'bg-pink-100 text-pink-800 border-pink-300',
-        virement: 'bg-yellow-100 text-yellow-800 border-yellow-300'
-      };
-      
-      const typeIcons = {
-        espece: 'fa-money-bill-wave',
-        cheque: 'fa-money-check',
-        carte: 'fa-credit-card',
-        virement: 'fa-exchange-alt'
-      };
-      
-      content.innerHTML = rapport.map(r => `
-        <div class="border-2 ${typeColors[r.type_paiement]} rounded-lg p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold capitalize flex items-center">
-              <i class="fas ${typeIcons[r.type_paiement]} mr-2"></i>
-              ${r.type_paiement}
-            </h3>
-            <span class="text-2xl font-bold">${r.nombre_paiements}</span>
-          </div>
-          <div class="text-3xl font-bold">${formatCurrency(r.total_montant)}</div>
-          <div class="text-sm mt-2 opacity-75">
-            ${((parseFloat(r.total_montant) / total) * 100).toFixed(1)}% du total
-          </div>
-        </div>
-      `).join('') + `
-        <div class="col-span-2 border-2 border-indigo-300 bg-indigo-50 rounded-lg p-6 text-center">
-          <h3 class="text-lg font-semibold text-indigo-800 mb-2">Total Général</h3>
-          <div class="text-4xl font-bold text-indigo-900">${formatCurrency(total)}</div>
-          <div class="text-sm text-indigo-700 mt-2">
-            ${rapport.reduce((sum, r) => sum + parseInt(r.nombre_paiements), 0)} paiements
-          </div>
-        </div>
-      `;
-    }
-    
-    // Gestion des Soldes
-    function openSoldesManager() {
-      document.getElementById('soldesModal').classList.remove('hidden');
-      loadPatientsSoldes();
-    }
-    
-    function closeSoldesModal() {
-      document.getElementById('soldesModal').classList.add('hidden');
-    }
-    
-    async function loadPatientsSoldes() {
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/patients`, {
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (!response.ok) throw new Error('Erreur chargement patients');
-        
-        allPatientsSoldes = await response.json();
-        renderPatientsSoldes(allPatientsSoldes);
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors du chargement des soldes', 'error');
-      }
-    }
-    
-    function renderPatientsSoldes(patients) {
-      const tbody = document.getElementById('soldesList');
-      
-      if (patients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-500">Aucun patient trouvé</td></tr>';
-        return;
-      }
-      
-      tbody.innerHTML = patients.map(p => {
-        const solde = parseFloat(p.solde || 0);
-        let statut, statutClass;
-        
-        if (solde < 0) {
-          statut = '<span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">Dette</span>';
-        } else if (solde > 0) {
-          statut = '<span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">Crédit</span>';
-        } else {
-          statut = '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-semibold">Soldé</span>';
-        }
-        
-        return `
-          <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4 text-sm font-medium">${p.nom}</td>
-            <td class="px-6 py-4 text-sm">${formatSolde(solde)}</td>
-            <td class="px-6 py-4 text-sm">${statut}</td>
-            <td class="px-6 py-4 text-sm">
-              <button onclick="openDefinirDette(${p.id}, '${p.nom}')" 
-                      class="text-red-600 hover:text-red-800 mr-2" title="Définir Dette">
-                <i class="fas fa-hand-holding-usd"></i>
-              </button>
-              <button onclick="resetSoldePatient(${p.id})" 
-                      class="text-orange-600 hover:text-orange-800" title="Réinitialiser">
-                <i class="fas fa-redo"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-    
-    function filterPatientsSoldes() {
-      const search = document.getElementById('searchPatientSolde').value.toLowerCase();
-      const filtered = allPatientsSoldes.filter(p => 
-        p.nom.toLowerCase().includes(search)
-      );
-      renderPatientsSoldes(filtered);
-    }
-    
-    function openDefinirDette(patientId, patientNom) {
-      document.getElementById('dettePatientId').value = patientId;
-      document.getElementById('dettePatientNom').value = patientNom;
-      document.getElementById('detteMontant').value = '';
-      document.getElementById('detteModal').classList.remove('hidden');
-    }
-    
-    function closeDetteModal() {
-      document.getElementById('detteModal').classList.add('hidden');
-    }
-    
-    async function saveDette() {
-      const patientId = document.getElementById('dettePatientId').value;
-      const montant = parseFloat(document.getElementById('detteMontant').value);
-      
-      if (!montant || montant <= 0) {
-        showToast('Veuillez entrer un montant valide', 'error');
-        return;
-      }
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/patients/${patientId}/definir-dette`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': userId
-          },
-          body: JSON.stringify({ montant_total: montant })
-        });
-        
-        if (!response.ok) throw new Error('Erreur lors de la définition de la dette');
-        
-        const result = await response.json();
-        showToast(result.message || 'Dette définie avec succès');
-        closeDetteModal();
-        loadPatientsSoldes();
-        loadPatients();
-        updateKPIs();
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la définition de la dette', 'error');
-      }
-    }
-    
-    async function resetSoldePatient(patientId) {
-      if (!confirm('Réinitialiser le solde de ce patient à 0 ?')) return;
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/patients/${patientId}/solde`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': userId
-          },
-          body: JSON.stringify({ solde: 0 })
-        });
-        
-        if (!response.ok) throw new Error('Erreur lors de la réinitialisation');
-        
-        showToast('Solde réinitialisé');
-        loadPatientsSoldes();
-        loadPatients();
-        updateKPIs();
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la réinitialisation', 'error');
-      }
-    }
-    
-    // Export
-    function exportCaisse() {
-      const dateDebut = document.getElementById('filterDateDebut').value;
-      const dateFin = document.getElementById('filterDateFin').value;
-      
-      let dataToExport = allPayments;
-      
-      if (dateDebut) {
-        dataToExport = dataToExport.filter(p => new Date(p.date_paiement) >= new Date(dateDebut));
-      }
-      
-      if (dateFin) {
-        dataToExport = dataToExport.filter(p => new Date(p.date_paiement) <= new Date(dateFin));
-      }
-      
-      if (dataToExport.length === 0) {
-        showToast('Aucune donnée à exporter', 'warning');
-        return;
-      }
-      
-      // Créer CSV
-      const headers = ['Date', 'Patient', 'N° CR', 'Montant', 'Type', 'Utilisateur', 'Notes'];
-      const csvContent = [
-        headers.join(';'),
-        ...dataToExport.map(p => [
-          new Date(p.date_paiement).toLocaleDateString('fr-FR'),
-          p.patient_nom,
-          p.numero_cr || '',
-          p.montant,
-          p.type_paiement,
-          p.utilisateur_nom || '',
-          p.notes || ''
-        ].join(';'))
-      ].join('\n');
-      
-      // Télécharger
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `paiements_${dateDebut || 'tous'}_${dateFin || 'tous'}.csv`;
-      link.click();
-      
-      showToast('Export réussi');
+      renderPayments(allPayments);
     }
     
     function viewPayment(id) {
       const payment = allPayments.find(p => p.id === id);
-      if (payment) {
-        const details = `
-DÉTAILS DU PAIEMENT
+      if (!payment) return;
+      
+      const modeText = payment.mode_paiement === 'espece' ? 'Comptant' : 
+                       payment.mode_paiement === 'a_terme' ? 'À Terme' : 'Paiement Partiel';
+      
+      let details = `DÉTAILS DU PAIEMENT
 
 Patient: ${payment.patient_nom}
 Date: ${new Date(payment.date_paiement).toLocaleDateString('fr-FR')}
-Montant: ${formatCurrency(payment.montant)}
-Type: ${payment.type_paiement}
-N° CR: ${payment.numero_cr || 'N/A'}
-Utilisateur: ${payment.utilisateur_nom || 'N/A'}
-Notes: ${payment.notes || 'Aucune'}
-        `;
-        alert(details);
+Mode: ${modeText}
+Montant payé: ${formatCurrency(payment.montant)}`;
+
+      if (payment.montant_total) {
+        details += `\nMontant total: ${formatCurrency(payment.montant_total)}`;
+        details += `\nReste à payer: ${formatCurrency(payment.montant_total - payment.montant)}`;
       }
+      
+      details += `\nType: ${payment.type_paiement}
+N° CR: ${payment.numero_cr || 'N/A'}
+Utilisateur: ${payment.utilisateur_nom || 'N/A'}`;
+
+      if (payment.notes) {
+        details += `\nNotes: ${payment.notes}`;
+      }
+      
+      alert(details);
     }
     
     document.addEventListener('DOMContentLoaded', () => {
