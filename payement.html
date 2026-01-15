@@ -1,865 +1,1148 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ANAPATH - Gestion des Paiements</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    
-    .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
-    .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
-    
-    .kpi-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
-    
-    .modal-overlay { background: rgba(0,0,0,0.75); }
-    .modal-content { max-height: 85vh; overflow-y: auto; }
-    
-    .toast {
-      position: fixed; bottom: 20px; right: 20px; padding: 16px 24px; border-radius: 8px;
-      color: white; display: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    .toast.success { background: #10b981; }
-    .toast.error { background: #ef4444; }
-    .toast.warning { background: #f59e0b; }
-    .toast.show { display: flex; align-items: center; animation: slideIn 0.3s ease-out; }
-    
-    .payment-type-badge {
-      padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;
-      font-weight: 600; text-transform: uppercase;
-    }
-    .payment-espece { background: #dcfce7; color: #166534; }
-    .payment-cheque { background: #dbeafe; color: #1e40af; }
-    .payment-carte { background: #fce7f3; color: #9f1239; }
-    .payment-virement { background: #fef3c7; color: #92400e; }
-    
-    .mode-badge {
-      padding: 4px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 600;
-    }
-    .mode-espece { background: #d1fae5; color: #065f46; }
-    .mode-terme { background: #fed7aa; color: #9a3412; }
-    
-    @media (max-width: 767px) {
-      .table-responsive-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      .table-responsive-wrapper table { min-width: 1000px; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Paiements - ANAPATH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        .kpi-card { transition: all 0.3s ease; }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+        }
+        
+        .tab-active {
+            border-bottom: 3px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        
+        .payment-card {
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+        
+        .payment-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .status-comptant { border-left-color: #10b981; }
+        .status-a_terme { border-left-color: #f59e0b; }
+        .status-paiement_partiel { border-left-color: #3b82f6; }
+        
+        .badge-espece { background-color: #d1fae5; color: #065f46; }
+        .badge-a_terme { background-color: #fef3c7; color: #92400e; }
+        .badge-partiel { background-color: #dbeafe; color: #1e40af; }
+        
+        .solde-positif { color: #10b981; }
+        .solde-negatif { color: #ef4444; }
+        
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <nav class="bg-indigo-600 text-white p-4 fixed w-full top-0 z-50 shadow-md animate-slide-in">
-    <div class="container mx-auto flex justify-between items-center">
-      <h1 class="text-2xl font-bold flex items-center">
-        <i class="fas fa-cash-register mr-2 text-green-300"></i> ANAPATH - Paiements
-      </h1>
-      <div class="flex gap-2 items-center">
-        <a href="index.html" class="bg-indigo-700 text-white px-3 py-2 rounded-md hover:bg-indigo-800 transition text-xs">
-          <i class="fas fa-arrow-left mr-1"></i> Retour
-        </a>
-        <span id="currentUserDisplay" class="bg-indigo-700 px-3 py-2 rounded-md text-xs"></span>
-      </div>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-credit-card text-2xl text-blue-300"></i>
+                <h1 class="text-2xl font-bold">Gestion des Paiements</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="currentUser" class="text-sm bg-white/20 px-3 py-1 rounded-full"></span>
+                <a href="index.html" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition flex items-center space-x-2">
+                    <i class="fas fa-home"></i>
+                    <span>Accueil</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- En-tête et KPI -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Tableau de Bord Paiements</h2>
+            <p class="text-gray-600">Gérez les paiements, les dettes et consultez les statistiques financières</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
+            <div class="kpi-card bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Total Encaisse</p>
+                        <p id="totalEncaisse" class="text-3xl font-bold">0 DA</p>
+                    </div>
+                    <i class="fas fa-money-bill-wave text-4xl opacity-30"></i>
+                </div>
+                <div class="mt-4 pt-3 border-t border-white/20">
+                    <p class="text-xs opacity-80">Aujourd'hui: <span id="encaisseAujourdhui">0 DA</span></p>
+                </div>
+            </div>
+
+            <div class="kpi-card bg-gradient-to-br from-orange-500 to-red-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Dettes Actives</p>
+                        <p id="totalDettes" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-file-invoice-dollar text-4xl opacity-30"></i>
+                </div>
+                <div class="mt-4 pt-3 border-t border-white/20">
+                    <p class="text-xs opacity-80">Montant total: <span id="montantDettes">0 DA</span></p>
+                </div>
+            </div>
+
+            <div class="kpi-card bg-gradient-to-br from-blue-500 to-cyan-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Paiements</p>
+                        <p id="totalPaiements" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-credit-card text-4xl opacity-30"></i>
+                </div>
+                <div class="mt-4 pt-3 border-t border-white/20">
+                    <p class="text-xs opacity-80">Ce mois: <span id="paiementsMois">0</span></p>
+                </div>
+            </div>
+
+            <div class="kpi-card bg-gradient-to-br from-purple-500 to-pink-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Patients Detteurs</p>
+                        <p id="patientsDetteurs" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-user-clock text-4xl opacity-30"></i>
+                </div>
+                <div class="mt-4 pt-3 border-t border-white/20">
+                    <p class="text-xs opacity-80">À suivre</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglets -->
+        <div class="mb-8">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button onclick="showTab('nouveau')" id="tab-nouveau" class="py-3 px-1 border-b-2 font-medium text-lg tab-active">
+                        <i class="fas fa-plus-circle mr-2"></i>Nouveau Paiement
+                    </button>
+                    <button onclick="showTab('liste')" id="tab-liste" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-list mr-2"></i>Liste des Paiements
+                    </button>
+                    <button onclick="showTab('dettes')" id="tab-dettes" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Dettes Actives
+                    </button>
+                    <button onclick="showTab('statistiques')" id="tab-statistiques" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-chart-bar mr-2"></i>Statistiques
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Contenu des onglets -->
+        <div id="content-nouveau" class="tab-content animate-fade-in">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                    <i class="fas fa-cash-register mr-2 text-indigo-600"></i>Enregistrer un Paiement
+                </h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Formulaire de paiement -->
+                    <div class="space-y-6">
+                        <!-- Sélection du patient -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-user-injured mr-2 text-blue-600"></i>Sélectionner un Patient*
+                            </label>
+                            <div class="flex gap-2">
+                                <select id="patientSelect" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                                    <option value="">Chargement des patients...</option>
+                                </select>
+                                <button onclick="loadPatients()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition" title="Actualiser">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div id="patientInfo" class="mt-3 p-4 bg-blue-50 rounded-lg hidden">
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <div><span class="font-medium">Âge:</span> <span id="infoAge">-</span></div>
+                                    <div><span class="font-medium">Sexe:</span> <span id="infoSexe">-</span></div>
+                                    <div><span class="font-medium">Téléphone:</span> <span id="infoTel">-</span></div>
+                                    <div><span class="font-medium">Solde actuel:</span> <span id="infoSolde" class="font-bold">0 DA</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Type de paiement -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-money-check-alt mr-2 text-green-600"></i>Type de Paiement*
+                            </label>
+                            <div class="grid grid-cols-3 gap-4">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="modePaiement" value="espece" checked class="sr-only peer" onchange="toggleMontantTotal()">
+                                    <div class="p-4 border-2 border-gray-200 rounded-lg text-center peer-checked:border-green-500 peer-checked:bg-green-50 transition-all">
+                                        <i class="fas fa-money-bill-wave text-2xl text-green-600 mb-2"></i>
+                                        <p class="font-medium">Comptant</p>
+                                        <p class="text-xs text-gray-500 mt-1">Paiement immédiat</p>
+                                    </div>
+                                </label>
+                                
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="modePaiement" value="a_terme" class="sr-only peer" onchange="toggleMontantTotal()">
+                                    <div class="p-4 border-2 border-gray-200 rounded-lg text-center peer-checked:border-orange-500 peer-checked:bg-orange-50 transition-all">
+                                        <i class="fas fa-calendar-alt text-2xl text-orange-600 mb-2"></i>
+                                        <p class="font-medium">À Terme</p>
+                                        <p class="text-xs text-gray-500 mt-1">Paiement différé</p>
+                                    </div>
+                                </label>
+                                
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="modePaiement" value="paiement_partiel" class="sr-only peer" onchange="toggleMontantTotal()">
+                                    <div class="p-4 border-2 border-gray-200 rounded-lg text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                                        <i class="fas fa-hand-holding-usd text-2xl text-blue-600 mb-2"></i>
+                                        <p class="font-medium">Partiel</p>
+                                        <p class="text-xs text-gray-500 mt-1">Règlement dette</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Montants -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div id="montantTotalGroup" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Montant Total (DA)*
+                                </label>
+                                <input type="number" id="montantTotal" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Montant Payé (DA)*
+                                </label>
+                                <input type="number" id="montantPaye" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" required>
+                            </div>
+                        </div>
+
+                        <!-- Détails supplémentaires -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-stethoscope mr-2 text-purple-600"></i>Type d'Acte
+                                </label>
+                                <select id="typePaiement" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                    <option value="consultation">Consultation</option>
+                                    <option value="examen">Examen</option>
+                                    <option value="biopsie">Biopsie</option>
+                                    <option value="analyse">Analyse</option>
+                                    <option value="autre">Autre</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-file-invoice mr-2 text-gray-600"></i>Numéro de Reçu
+                                </label>
+                                <input type="text" id="numeroCR" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="CR-2024-001">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-comment-alt mr-2 text-gray-600"></i>Notes
+                                </label>
+                                <textarea id="notes" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Informations supplémentaires..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Bouton d'enregistrement -->
+                        <button onclick="enregistrerPaiement()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-4 px-6 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg">
+                            <i class="fas fa-save mr-2"></i>Enregistrer le Paiement
+                        </button>
+                    </div>
+
+                    <!-- Récapitulatif -->
+                    <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <h4 class="text-lg font-semibold mb-6 text-gray-800">
+                            <i class="fas fa-receipt mr-2 text-indigo-600"></i>Récapitulatif
+                        </h4>
+                        
+                        <div id="recapContent" class="space-y-4">
+                            <div class="text-center py-12 text-gray-400">
+                                <i class="fas fa-file-invoice-dollar text-4xl mb-4"></i>
+                                <p>Les détails du paiement apparaîtront ici</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Résumé dynamique -->
+                        <div id="recapDetails" class="mt-8 pt-6 border-t border-gray-200 hidden">
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Montant total:</span>
+                                    <span id="recapTotal" class="font-semibold">0 DA</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Montant payé:</span>
+                                    <span id="recapPaye" class="font-semibold text-green-600">0 DA</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Reste à payer:</span>
+                                    <span id="recapReste" class="font-semibold text-orange-600">0 DA</span>
+                                </div>
+                                <div class="flex justify-between pt-3 border-t">
+                                    <span class="text-gray-700 font-medium">Nouveau solde:</span>
+                                    <span id="recapNouveauSolde" class="font-bold text-lg">0 DA</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Liste des Paiements -->
+        <div id="content-liste" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4 md:mb-0">
+                        <i class="fas fa-history mr-2 text-indigo-600"></i>Historique des Paiements
+                    </h3>
+                    <div class="flex space-x-4">
+                        <div class="relative">
+                            <input type="date" id="filterDate" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        </div>
+                        <button onclick="exporterExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                            <i class="fas fa-file-excel mr-2"></i>Excel
+                        </button>
+                        <button onclick="imprimerListe()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                            <i class="fas fa-print mr-2"></i>Imprimer
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reçu</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listePaiements" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Chargement des paiements...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Dettes Actives -->
+        <div id="content-dettes" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                    <i class="fas fa-exclamation-triangle mr-2 text-red-600"></i>Dettes Actives des Patients
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-clock text-2xl text-red-500 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-red-700">Dettes en attente</p>
+                                <p id="dettesEnAttente" class="text-2xl font-bold text-red-800">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-calendar-times text-2xl text-orange-500 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-orange-700">Montant total dû</p>
+                                <p id="montantTotalDu" class="text-2xl font-bold text-orange-800">0 DA</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-user-friends text-2xl text-blue-500 mr-3"></i>
+                            <div>
+                                <p class="text-sm text-blue-700">Patients concernés</p>
+                                <p id="patientsConcernes" class="text-2xl font-bold text-blue-800">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dette totale</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dernier paiement</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listeDettes" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                    Chargement des dettes...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onglet Statistiques -->
+        <div id="content-statistiques" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Graphique des paiements par type -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                        <i class="fas fa-chart-pie mr-2 text-indigo-600"></i>Répartition des Paiements
+                    </h3>
+                    <div class="h-80">
+                        <canvas id="chartPaiements"></canvas>
+                    </div>
+                </div>
+
+                <!-- Évolution mensuelle -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                        <i class="fas fa-chart-line mr-2 text-green-600"></i>Évolution Mensuelle
+                    </h3>
+                    <div class="h-80">
+                        <canvas id="chartEvolution"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top patients -->
+                <div class="bg-white rounded-xl shadow-lg p-6 lg:col-span-2">
+                    <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                        <i class="fas fa-trophy mr-2 text-yellow-600"></i>Top 10 Patients
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Payé</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre de Paiements</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dernière Visite</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topPatients" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                        Chargement des données...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </nav>
 
-  <div class="container mx-auto px-4 py-16 mt-16">
-    <!-- KPI Section -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 animate-fade-in">
-      <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm opacity-90">Caisse du Jour</p>
-            <p id="caisseJour" class="text-3xl font-bold">0 DA</p>
-          </div>
-          <i class="fas fa-cash-register text-4xl opacity-50"></i>
+    <!-- Modal Détail Paiement -->
+    <div id="modalDetail" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+        <div class="bg-white rounded-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-file-invoice-dollar mr-2 text-indigo-600"></i>Détail du Paiement
+                    </h3>
+                    <button onclick="closeModalDetail()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6" id="modalDetailContent">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
         </div>
-      </div>
-      
-      <div class="kpi-card bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm opacity-90">Total Encaissé</p>
-            <p id="totalEncaisse" class="text-3xl font-bold">0 DA</p>
-          </div>
-          <i class="fas fa-coins text-4xl opacity-50"></i>
-        </div>
-      </div>
-      
-      <div class="kpi-card bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-md">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm opacity-90">Dettes Restantes</p>
-            <p id="soldesRestants" class="text-3xl font-bold">0 DA</p>
-          </div>
-          <i class="fas fa-wallet text-4xl opacity-50"></i>
-        </div>
-      </div>
-      
-      <div class="kpi-card bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm opacity-90">Paiements Jour</p>
-            <p id="paymentsJour" class="text-3xl font-bold">0</p>
-          </div>
-          <i class="fas fa-receipt text-4xl opacity-50"></i>
-        </div>
-      </div>
     </div>
 
-    <!-- Actions Rapides -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
-      <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <i class="fas fa-bolt mr-2 text-indigo-500"></i> Actions Rapides
-      </h2>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <button onclick="openNewPayment('espece')" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
-          <i class="fas fa-money-bill-wave text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Paiement Espèce</span>
-        </button>
-        
-        <button onclick="openNewPayment('a_terme')" class="bg-orange-600 text-white p-4 rounded-lg hover:bg-orange-700 transition flex flex-col items-center group">
-          <i class="fas fa-calendar-alt text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Paiement À Terme</span>
-        </button>
-        
-        <button onclick="openPaiementPartiel()" class="bg-yellow-600 text-white p-4 rounded-lg hover:bg-yellow-700 transition flex flex-col items-center group">
-          <i class="fas fa-hand-holding-usd text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Paiement Partiel</span>
-        </button>
-      </div>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
+        <div class="flex items-center">
+            <i id="toastIcon" class="mr-3"></i>
+            <span id="toastMessage"></span>
+        </div>
     </div>
 
-    <!-- Filtre -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-1">Date Début</label>
-          <input type="date" id="filterDateDebut" class="w-full px-3 py-2 border rounded-md">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Date Fin</label>
-          <input type="date" id="filterDateFin" class="w-full px-3 py-2 border rounded-md">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Type Paiement</label>
-          <select id="filterTypePaiement" class="w-full px-3 py-2 border rounded-md">
-            <option value="">Tous</option>
-            <option value="espece">Espèce</option>
-            <option value="cheque">Chèque</option>
-            <option value="carte">Carte</option>
-            <option value="virement">Virement</option>
-          </select>
-        </div>
-        <div class="flex items-end gap-2">
-          <button onclick="applyFilters()" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
-            <i class="fas fa-filter mr-2"></i> Filtrer
-          </button>
-          <button onclick="resetFilters()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-      </div>
-    </div>
+    <script>
+        // Configuration API
+        const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
+        let currentUserId = localStorage.getItem('userId');
+        let allPaiements = [];
+        let allPatients = [];
+        let allDettes = [];
 
-    <!-- Liste des paiements -->
-    <div class="bg-white rounded-lg shadow-md animate-fade-in">
-      <div class="p-6 border-b flex justify-between items-center">
-        <h2 class="text-xl font-semibold flex items-center">
-          <i class="fas fa-list mr-2 text-indigo-500"></i> Liste des Paiements
-        </h2>
-        <button onclick="loadPayments()" class="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded hover:bg-indigo-200 transition">
-          <i class="fas fa-sync-alt"></i> Actualiser
-        </button>
-      </div>
-      <div class="p-6">
-        <div class="table-responsive-wrapper border rounded-lg overflow-hidden">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="paymentsList" class="bg-white divide-y divide-gray-200">
-              <tr><td colspan="6" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!currentUserId) {
+                showToast('Veuillez vous connecter', 'error');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
 
-  <!-- Modal Paiement Espèce -->
-  <div id="paymentModalEspece" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 modal-content">
-      <div class="flex justify-between items-center mb-6 pb-4 border-b">
-        <h2 class="text-2xl font-semibold text-green-700 flex items-center">
-          <i class="fas fa-money-bill-wave mr-2"></i> Paiement Espèce (Comptant)
-        </h2>
-        <button onclick="closePaymentModal('espece')" class="text-gray-600 hover:text-gray-800">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
-      </div>
-      
-      <form id="paymentFormEspece" onsubmit="event.preventDefault(); savePayment('espece');" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Patient*</label>
-            <select id="paymentPatientEspece" class="w-full px-3 py-2 border rounded-md" required>
-              <option value="">Sélectionner...</option>
-            </select>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">Montant Payé*</label>
-            <input type="number" id="paymentMontantEspece" class="w-full px-3 py-2 border rounded-md" 
-                   min="0" step="0.01" required placeholder="1000">
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Type de Paiement*</label>
-            <select id="paymentTypeEspece" class="w-full px-3 py-2 border rounded-md" required>
-              <option value="espece">Espèce</option>
-              <option value="cheque">Chèque</option>
-              <option value="carte">Carte Bancaire</option>
-              <option value="virement">Virement</option>
-            </select>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">N° Compte Rendu</label>
-            <input type="text" id="paymentNumCREspece" class="w-full px-3 py-2 border rounded-md">
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium mb-1">Notes</label>
-          <textarea id="paymentNotesEspece" rows="2" class="w-full px-3 py-2 border rounded-md"></textarea>
-        </div>
-        
-        <div class="bg-green-50 border border-green-200 rounded p-3">
-          <p class="text-sm text-green-800">
-            <i class="fas fa-info-circle mr-1"></i>
-            <strong>Paiement comptant :</strong> Le montant sera ajouté à la caisse sans créer de dette.
-          </p>
-        </div>
-        
-        <div class="flex justify-end space-x-3 pt-4 border-t">
-          <button type="button" onclick="closePaymentModal('espece')" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
-            Annuler
-          </button>
-          <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition">
-            <i class="fas fa-save mr-2"></i> Enregistrer
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal Paiement À Terme -->
-  <div id="paymentModalTerme" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 modal-content">
-      <div class="flex justify-between items-center mb-6 pb-4 border-b">
-        <h2 class="text-2xl font-semibold text-orange-700 flex items-center">
-          <i class="fas fa-calendar-alt mr-2"></i> Paiement À Terme
-        </h2>
-        <button onclick="closePaymentModal('a_terme')" class="text-gray-600 hover:text-gray-800">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
-      </div>
-      
-      <form id="paymentFormTerme" onsubmit="event.preventDefault(); savePayment('a_terme');" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Patient*</label>
-            <select id="paymentPatientTerme" class="w-full px-3 py-2 border rounded-md" required>
-              <option value="">Sélectionner...</option>
-            </select>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">Montant Total à Payer*</label>
-            <input type="number" id="paymentMontantTotal" class="w-full px-3 py-2 border rounded-md" 
-                   min="0" step="0.01" required placeholder="1000" oninput="calculateReste()">
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Montant Versé Maintenant*</label>
-            <input type="number" id="paymentMontantVerse" class="w-full px-3 py-2 border rounded-md" 
-                   min="0" step="0.01" required placeholder="800" oninput="calculateReste()">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">Reste À Payer</label>
-            <input type="text" id="displayReste" class="w-full px-3 py-2 border rounded-md bg-red-50 text-red-700 font-bold" readonly>
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Type de Paiement*</label>
-            <select id="paymentTypeTerme" class="w-full px-3 py-2 border rounded-md" required>
-              <option value="espece">Espèce</option>
-              <option value="cheque">Chèque</option>
-              <option value="carte">Carte Bancaire</option>
-              <option value="virement">Virement</option>
-            </select>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">N° Compte Rendu</label>
-            <input type="text" id="paymentNumCRTerme" class="w-full px-3 py-2 border rounded-md">
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium mb-1">Notes</label>
-          <textarea id="paymentNotesTerme" rows="2" class="w-full px-3 py-2 border rounded-md"></textarea>
-        </div>
-        
-        <div class="bg-orange-50 border border-orange-200 rounded p-3">
-          <p class="text-sm text-orange-800">
-            <i class="fas fa-exclamation-triangle mr-1"></i>
-            <strong>Paiement à terme :</strong> Le reste à payer sera enregistré comme dette du patient.
-          </p>
-        </div>
-        
-        <div class="flex justify-end space-x-3 pt-4 border-t">
-          <button type="button" onclick="closePaymentModal('a_terme')" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
-            Annuler
-          </button>
-          <button type="submit" class="bg-orange-600 text-white px-6 py-2 rounded-md hover:bg-orange-700 transition">
-            <i class="fas fa-save mr-2"></i> Enregistrer
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal Paiement Partiel -->
-  <div id="paymentModalPartiel" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 modal-content">
-      <div class="flex justify-between items-center mb-6 pb-4 border-b">
-        <h2 class="text-2xl font-semibold text-yellow-700 flex items-center">
-          <i class="fas fa-hand-holding-usd mr-2"></i> Paiement Partiel (Dette Existante)
-        </h2>
-        <button onclick="closePaiementPartiel()" class="text-gray-600 hover:text-gray-800">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
-      </div>
-      
-      <form id="paymentFormPartiel" onsubmit="event.preventDefault(); savePaymentPartiel();" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Patient avec Dette*</label>
-            <select id="paymentPatientPartiel" class="w-full px-3 py-2 border rounded-md" required onchange="updateDetteActuelle()">
-              <option value="">Sélectionner...</option>
-            </select>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">Dette Actuelle</label>
-            <input type="text" id="displayDetteActuelle" class="w-full px-3 py-2 border rounded-md bg-red-50 text-red-700 font-bold" readonly>
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Montant Versé*</label>
-            <input type="number" id="paymentMontantPartiel" class="w-full px-3 py-2 border rounded-md" 
-                   min="0" step="0.01" required placeholder="500" oninput="calculateNouvelDette()">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">Nouvelle Dette</label>
-            <input type="text" id="displayNouvelDette" class="w-full px-3 py-2 border rounded-md bg-yellow-50 font-bold" readonly>
-          </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Type de Paiement*</label>
-            <select id="paymentTypePartiel" class="w-full px-3 py-2 border rounded-md" required>
-              <option value="espece">Espèce</option>
-              <option value="cheque">Chèque</option>
-              <option value="carte">Carte Bancaire</option>
-              <option value="virement">Virement</option>
-            </select>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-1">N° Compte Rendu</label>
-            <input type="text" id="paymentNumCRPartiel" class="w-full px-3 py-2 border rounded-md">
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium mb-1">Notes</label>
-          <textarea id="paymentNotesPartiel" rows="2" class="w-full px-3 py-2 border rounded-md"></textarea>
-        </div>
-        
-        <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
-          <p class="text-sm text-yellow-800">
-            <i class="fas fa-info-circle mr-1"></i>
-            <strong>Paiement partiel :</strong> Réduira la dette existante du patient.
-          </p>
-        </div>
-        
-        <div class="flex justify-end space-x-3 pt-4 border-t">
-          <button type="button" onclick="closePaiementPartiel()" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
-            Annuler
-          </button>
-          <button type="submit" class="bg-yellow-600 text-white px-6 py-2 rounded-md hover:bg-yellow-700 transition">
-            <i class="fas fa-save mr-2"></i> Enregistrer
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Toast -->
-  <div id="toast" class="toast">
-    <i id="toastIcon" class="mr-2"></i>
-    <span id="toastMessage"></span>
-  </div>
-
-  <script>
-    const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
-    let allPayments = [];
-    let allPatients = [];
-    
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      const icon = document.getElementById('toastIcon');
-      const msg = document.getElementById('toastMessage');
-      
-      toast.className = `toast ${type}`;
-      icon.className = `fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2`;
-      msg.textContent = message;
-      
-      setTimeout(() => toast.classList.add('show'), 10);
-      setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-    
-    function formatCurrency(amount) {
-      return new Intl.NumberFormat('fr-DZ', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount) + ' DA';
-    }
-    
-    async function loadPatients() {
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/patients`, {
-          headers: { 'X-User-ID': userId }
+            updateCurrentUserDisplay();
+            loadDashboardData();
+            loadPatients();
+            loadPaiements();
+            loadDettes();
         });
-        
-        if (!response.ok) throw new Error('Erreur chargement patients');
-        
-        allPatients = await response.json();
-        
-        // Remplir tous les selects
-        ['paymentPatientEspece', 'paymentPatientTerme'].forEach(id => {
-          const select = document.getElementById(id);
-          select.innerHTML = '<option value="">Sélectionner...</option>' +
-            allPatients.map(p => `<option value="${p.id}">${p.nom}</option>`).join('');
-        });
-        
-        // Pour le paiement partiel, ne montrer que les patients avec dettes
-        const selectPartiel = document.getElementById('paymentPatientPartiel');
-        const patientsAvecDette = allPatients.filter(p => parseFloat(p.solde || 0) < 0);
-        selectPartiel.innerHTML = '<option value="">Sélectionner...</option>' +
-          patientsAvecDette.map(p => `<option value="${p.id}" data-solde="${p.solde}">${p.nom}</option>`).join('');
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors du chargement des patients', 'error');
-      }
-    }
-    
-    async function loadPayments() {
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/paiements`, {
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (!response.ok) throw new Error('Erreur chargement paiements');
-        
-        allPayments = await response.json();
-        renderPayments(allPayments);
-        updateKPIs();
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors du chargement des paiements', 'error');
-      }
-    }
-    
-    function renderPayments(payments) {
-      const tbody = document.getElementById('paymentsList');
-      
-      if (payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Aucun paiement trouvé</td></tr>';
-        return;
-      }
-      
-      tbody.innerHTML = payments.map(p => {
-        const modeClass = p.mode_paiement === 'espece' ? 'mode-espece' : p.mode_paiement === 'a_terme' ? 'mode-terme' : 'mode-espece';
-        const modeText = p.mode_paiement === 'espece' ? 'Comptant' : p.mode_paiement === 'a_terme' ? 'À Terme' : 'Partiel';
-        
-        return `
-          <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4 text-sm">${new Date(p.date_paiement).toLocaleDateString('fr-FR')}</td>
-            <td class="px-6 py-4 text-sm font-medium">${p.patient_nom}</td>
-            <td class="px-6 py-4 text-sm">
-              <span class="mode-badge ${modeClass}">${modeText}</span>
-            </td>
-            <td class="px-6 py-4 text-sm font-bold text-green-600">${formatCurrency(p.montant)}</td>
-            <td class="px-6 py-4 text-sm">
-              <span class="payment-type-badge payment-${p.type_paiement}">${p.type_paiement}</span>
-            </td>
-            <td class="px-6 py-4 text-sm">
-              <button onclick="viewPayment(${p.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
-                <i class="fas fa-eye"></i>
-              </button>
-              <button onclick="deletePayment(${p.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
-                <i class="fas fa-trash"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-    
-    function updateKPIs() {
-      const today = new Date().toDateString();
-      const todayPayments = allPayments.filter(p => 
-        new Date(p.date_paiement).toDateString() === today
-      );
-      
-      const caisseJour = todayPayments.reduce((sum, p) => sum + parseFloat(p.montant), 0);
-      const totalEncaisse = allPayments.reduce((sum, p) => sum + parseFloat(p.montant), 0);
-      const dettesRestantes = allPatients.reduce((sum, p) => {
-        const solde = parseFloat(p.solde || 0);
-        return sum + (solde < 0 ? Math.abs(solde) : 0);
-      }, 0);
-      
-      document.getElementById('caisseJour').textContent = formatCurrency(caisseJour);
-      document.getElementById('totalEncaisse').textContent = formatCurrency(totalEncaisse);
-      document.getElementById('soldesRestants').textContent = formatCurrency(dettesRestantes);
-      document.getElementById('paymentsJour').textContent = todayPayments.length;
-    }
-    
-    function openNewPayment(mode) {
-      if (mode === 'espece') {
-        document.getElementById('paymentFormEspece').reset();
-        document.getElementById('paymentModalEspece').classList.remove('hidden');
-      } else if (mode === 'a_terme') {
-        document.getElementById('paymentFormTerme').reset();
-        document.getElementById('displayReste').value = '';
-        document.getElementById('paymentModalTerme').classList.remove('hidden');
-      }
-    }
-    
-    function closePaymentModal(mode) {
-      if (mode === 'espece') {
-        document.getElementById('paymentModalEspece').classList.add('hidden');
-      } else if (mode === 'a_terme') {
-        document.getElementById('paymentModalTerme').classList.add('hidden');
-      }
-    }
-    
-    function calculateReste() {
-      const total = parseFloat(document.getElementById('paymentMontantTotal').value) || 0;
-      const verse = parseFloat(document.getElementById('paymentMontantVerse').value) || 0;
-      const reste = total - verse;
-      
-      document.getElementById('displayReste').value = reste > 0 ? formatCurrency(reste) : '0 DA';
-    }
-    
-    async function savePayment(mode) {
-      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
-      const utilisateurId = selectedUtilisateur.numero;
-      
-      if (!utilisateurId) {
-        showToast('Veuillez sélectionner un utilisateur', 'error');
-        return;
-      }
-      
-      let data = {
-        utilisateur_id: utilisateurId,
-        mode_paiement: mode
-      };
-      
-      if (mode === 'espece') {
-        data.patient_id = parseInt(document.getElementById('paymentPatientEspece').value);
-        data.montant = parseFloat(document.getElementById('paymentMontantEspece').value);
-        data.type_paiement = document.getElementById('paymentTypeEspece').value;
-        data.numero_cr = document.getElementById('paymentNumCREspece').value || null;
-        data.notes = document.getElementById('paymentNotesEspece').value || null;
-      } else if (mode === 'a_terme') {
-        const montantTotal = parseFloat(document.getElementById('paymentMontantTotal').value);
-        const montantVerse = parseFloat(document.getElementById('paymentMontantVerse').value);
-        
-        if (montantVerse > montantTotal) {
-          showToast('Le montant versé ne peut pas dépasser le montant total', 'error');
-          return;
+
+        function updateCurrentUserDisplay() {
+            const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+            const displayName = selectedUser.nom || 'Utilisateur non sélectionné';
+            document.getElementById('currentUser').textContent = displayName;
         }
-        
-        data.patient_id = parseInt(document.getElementById('paymentPatientTerme').value);
-        data.montant = montantVerse;
-        data.montant_total = montantTotal;
-        data.type_paiement = document.getElementById('paymentTypeTerme').value;
-        data.numero_cr = document.getElementById('paymentNumCRTerme').value || null;
-        data.notes = document.getElementById('paymentNotesTerme').value || null;
-      }
-      
-      if (!data.patient_id || !data.montant) {
-        showToast('Veuillez remplir tous les champs obligatoires', 'error');
-        return;
-      }
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/paiements`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': userId
-          },
-          body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
-        }
-        
-        const result = await response.json();
-        showToast(result.message || 'Paiement enregistré avec succès');
-        closePaymentModal(mode);
-        loadPayments();
-        loadPatients();
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast(error.message || 'Erreur lors de l\'enregistrement du paiement', 'error');
-      }
-    }
-    
-    function openPaiementPartiel() {
-      document.getElementById('paymentFormPartiel').reset();
-      document.getElementById('displayDetteActuelle').value = '';
-      document.getElementById('displayNouvelDette').value = '';
-      document.getElementById('paymentModalPartiel').classList.remove('hidden');
-      loadPatients();
-    }
-    
-    function closePaiementPartiel() {
-      document.getElementById('paymentModalPartiel').classList.add('hidden');
-    }
-    
-    function updateDetteActuelle() {
-      const select = document.getElementById('paymentPatientPartiel');
-      const display = document.getElementById('displayDetteActuelle');
-      
-      if (select.value) {
-        const solde = parseFloat(select.options[select.selectedIndex].dataset.solde || 0);
-        display.value = formatCurrency(Math.abs(solde));
-        display.className = 'w-full px-3 py-2 border rounded-md bg-red-50 text-red-700 font-bold';
-      } else {
-        display.value = '';
-      }
-      
-      calculateNouvelDette();
-    }
-    
-    function calculateNouvelDette() {
-      const select = document.getElementById('paymentPatientPartiel');
-      const montant = parseFloat(document.getElementById('paymentMontantPartiel').value) || 0;
-      const displayNouveau = document.getElementById('displayNouvelDette');
-      
-      if (select.value && montant > 0) {
-        const soldeActuel = parseFloat(select.options[select.selectedIndex].dataset.solde || 0);
-        const nouveauSolde = soldeActuel + montant;
-        
-        displayNouveau.value = formatCurrency(Math.abs(nouveauSolde));
-        
-        if (nouveauSolde < 0) {
-          displayNouveau.className = 'w-full px-3 py-2 border rounded-md bg-yellow-50 text-red-700 font-bold';
-        } else if (nouveauSolde === 0) {
-          displayNouveau.className = 'w-full px-3 py-2 border rounded-md bg-green-50 text-green-700 font-bold';
-        } else {
-          displayNouveau.className = 'w-full px-3 py-2 border rounded-md bg-yellow-50 font-bold';
-        }
-      } else {
-        displayNouveau.value = '';
-      }
-    }
-    
-    async function savePaymentPartiel() {
-      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
-      const utilisateurId = selectedUtilisateur.numero;
-      
-      if (!utilisateurId) {
-        showToast('Veuillez sélectionner un utilisateur', 'error');
-        return;
-      }
-      
-      const data = {
-        patient_id: parseInt(document.getElementById('paymentPatientPartiel').value),
-        montant: parseFloat(document.getElementById('paymentMontantPartiel').value),
-        type_paiement: document.getElementById('paymentTypePartiel').value,
-        numero_cr: document.getElementById('paymentNumCRPartiel').value || null,
-        notes: document.getElementById('paymentNotesPartiel').value || null,
-        utilisateur_id: utilisateurId
-      };
-      
-      if (!data.patient_id || !data.montant) {
-        showToast('Veuillez remplir tous les champs obligatoires', 'error');
-        return;
-      }
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/paiements/paiement-partiel`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': userId
-          },
-          body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
-        }
-        
-        const result = await response.json();
-        showToast(result.message || 'Paiement partiel enregistré avec succès');
-        closePaiementPartiel();
-        loadPayments();
-        loadPatients();
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast(error.message || 'Erreur lors de l\'enregistrement du paiement', 'error');
-      }
-    }
-    
-    async function deletePayment(id) {
-      if (!confirm('Supprimer ce paiement ?')) return;
-      
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_BASE_URL}/paiements/${id}`, {
-          method: 'DELETE',
-          headers: { 'X-User-ID': userId }
-        });
-        
-        if (!response.ok) throw new Error('Erreur lors de la suppression');
-        
-        showToast('Paiement supprimé');
-        loadPayments();
-        loadPatients();
-        
-      } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Erreur lors de la suppression', 'error');
-      }
-    }
-    
-    function applyFilters() {
-      let filtered = [...allPayments];
-      
-      const dateDebut = document.getElementById('filterDateDebut').value;
-      const dateFin = document.getElementById('filterDateFin').value;
-      const type = document.getElementById('filterTypePaiement').value;
-      
-      if (dateDebut) {
-        filtered = filtered.filter(p => new Date(p.date_paiement) >= new Date(dateDebut));
-      }
-      
-      if (dateFin) {
-        filtered = filtered.filter(p => new Date(p.date_paiement) <= new Date(dateFin));
-      }
-      
-      if (type) {
-        filtered = filtered.filter(p => p.type_paiement === type);
-      }
-      
-      renderPayments(filtered);
-    }
-    
-    function resetFilters() {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('filterDateDebut').value = today;
-      document.getElementById('filterDateFin').value = today;
-      document.getElementById('filterTypePaiement').value = '';
-      renderPayments(allPayments);
-    }
-    
-    function viewPayment(id) {
-      const payment = allPayments.find(p => p.id === id);
-      if (!payment) return;
-      
-      const modeText = payment.mode_paiement === 'espece' ? 'Comptant' : 
-                       payment.mode_paiement === 'a_terme' ? 'À Terme' : 'Paiement Partiel';
-      
-      let details = `DÉTAILS DU PAIEMENT
 
-Patient: ${payment.patient_nom}
-Date: ${new Date(payment.date_paiement).toLocaleDateString('fr-FR')}
-Mode: ${modeText}
-Montant payé: ${formatCurrency(payment.montant)}`;
+        function showTab(tabName) {
+            // Cacher tous les onglets
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Désactiver tous les onglets
+            document.querySelectorAll('button[onclick^="showTab"]').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            });
 
-      if (payment.montant_total) {
-        details += `\nMontant total: ${formatCurrency(payment.montant_total)}`;
-        details += `\nReste à payer: ${formatCurrency(payment.montant_total - payment.montant)}`;
-      }
-      
-      details += `\nType: ${payment.type_paiement}
-N° CR: ${payment.numero_cr || 'N/A'}
-Utilisateur: ${payment.utilisateur_nom || 'N/A'}`;
+            // Afficher l'onglet sélectionné
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            
+            // Activer le bouton correspondant
+            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+            document.getElementById(`tab-${tabName}`).classList.remove('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        }
 
-      if (payment.notes) {
-        details += `\nNotes: ${payment.notes}`;
-      }
-      
-      alert(details);
-    }
-    
-    document.addEventListener('DOMContentLoaded', () => {
-      const userId = localStorage.getItem('userId');
-      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
-      
-      if (!userId) {
-        window.location.href = 'index.html';
-        return;
-      }
-      
-      document.getElementById('currentUserDisplay').textContent = selectedUtilisateur.nom || 'Utilisateur';
-      
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('filterDateDebut').value = today;
-      document.getElementById('filterDateFin').value = today;
-      
-      loadPatients();
-      loadPayments();
-    });
-  </script>
+        async function loadDashboardData() {
+            try {
+                const [paiementsRes, patientsRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/paiements`, {
+                        headers: { 'X-User-ID': currentUserId }
+                    }),
+                    fetch(`${API_BASE_URL}/patients`, {
+                        headers: { 'X-User-ID': currentUserId }
+                    })
+                ]);
+
+                if (paiementsRes.ok && patientsRes.ok) {
+                    const paiements = await paiementsRes.json();
+                    const patients = await patientsRes.json();
+
+                    // Calculer les KPI
+                    const totalEncaisse = paiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+                    const aujourdhui = new Date().toISOString().split('T')[0];
+                    const encaisseAujourdhui = paiements
+                        .filter(p => p.date_paiement && p.date_paiement.startsWith(aujourdhui))
+                        .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+
+                    const dettes = patients.filter(p => parseFloat(p.solde || 0) < 0);
+                    const montantDettes = dettes.reduce((sum, p) => sum + Math.abs(parseFloat(p.solde || 0)), 0);
+
+                    // Mettre à jour les KPI
+                    document.getElementById('totalEncaisse').textContent = `${totalEncaisse.toFixed(2)} DA`;
+                    document.getElementById('encaisseAujourdhui').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
+                    document.getElementById('totalDettes').textContent = dettes.length;
+                    document.getElementById('montantDettes').textContent = `${montantDettes.toFixed(2)} DA`;
+                    document.getElementById('totalPaiements').textContent = paiements.length;
+                    document.getElementById('patientsDetteurs').textContent = dettes.length;
+
+                    // Mettre à jour les statistiques des dettes
+                    document.getElementById('dettesEnAttente').textContent = dettes.length;
+                    document.getElementById('montantTotalDu').textContent = `${montantDettes.toFixed(2)} DA`;
+                    document.getElementById('patientsConcernes').textContent = dettes.length;
+
+                }
+            } catch (error) {
+                console.error('Erreur chargement dashboard:', error);
+            }
+        }
+
+        async function loadPatients() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/patients`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    allPatients = await response.json();
+                    const select = document.getElementById('patientSelect');
+                    
+                    select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
+                        allPatients.map(p => {
+                            const solde = parseFloat(p.solde || 0);
+                            const soldeText = solde < 0 ? ` (Dette: ${Math.abs(solde).toFixed(2)} DA)` : 
+                                        solde > 0 ? ` (Crédit: ${solde.toFixed(2)} DA)` : '';
+                            return `<option value="${p.id}" data-age="${p.age || ''}" data-sexe="${p.sexe || ''}" data-tel="${p.telephone || ''}" data-solde="${solde}">
+                                ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
+                            </option>`;
+                        }).join('');
+                }
+            } catch (error) {
+                console.error('Erreur chargement patients:', error);
+                showToast('Erreur lors du chargement des patients', 'error');
+            }
+        }
+
+        function updatePatientInfo() {
+            const select = document.getElementById('patientSelect');
+            const selectedOption = select.options[select.selectedIndex];
+            const infoDiv = document.getElementById('patientInfo');
+
+            if (selectedOption && selectedOption.value) {
+                const age = selectedOption.dataset.age || '-';
+                const sexe = selectedOption.dataset.sexe || '-';
+                const tel = selectedOption.dataset.tel || '-';
+                const solde = parseFloat(selectedOption.dataset.solde || 0);
+
+                document.getElementById('infoAge').textContent = age;
+                document.getElementById('infoSexe').textContent = sexe;
+                document.getElementById('infoTel').textContent = tel;
+                document.getElementById('infoSolde').textContent = `${solde.toFixed(2)} DA`;
+                document.getElementById('infoSolde').className = `font-bold ${solde < 0 ? 'text-red-600' : solde > 0 ? 'text-green-600' : 'text-gray-600'}`;
+
+                infoDiv.classList.remove('hidden');
+
+                // Mettre à jour le récapitulatif
+                updateRecap();
+            } else {
+                infoDiv.classList.add('hidden');
+            }
+        }
+
+        function toggleMontantTotal() {
+            const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+            const montantTotalGroup = document.getElementById('montantTotalGroup');
+            const recapDetails = document.getElementById('recapDetails');
+
+            if (mode === 'a_terme') {
+                montantTotalGroup.classList.remove('hidden');
+                recapDetails.classList.remove('hidden');
+            } else {
+                montantTotalGroup.classList.add('hidden');
+                if (mode === 'espece' || mode === 'paiement_partiel') {
+                    recapDetails.classList.remove('hidden');
+                }
+            }
+
+            updateRecap();
+        }
+
+        function updateRecap() {
+            const patientSelect = document.getElementById('patientSelect');
+            const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+            const montantPaye = parseFloat(document.getElementById('montantPaye').value) || 0;
+            const montantTotal = parseFloat(document.getElementById('montantTotal').value) || 0;
+            const soldeActuel = parseFloat(patientSelect.options[patientSelect.selectedIndex]?.dataset.solde || 0);
+
+            let reste = 0;
+            let nouveauSolde = soldeActuel;
+
+            if (mode === 'a_terme') {
+                reste = montantTotal - montantPaye;
+                nouveauSolde = -reste;
+            } else if (mode === 'paiement_partiel') {
+                nouveauSolde = soldeActuel + montantPaye;
+                reste = Math.abs(nouveauSolde) < 0.01 ? 0 : Math.abs(nouveauSolde);
+            } else if (mode === 'espece') {
+                nouveauSolde = soldeActuel;
+                reste = 0;
+            }
+
+            // Mettre à jour les éléments du récapitulatif
+            const recapContent = document.getElementById('recapContent');
+            recapContent.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center p-4 bg-indigo-50 rounded-lg">
+                        <span class="font-medium text-indigo-700">Mode de paiement:</span>
+                        <span class="px-3 py-1 rounded-full text-sm ${mode === 'espece' ? 'badge-espece' : mode === 'a_terme' ? 'badge-a_terme' : 'badge-partiel'}">
+                            ${mode === 'espece' ? 'Comptant' : mode === 'a_terme' ? 'À terme' : 'Paiement partiel'}
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <p class="text-sm text-gray-600">Solde actuel</p>
+                            <p class="text-xl font-bold ${soldeActuel < 0 ? 'text-red-600' : 'text-gray-800'}">
+                                ${soldeActuel.toFixed(2)} DA
+                            </p>
+                        </div>
+                        
+                        <div class="p-4 bg-green-50 rounded-lg">
+                            <p class="text-sm text-green-600">Montant payé</p>
+                            <p class="text-xl font-bold text-green-700">
+                                ${montantPaye.toFixed(2)} DA
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Mettre à jour les détails
+            if (mode === 'a_terme') {
+                document.getElementById('recapTotal').textContent = `${montantTotal.toFixed(2)} DA`;
+            } else {
+                document.getElementById('recapTotal').textContent = `${montantPaye.toFixed(2)} DA`;
+            }
+            
+            document.getElementById('recapPaye').textContent = `${montantPaye.toFixed(2)} DA`;
+            document.getElementById('recapReste').textContent = `${reste.toFixed(2)} DA`;
+            document.getElementById('recapNouveauSolde').textContent = `${nouveauSolde.toFixed(2)} DA`;
+            document.getElementById('recapNouveauSolde').className = `font-bold text-lg ${nouveauSolde < 0 ? 'text-red-600' : nouveauSolde > 0 ? 'text-green-600' : 'text-gray-600'}`;
+        }
+
+        async function enregistrerPaiement() {
+            const patientId = document.getElementById('patientSelect').value;
+            const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+            const montantPaye = parseFloat(document.getElementById('montantPaye').value);
+            const montantTotal = parseFloat(document.getElementById('montantTotal').value);
+            const typePaiement = document.getElementById('typePaiement').value;
+            const numeroCR = document.getElementById('numeroCR').value;
+            const notes = document.getElementById('notes').value;
+
+            // Validation
+            if (!patientId) {
+                showToast('Veuillez sélectionner un patient', 'error');
+                return;
+            }
+
+            if (!montantPaye || montantPaye <= 0) {
+                showToast('Veuillez saisir un montant valide', 'error');
+                return;
+            }
+
+            if (mode === 'a_terme' && (!montantTotal || montantTotal <= montantPaye)) {
+                showToast('Pour un paiement à terme, le montant total doit être supérieur au montant payé', 'error');
+                return;
+            }
+
+            try {
+                const data = {
+                    patient_id: patientId,
+                    montant: montantPaye,
+                    type_paiement: typePaiement,
+                    mode_paiement: mode,
+                    numero_cr: numeroCR,
+                    notes: notes
+                };
+
+                if (mode === 'a_terme') {
+                    data.montant_total = montantTotal;
+                }
+
+                let endpoint = `${API_BASE_URL}/paiements`;
+                if (mode === 'paiement_partiel') {
+                    endpoint = `${API_BASE_URL}/paiements/paiement-partiel`;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-ID': currentUserId
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast(result.message || 'Paiement enregistré avec succès', 'success');
+                    
+                    // Réinitialiser le formulaire
+                    document.getElementById('montantPaye').value = '';
+                    document.getElementById('montantTotal').value = '';
+                    document.getElementById('numeroCR').value = '';
+                    document.getElementById('notes').value = '';
+                    
+                    // Recharger les données
+                    loadDashboardData();
+                    loadPaiements();
+                    loadDettes();
+                    
+                    // Revenir à l'onglet liste
+                    showTab('liste');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
+                }
+            } catch (error) {
+                console.error('Erreur enregistrement paiement:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function loadPaiements() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    allPaiements = await response.json();
+                    renderPaiementsList();
+                }
+            } catch (error) {
+                console.error('Erreur chargement paiements:', error);
+                showToast('Erreur lors du chargement des paiements', 'error');
+            }
+        }
+
+        function renderPaiementsList() {
+            const tbody = document.getElementById('listePaiements');
+            
+            if (allPaiements.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
+                            <p class="mt-2">Aucun paiement enregistré</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = allPaiements.map(p => {
+                const date = new Date(p.date_paiement).toLocaleDateString('fr-FR');
+                const heure = new Date(p.date_paiement).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                
+                let modeBadge = '';
+                if (p.mode_paiement === 'espece') {
+                    modeBadge = '<span class="badge-espece px-2 py-1 rounded-full text-xs">Comptant</span>';
+                } else if (p.mode_paiement === 'a_terme') {
+                    modeBadge = '<span class="badge-a_terme px-2 py-1 rounded-full text-xs">À terme</span>';
+                } else {
+                    modeBadge = '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>';
+                }
+
+                return `
+                    <tr class="payment-card status-${p.mode_paiement}">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${date}</div>
+                            <div class="text-sm text-gray-500">${heure}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">${p.patient_nom_complet || p.patient_nom || 'N/A'}</div>
+                            <div class="text-sm text-gray-500">${p.patient_telephone || ''}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">${p.type_paiement}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            ${modeBadge}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-bold text-gray-900">${parseFloat(p.montant).toFixed(2)} DA</div>
+                            ${p.mode_paiement === 'a_terme' && p.montant_total ? 
+                                `<div class="text-xs text-gray-500">Total: ${parseFloat(p.montant_total).toFixed(2)} DA</div>` : ''}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">${p.numero_cr || '-'}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium">
+                            <button onclick="viewPaymentDetail(${p.id})" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Voir détail">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="printReceipt(${p.id})" class="text-green-600 hover:text-green-900 mr-3" title="Imprimer reçu">
+                                <i class="fas fa-print"></i>
+                            </button>
+                            <button onclick="deletePayment(${p.id})" class="text-red-600 hover:text-red-900" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadDettes() {
+            try {
+                // Récupérer les patients avec solde négatif
+                const response = await fetch(`${API_BASE_URL}/patients`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const patients = await response.json();
+                    allDettes = patients.filter(p => parseFloat(p.solde || 0) < 0);
+                    renderDettesList();
+                }
+            } catch (error) {
+                console.error('Erreur chargement dettes:', error);
+            }
+        }
+
+        function renderDettesList() {
+            const tbody = document.getElementById('listeDettes');
+            
+            if (allDettes.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
+                            <p class="mt-2">Aucune dette active</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = allDettes.map(patient => {
+                const dette = Math.abs(parseFloat(patient.solde || 0));
+                
+                return `
+                    <tr class="hover:bg-red-50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-red-600"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">${patient.nom}</div>
+                                    <div class="text-sm text-gray-500">${patient.prenom || ''}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-500">-</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium">
+                            <button onclick="payerDette(${patient.id})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                <i class="fas fa-money-bill-wave mr-2"></i>Régler
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function viewPaymentDetail(paymentId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const payment = await response.json();
+                    
+                    const modalContent = `
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div class="p-4 bg-indigo-50 rounded-lg">
+                                    <p class="text-sm text-indigo-600">Patient</p>
+                                    <p class="text-lg font-semibold">${payment.patient_nom_complet || payment.patient_nom}</p>
+                                </div>
+                                <div class="p-4 bg-green-50 rounded-lg">
+                                    <p class="text-sm text-green-600">Montant</p>
+                                    <p class="text-lg font-semibold">${parseFloat(payment.montant).toFixed(2)} DA</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-6">
+                                <div class="p-4 bg-gray-50 rounded-lg">
+                                    <p class="text-sm text-gray-600">Date</p>
+                                    <p class="font-medium">${new Date(payment.date_paiement).toLocaleDateString('fr-FR')}</p>
+                                </div>
+                                <div class="p-4 bg-purple-50 rounded-lg">
+                                    <p class="text-sm text-purple-600">Type</p>
+                                    <p class="font-medium">${payment.type_paiement}</p>
+                                </div>
+                            </div>
+                            
+                            ${payment.mode_paiement === 'a_terme' && payment.montant_total ? `
+                                <div class="p-4 bg-orange-50 rounded-lg">
+                                    <p class="text-sm text-orange-600">Paiement à terme</p>
+                                    <div class="mt-2 space-y-2">
+                                        <div class="flex justify-between">
+                                            <span>Montant total:</span>
+                                            <span class="font-bold">${parseFloat(payment.montant_total).toFixed(2)} DA</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>Montant payé:</span>
+                                            <span class="font-bold text-green-600">${parseFloat(payment.montant).toFixed(2)} DA</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>Reste à payer:</span>
+                                            <span class="font-bold text-red-600">${(parseFloat(payment.montant_total) - parseFloat(payment.montant)).toFixed(2)} DA</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${payment.notes ? `
+                                <div class="p-4 bg-blue-50 rounded-lg">
+                                    <p class="text-sm text-blue-600">Notes</p>
+                                    <p class="mt-2 text-gray-700">${payment.notes}</p>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="pt-4 border-t border-gray-200 flex justify-end space-x-3">
+                                <button onclick="printReceipt(${payment.id})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                    <i class="fas fa-print mr-2"></i>Imprimer reçu
+                                </button>
+                                <button onclick="closeModalDetail()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.getElementById('modalDetailContent').innerHTML = modalContent;
+                    document.getElementById('modalDetail').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Erreur chargement détail:', error);
+                showToast('Erreur lors du chargement du détail', 'error');
+            }
+        }
+
+        function closeModalDetail() {
+            document.getElementById('modalDetail').classList.add('hidden');
+        }
+
+        function payerDette(patientId) {
+            const patient = allPatients.find(p => p.id == patientId);
+            if (patient) {
+                document.getElementById('patientSelect').value = patientId;
+                document.querySelector('input[value="paiement_partiel"]').checked = true;
+                toggleMontantTotal();
+                updatePatientInfo();
+                showTab('nouveau');
+                
+                const dette = Math.abs(parseFloat(patient.solde || 0));
+                document.getElementById('montantPaye').value = dette;
+                updateRecap();
+                
+                showToast(`Dette sélectionnée pour ${patient.nom}: ${dette.toFixed(2)} DA`, 'success');
+            }
+        }
+
+        async function deletePayment(paymentId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer ce paiement ? Cette action est irréversible.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    showToast('Paiement supprimé avec succès', 'success');
+                    loadDashboardData();
+                    loadPaiements();
+                    loadDettes();
+                } else {
+                    throw new Error('Erreur lors de la suppression');
+                }
+            } catch (error) {
+                console.error('Erreur suppression paiement:', error);
+                showToast('Erreur lors de la suppression', 'error');
+            }
+        }
+
+        function printReceipt(paymentId) {
+            // Implémentez la génération du reçu ici
+            showToast('Fonctionnalité d\'impression en développement', 'warning');
+        }
+
+        function exporterExcel() {
+            // Implémentez l'export Excel ici
+            showToast('Fonctionnalité d\'export Excel en développement', 'warning');
+        }
+
+        function imprimerListe() {
+            // Implémentez l'impression de la liste ici
+            showToast('Fonctionnalité d\'impression en développement', 'warning');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+
+            toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center ${type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-orange-500' : 'bg-green-600'} text-white`;
+            icon.className = `fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-3`;
+            msg.textContent = message;
+
+            toast.classList.remove('hidden');
+            toast.style.opacity = '1';
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        // Ajouter des écouteurs d'événements pour les mises à jour dynamiques
+        document.getElementById('patientSelect').addEventListener('change', updatePatientInfo);
+        document.getElementById('montantPaye').addEventListener('input', updateRecap);
+        document.getElementById('montantTotal').addEventListener('input', updateRecap);
+        document.querySelectorAll('input[name="modePaiement"]').forEach(radio => {
+            radio.addEventListener('change', toggleMontantTotal);
+        });
+    </script>
 </body>
 </html>
