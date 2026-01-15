@@ -826,22 +826,47 @@
             }
         }
 
-        async function loadPaiements() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/paiements`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
+     async function loadPatients() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/patients`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
 
-                if (response.ok) {
-                    allPaiements = await response.json();
-                    renderPaiementsList();
-                }
-            } catch (error) {
-                console.error('Erreur chargement paiements:', error);
-                showToast('Erreur lors du chargement des paiements', 'error');
-            }
+        if (response.ok) {
+            allPatients = await response.json();
+            const select = document.getElementById('patientSelect');
+            
+            select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
+                allPatients.map(p => {
+                    const solde = parseFloat(p.solde || 0);
+                    const soldeFormatted = Math.abs(solde).toFixed(2);
+                    
+                    let soldeText = '';
+                    let soldeClass = '';
+                    
+                    if (solde < 0) {
+                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
+                        soldeClass = 'text-red-600 font-semibold';
+                    } else if (solde > 0) {
+                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
+                        soldeClass = 'text-green-600 font-semibold';
+                    }
+                    
+                    return `<option value="${p.id}" 
+                                data-age="${p.age || ''}" 
+                                data-sexe="${p.sexe || ''}" 
+                                data-tel="${p.telephone || ''}" 
+                                data-solde="${solde}"
+                                class="${soldeClass}">
+                                ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
+                            </option>`;
+                }).join('');
         }
-
+    } catch (error) {
+        console.error('Erreur chargement patients:', error);
+        showToast('Erreur lors du chargement des patients', 'error');
+    }
+}
         function renderPaiementsList() {
             const tbody = document.getElementById('listePaiements');
             
