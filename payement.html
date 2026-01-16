@@ -72,6 +72,39 @@
         .table-container::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+        
+        .drawer-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        
+        .drawer-content.open {
+            max-height: 2000px;
+        }
+        
+        .filter-active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        .toast.show { display: flex; align-items: center; }
+        .toast.hide { display: none; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -170,6 +203,9 @@
                     <button onclick="showTab('statistiques')" id="tab-statistiques" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
                         <i class="fas fa-chart-bar mr-2"></i>Statistiques
                     </button>
+                    <button onclick="showTab('rapports')" id="tab-rapports" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-file-alt mr-2"></i>Rapports
+                    </button>
                 </nav>
             </div>
         </div>
@@ -190,7 +226,7 @@
                                 <i class="fas fa-user-injured mr-2 text-blue-600"></i>Sélectionner un Patient*
                             </label>
                             <div class="flex gap-2">
-                                <select id="patientSelect" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                                <select id="patientSelect" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePatientInfo()">
                                     <option value="">Chargement des patients...</option>
                                 </select>
                                 <button onclick="loadPatients()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition" title="Actualiser">
@@ -248,14 +284,14 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Montant Total (DA)*
                                 </label>
-                                <input type="number" id="montantTotal" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00">
+                                <input type="number" id="montantTotal" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" oninput="updateRecap()">
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Montant Payé (DA)*
                                 </label>
-                                <input type="number" id="montantPaye" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" required>
+                                <input type="number" id="montantPaye" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" required oninput="updateRecap()">
                             </div>
                         </div>
 
@@ -341,16 +377,55 @@
                     <h3 class="text-xl font-semibold text-gray-800 mb-4 md:mb-0">
                         <i class="fas fa-history mr-2 text-indigo-600"></i>Historique des Paiements
                     </h3>
-                    <div class="flex space-x-4">
-                        <div class="relative">
-                            <input type="date" id="filterDate" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="toggleFiltres()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                            <i class="fas fa-filter mr-2"></i>Filtres
+                        </button>
                         <button onclick="exporterExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
                             <i class="fas fa-file-excel mr-2"></i>Excel
                         </button>
                         <button onclick="imprimerListe()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
                             <i class="fas fa-print mr-2"></i>Imprimer
                         </button>
+                    </div>
+                </div>
+
+                <!-- Panneau de filtres -->
+                <div id="filtresPanel" class="drawer-content mb-6">
+                    <div class="p-4 bg-gray-50 rounded-lg border">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Patient</label>
+                                <select id="filterPatient" class="w-full px-3 py-2 border rounded-md">
+                                    <option value="">Tous les patients</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Date début</label>
+                                <input type="date" id="filterDateDebut" class="w-full px-3 py-2 border rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Date fin</label>
+                                <input type="date" id="filterDateFin" class="w-full px-3 py-2 border rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Mode paiement</label>
+                                <select id="filterModePaiement" class="w-full px-3 py-2 border rounded-md">
+                                    <option value="">Tous</option>
+                                    <option value="espece">Comptant</option>
+                                    <option value="a_terme">À terme</option>
+                                    <option value="paiement_partiel">Partiel</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end space-x-2">
+                            <button onclick="appliquerFiltres()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                                Appliquer
+                            </button>
+                            <button onclick="reinitialiserFiltres()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+                                Réinitialiser
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -375,6 +450,22 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div id="pagination" class="mt-4 flex justify-between items-center hidden">
+                    <div class="text-sm text-gray-700">
+                        Affichage de <span id="paginationStart">0</span> à <span id="paginationEnd">0</span> sur <span id="paginationTotal">0</span> paiements
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="changePage(-1)" class="px-3 py-1 border rounded-md hover:bg-gray-50">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span id="currentPage" class="px-3 py-1">1</span>
+                        <button onclick="changePage(1)" class="px-3 py-1 border rounded-md hover:bg-gray-50">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -443,50 +534,139 @@
 
         <!-- Onglet Statistiques -->
         <div id="content-statistiques" class="tab-content hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Graphique des paiements par type -->
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-xl font-semibold mb-6 text-gray-800">
-                        <i class="fas fa-chart-pie mr-2 text-indigo-600"></i>Répartition des Paiements
-                    </h3>
-                    <div class="h-80">
-                        <canvas id="chartPaiements"></canvas>
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                    <i class="fas fa-chart-bar mr-2 text-indigo-600"></i>Statistiques Financières
+                </h3>
+                
+                <!-- Filtres statistiques -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Période</label>
+                            <select id="statPeriode" class="w-full px-3 py-2 border rounded-md" onchange="updateStatistiques()">
+                                <option value="mois_courant">Mois courant</option>
+                                <option value="mois_precedent">Mois précédent</option>
+                                <option value="trimestre">Trimestre</option>
+                                <option value="annee_courante">Année courante</option>
+                                <option value="personnalise">Personnalisé</option>
+                            </select>
+                        </div>
+                        <div id="statDateDebutGroup" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date début</label>
+                            <input type="date" id="statDateDebut" class="w-full px-3 py-2 border rounded-md" onchange="updateStatistiques()">
+                        </div>
+                        <div id="statDateFinGroup" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date fin</label>
+                            <input type="date" id="statDateFin" class="w-full px-3 py-2 border rounded-md" onchange="updateStatistiques()">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Évolution mensuelle -->
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-xl font-semibold mb-6 text-gray-800">
-                        <i class="fas fa-chart-line mr-2 text-green-600"></i>Évolution Mensuelle
-                    </h3>
-                    <div class="h-80">
-                        <canvas id="chartEvolution"></canvas>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Graphique des paiements par type -->
+                    <div class="bg-white rounded-xl p-6 border">
+                        <h4 class="text-lg font-semibold mb-4 text-gray-800">
+                            <i class="fas fa-chart-pie mr-2 text-indigo-600"></i>Répartition des Paiements
+                        </h4>
+                        <div class="h-80">
+                            <canvas id="chartPaiements"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Évolution mensuelle -->
+                    <div class="bg-white rounded-xl p-6 border">
+                        <h4 class="text-lg font-semibold mb-4 text-gray-800">
+                            <i class="fas fa-chart-line mr-2 text-green-600"></i>Évolution Mensuelle
+                        </h4>
+                        <div class="h-80">
+                            <canvas id="chartEvolution"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top patients -->
+                    <div class="bg-white rounded-xl p-6 border lg:col-span-2">
+                        <h4 class="text-lg font-semibold mb-4 text-gray-800">
+                            <i class="fas fa-trophy mr-2 text-yellow-600"></i>Top 10 Patients
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Payé</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre de Paiements</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dernière Visite</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topPatients" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                            Chargement des données...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Top patients -->
-                <div class="bg-white rounded-xl shadow-lg p-6 lg:col-span-2">
-                    <h3 class="text-xl font-semibold mb-6 text-gray-800">
-                        <i class="fas fa-trophy mr-2 text-yellow-600"></i>Top 10 Patients
-                    </h3>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Payé</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre de Paiements</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dernière Visite</th>
-                                </tr>
-                            </thead>
-                            <tbody id="topPatients" class="bg-white divide-y divide-gray-200">
-                                <tr>
-                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-                                        Chargement des données...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+        <!-- Onglet Rapports -->
+        <div id="content-rapports" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                    <i class="fas fa-file-alt mr-2 text-indigo-600"></i>Rapports et Exports
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Rapport Journalier -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <h4 class="text-lg font-semibold mb-4 text-blue-800">
+                            <i class="fas fa-calendar-day mr-2"></i>Rapport Journalier
+                        </h4>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <input type="date" id="rapportDate" class="w-full px-3 py-2 border rounded-md" value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                        <button onclick="genererRapportJournalier()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition flex items-center justify-center">
+                            <i class="fas fa-download mr-2"></i>Générer Rapport
+                        </button>
+                    </div>
+
+                    <!-- Export Complet -->
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                        <h4 class="text-lg font-semibold mb-4 text-green-800">
+                            <i class="fas fa-file-export mr-2"></i>Export Complet
+                        </h4>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Format</label>
+                            <select id="exportFormat" class="w-full px-3 py-2 border rounded-md">
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV</option>
+                                <option value="excel">Excel</option>
+                            </select>
+                        </div>
+                        <button onclick="exporterDonneesCompletes()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition flex items-center justify-center">
+                            <i class="fas fa-file-download mr-2"></i>Exporter Données
+                        </button>
+                    </div>
+
+                    <!-- Synthèse Patient -->
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                        <h4 class="text-lg font-semibold mb-4 text-purple-800">
+                            <i class="fas fa-user-chart mr-2"></i>Synthèse Patient
+                        </h4>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Patient</label>
+                            <select id="rapportPatient" class="w-full px-3 py-2 border rounded-md">
+                                <option value="">Sélectionner un patient...</option>
+                            </select>
+                        </div>
+                        <button onclick="genererSynthesePatient()" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition flex items-center justify-center">
+                            <i class="fas fa-user-md mr-2"></i>Voir Synthèse
+                        </button>
                     </div>
                 </div>
             </div>
@@ -513,11 +693,9 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
-        <div class="flex items-center">
-            <i id="toastIcon" class="mr-3"></i>
-            <span id="toastMessage"></span>
-        </div>
+    <div id="toast" class="toast">
+        <i id="toastIcon" class="mr-2"></i>
+        <span id="toastMessage"></span>
     </div>
 
     <script>
@@ -527,6 +705,10 @@
         let allPaiements = [];
         let allPatients = [];
         let allDettes = [];
+        let currentPage = 1;
+        let perPage = 20;
+        let totalPaiements = 0;
+        let filtresActifs = {};
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
@@ -541,7 +723,42 @@
             loadPatients();
             loadPaiements();
             loadDettes();
+            chargerPatientsFiltre();
+            
+            // Initialiser les dates par défaut
+            const aujourdhui = new Date().toISOString().split('T')[0];
+            document.getElementById('rapportDate').value = aujourdhui;
+            document.getElementById('filterDateDebut').value = aujourdhui;
+            document.getElementById('filterDateFin').value = aujourdhui;
+            
+            // Écouteurs d'événements
+            setupEventListeners();
         });
+
+        function setupEventListeners() {
+            document.getElementById('patientSelect').addEventListener('change', updatePatientInfo);
+            document.getElementById('montantPaye').addEventListener('input', updateRecap);
+            document.getElementById('montantTotal').addEventListener('input', updateRecap);
+            document.querySelectorAll('input[name="modePaiement"]').forEach(radio => {
+                radio.addEventListener('change', toggleMontantTotal);
+            });
+            
+            // Filtres
+            document.getElementById('statPeriode').addEventListener('change', function() {
+                const periode = this.value;
+                const dateDebutGroup = document.getElementById('statDateDebutGroup');
+                const dateFinGroup = document.getElementById('statDateFinGroup');
+                
+                if (periode === 'personnalise') {
+                    dateDebutGroup.classList.remove('hidden');
+                    dateFinGroup.classList.remove('hidden');
+                } else {
+                    dateDebutGroup.classList.add('hidden');
+                    dateFinGroup.classList.add('hidden');
+                }
+                updateStatistiques();
+            });
+        }
 
         function updateCurrentUserDisplay() {
             const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
@@ -565,8 +782,14 @@
             document.getElementById(`content-${tabName}`).classList.remove('hidden');
             
             // Activer le bouton correspondant
-            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
-            document.getElementById(`tab-${tabName}`).classList.remove('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            const tabBtn = document.getElementById(`tab-${tabName}`);
+            tabBtn.classList.add('tab-active');
+            tabBtn.classList.remove('text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            
+            // Actions spécifiques par onglet
+            if (tabName === 'statistiques') {
+                updateStatistiques();
+            }
         }
 
         async function loadDashboardData() {
@@ -594,6 +817,12 @@
                     const dettes = patients.filter(p => parseFloat(p.solde || 0) < 0);
                     const montantDettes = dettes.reduce((sum, p) => sum + Math.abs(parseFloat(p.solde || 0)), 0);
 
+                    // Paiements ce mois
+                    const moisCourant = new Date().toISOString().slice(0, 7);
+                    const paiementsMois = paiements.filter(p => 
+                        p.date_paiement && p.date_paiement.startsWith(moisCourant)
+                    ).length;
+
                     // Mettre à jour les KPI
                     document.getElementById('totalEncaisse').textContent = `${totalEncaisse.toFixed(2)} DA`;
                     document.getElementById('encaisseAujourdhui').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
@@ -601,12 +830,7 @@
                     document.getElementById('montantDettes').textContent = `${montantDettes.toFixed(2)} DA`;
                     document.getElementById('totalPaiements').textContent = paiements.length;
                     document.getElementById('patientsDetteurs').textContent = dettes.length;
-
-                    // Mettre à jour les statistiques des dettes
-                    document.getElementById('dettesEnAttente').textContent = dettes.length;
-                    document.getElementById('montantTotalDu').textContent = `${montantDettes.toFixed(2)} DA`;
-                    document.getElementById('patientsConcernes').textContent = dettes.length;
-
+                    document.getElementById('paiementsMois').textContent = paiementsMois;
                 }
             } catch (error) {
                 console.error('Erreur chargement dashboard:', error);
@@ -626,9 +850,25 @@
                     select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
                         allPatients.map(p => {
                             const solde = parseFloat(p.solde || 0);
-                            const soldeText = solde < 0 ? ` (Dette: ${Math.abs(solde).toFixed(2)} DA)` : 
-                                        solde > 0 ? ` (Crédit: ${solde.toFixed(2)} DA)` : '';
-                            return `<option value="${p.id}" data-age="${p.age || ''}" data-sexe="${p.sexe || ''}" data-tel="${p.telephone || ''}" data-solde="${solde}">
+                            const soldeFormatted = Math.abs(solde).toFixed(2);
+                            
+                            let soldeText = '';
+                            let soldeClass = '';
+                            
+                            if (solde < 0) {
+                                soldeText = ` (Dette: ${soldeFormatted} DA)`;
+                                soldeClass = 'text-red-600 font-semibold';
+                            } else if (solde > 0) {
+                                soldeText = ` (Crédit: ${soldeFormatted} DA)`;
+                                soldeClass = 'text-green-600 font-semibold';
+                            }
+                            
+                            return `<option value="${p.id}" 
+                                data-age="${p.age || ''}" 
+                                data-sexe="${p.sexe || ''}" 
+                                data-tel="${p.telephone || ''}" 
+                                data-solde="${solde}"
+                                class="${soldeClass}">
                                 ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
                             </option>`;
                         }).join('');
@@ -636,6 +876,33 @@
             } catch (error) {
                 console.error('Erreur chargement patients:', error);
                 showToast('Erreur lors du chargement des patients', 'error');
+            }
+        }
+
+        async function chargerPatientsFiltre() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/patients`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const patients = await response.json();
+                    const selectFiltre = document.getElementById('filterPatient');
+                    const selectRapport = document.getElementById('rapportPatient');
+                    
+                    const options = '<option value="">Tous les patients</option>' +
+                        patients.map(p => 
+                            `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}</option>`
+                        ).join('');
+                    
+                    selectFiltre.innerHTML = options;
+                    selectRapport.innerHTML = '<option value="">Sélectionner un patient...</option>' +
+                        patients.map(p => 
+                            `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}</option>`
+                        ).join('');
+                }
+            } catch (error) {
+                console.error('Erreur chargement patients filtre:', error);
             }
         }
 
@@ -657,8 +924,6 @@
                 document.getElementById('infoSolde').className = `font-bold ${solde < 0 ? 'text-red-600' : solde > 0 ? 'text-green-600' : 'text-gray-600'}`;
 
                 infoDiv.classList.remove('hidden');
-
-                // Mettre à jour le récapitulatif
                 updateRecap();
             } else {
                 infoDiv.classList.add('hidden');
@@ -679,7 +944,6 @@
                     recapDetails.classList.remove('hidden');
                 }
             }
-
             updateRecap();
         }
 
@@ -826,47 +1090,42 @@
             }
         }
 
-     async function loadPatients() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/patients`, {
-            headers: { 'X-User-ID': currentUserId }
-        });
+        async function loadPaiements() {
+            try {
+                // Construire l'URL avec les filtres
+                let url = `${API_BASE_URL}/paiements?page=${currentPage}&per_page=${perPage}`;
+                
+                if (filtresActifs.patient_id) {
+                    url += `&patient_id=${filtresActifs.patient_id}`;
+                }
+                if (filtresActifs.date_debut) {
+                    url += `&date_debut=${filtresActifs.date_debut}`;
+                }
+                if (filtresActifs.date_fin) {
+                    url += `&date_fin=${filtresActifs.date_fin}`;
+                }
+                if (filtresActifs.mode_paiement) {
+                    url += `&mode_paiement=${filtresActifs.mode_paiement}`;
+                }
 
-        if (response.ok) {
-            allPatients = await response.json();
-            const select = document.getElementById('patientSelect');
-            
-            select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
-                allPatients.map(p => {
-                    const solde = parseFloat(p.solde || 0);
-                    const soldeFormatted = Math.abs(solde).toFixed(2);
+                const response = await fetch(url, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    allPaiements = data.paiements || data;
+                    totalPaiements = data.pagination ? data.pagination.total : allPaiements.length;
                     
-                    let soldeText = '';
-                    let soldeClass = '';
-                    
-                    if (solde < 0) {
-                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
-                        soldeClass = 'text-red-600 font-semibold';
-                    } else if (solde > 0) {
-                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
-                        soldeClass = 'text-green-600 font-semibold';
-                    }
-                    
-                    return `<option value="${p.id}" 
-                                data-age="${p.age || ''}" 
-                                data-sexe="${p.sexe || ''}" 
-                                data-tel="${p.telephone || ''}" 
-                                data-solde="${solde}"
-                                class="${soldeClass}">
-                                ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
-                            </option>`;
-                }).join('');
+                    renderPaiementsList();
+                    updatePagination();
+                }
+            } catch (error) {
+                console.error('Erreur chargement paiements:', error);
+                showToast('Erreur lors du chargement des paiements', 'error');
+            }
         }
-    } catch (error) {
-        console.error('Erreur chargement patients:', error);
-        showToast('Erreur lors du chargement des patients', 'error');
-    }
-}
+
         function renderPaiementsList() {
             const tbody = document.getElementById('listePaiements');
             
@@ -876,6 +1135,8 @@
                         <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                             <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
                             <p class="mt-2">Aucun paiement enregistré</p>
+                            ${Object.keys(filtresActifs).length > 0 ? 
+                                '<p class="text-sm mt-1">Essayez de modifier vos filtres</p>' : ''}
                         </td>
                     </tr>
                 `;
@@ -896,7 +1157,7 @@
                 }
 
                 return `
-                    <tr class="payment-card status-${p.mode_paiement}">
+                    <tr class="payment-card status-${p.mode_paiement} hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">${date}</div>
                             <div class="text-sm text-gray-500">${heure}</div>
@@ -935,212 +1196,636 @@
             }).join('');
         }
 
-       async function loadDettes() {
-    try {
-        // Récupérer les dettes actives depuis la nouvelle route
-        const response = await fetch(`${API_BASE_URL}/paiements/dettes-actives`, {
-            headers: { 'X-User-ID': currentUserId }
-        });
-
-        if (response.ok) {
-            const dettes = await response.json();
-            allDettes = dettes;
-            renderDettesList();
-            
-            // Charger les statistiques
-            loadStatistiquesDettes();
+        function toggleFiltres() {
+            document.getElementById('filtresPanel').classList.toggle('open');
         }
-    } catch (error) {
-        console.error('Erreur chargement dettes:', error);
-        showToast('Erreur lors du chargement des dettes', 'error');
-    }
-}
 
-async function loadStatistiquesDettes() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/paiements/statistiques-dettes`, {
-            headers: { 'X-User-ID': currentUserId }
-        });
-
-        if (response.ok) {
-            const stats = await response.json();
+        function appliquerFiltres() {
+            filtresActifs = {};
             
-            // Mettre à jour les KPI
-            if (stats.statistiques) {
-                const stat = stats.statistiques;
-                document.getElementById('dettesEnAttente').textContent = stat.nombre_patients_dette || 0;
-                document.getElementById('montantTotalDu').textContent = `${(stat.montant_total_dettes || 0).toFixed(2)} DA`;
-                document.getElementById('patientsConcernes').textContent = stat.nombre_patients_dette || 0;
-                
-                // Mettre à jour les KPI principaux
-                document.getElementById('totalDettes').textContent = stat.nombre_patients_dette || 0;
-                document.getElementById('montantDettes').textContent = `${(stat.montant_total_dettes || 0).toFixed(2)} DA`;
-                document.getElementById('patientsDetteurs').textContent = stat.nombre_patients_dette || 0;
+            const patientId = document.getElementById('filterPatient').value;
+            const dateDebut = document.getElementById('filterDateDebut').value;
+            const dateFin = document.getElementById('filterDateFin').value;
+            const modePaiement = document.getElementById('filterModePaiement').value;
+            
+            if (patientId) filtresActifs.patient_id = patientId;
+            if (dateDebut) filtresActifs.date_debut = dateDebut;
+            if (dateFin) filtresActifs.date_fin = dateFin;
+            if (modePaiement) filtresActifs.mode_paiement = modePaiement;
+            
+            currentPage = 1;
+            loadPaiements();
+            showToast('Filtres appliqués', 'success');
+        }
+
+        function reinitialiserFiltres() {
+            document.getElementById('filterPatient').value = '';
+            document.getElementById('filterDateDebut').value = '';
+            document.getElementById('filterDateFin').value = '';
+            document.getElementById('filterModePaiement').value = '';
+            
+            filtresActifs = {};
+            currentPage = 1;
+            loadPaiements();
+            showToast('Filtres réinitialisés', 'success');
+        }
+
+        function updatePagination() {
+            const paginationDiv = document.getElementById('pagination');
+            const start = (currentPage - 1) * perPage + 1;
+            const end = Math.min(currentPage * perPage, totalPaiements);
+            
+            if (totalPaiements > perPage) {
+                paginationDiv.classList.remove('hidden');
+                document.getElementById('paginationStart').textContent = start;
+                document.getElementById('paginationEnd').textContent = end;
+                document.getElementById('paginationTotal').textContent = totalPaiements;
+                document.getElementById('currentPage').textContent = currentPage;
+            } else {
+                paginationDiv.classList.add('hidden');
             }
         }
-    } catch (error) {
-        console.error('Erreur chargement statistiques:', error);
-    }
-}
 
-       function renderDettesList() {
-    const tbody = document.getElementById('listeDettes');
-    
-    if (allDettes.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                    <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
-                    <p class="mt-2">Aucune dette active</p>
-                    <p class="text-sm mt-1">Tous les patients sont à jour dans leurs paiements</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = allDettes.map(patient => {
-        const dette = patient.montant_dette || Math.abs(parseFloat(patient.solde || 0));
-        const nomComplet = `${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}`;
-        const dernierPaiement = patient.dernier_paiement ? 
-            new Date(patient.dernier_paiement).toLocaleDateString('fr-FR') : 'Aucun';
-        
-        return `
-            <tr class="hover:bg-red-50 transition-colors">
-                <td class="px-6 py-4">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user text-red-600"></i>
-                        </div>
-                        <div class="ml-4">
-                            <div class="text-sm font-medium text-gray-900">${nomComplet}</div>
-                            ${patient.age ? `<div class="text-xs text-gray-500">${patient.age} ans</div>` : ''}
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center">
-                        <i class="fas fa-money-bill-wave text-red-500 mr-2"></i>
-                        <div>
-                            <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
-                            ${patient.nombre_paiements ? 
-                                `<div class="text-xs text-gray-500">${patient.nombre_paiements} paiement(s)</div>` : 
-                                ''}
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-sm text-gray-500">${dernierPaiement}</div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex space-x-2">
-                        <button onclick="payerDette(${patient.id})" 
-                                class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md hover:shadow-lg">
-                            <i class="fas fa-money-bill-wave mr-2"></i>Régler
-                        </button>
-                        <button onclick="voirHistoriquePatient(${patient.id})" 
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                            <i class="fas fa-history mr-2"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-async function voirHistoriquePatient(patientId) {
-    try {
-        // Charger l'historique des paiements du patient
-        const response = await fetch(`${API_BASE_URL}/paiements?patient_id=${patientId}`, {
-            headers: { 'X-User-ID': currentUserId }
-        });
-
-        if (response.ok) {
-            const paiements = await response.json();
-            const patient = allPatients.find(p => p.id == patientId);
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            const totalPages = Math.ceil(totalPaiements / perPage);
             
-            if (patient && paiements.length > 0) {
-                const modalContent = `
-                    <div class="space-y-6">
-                        <div class="p-4 bg-indigo-50 rounded-lg">
-                            <h4 class="text-lg font-semibold text-indigo-800 mb-2">
-                                <i class="fas fa-user-clock mr-2"></i>Historique des paiements
-                            </h4>
-                            <p class="text-indigo-700">${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}</p>
-                            <p class="text-sm text-gray-600">Solde actuel: <span class="font-bold ${patient.solde < 0 ? 'text-red-600' : 'text-green-600'}">${parseFloat(patient.solde || 0).toFixed(2)} DA</span></p>
-                        </div>
-                        
-                        <div class="overflow-y-auto max-h-80">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reçu</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    ${paiements.map(p => `
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                                ${new Date(p.date_paiement).toLocaleDateString('fr-FR')}
-                                            </td>
-                                            <td class="px-4 py-3 whitespace-nowrap">
-                                                <span class="text-sm text-gray-900">${p.type_paiement}</span>
-                                            </td>
-                                            <td class="px-4 py-3 whitespace-nowrap">
-                                                ${p.mode_paiement === 'espece' ? 
-                                                    '<span class="badge-espece px-2 py-1 rounded-full text-xs">Comptant</span>' : 
-                                                    p.mode_paiement === 'a_terme' ? 
-                                                    '<span class="badge-a_terme px-2 py-1 rounded-full text-xs">À terme</span>' : 
-                                                    '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>'}
-                                            </td>
-                                            <td class="px-4 py-3 whitespace-nowrap">
-                                                <div class="text-sm font-medium ${p.mode_paiement === 'paiement_partiel' ? 'text-blue-600' : 'text-gray-900'}">
-                                                    ${parseFloat(p.montant).toFixed(2)} DA
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                ${p.numero_cr || '-'}
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="pt-4 border-t border-gray-200">
-                            <div class="flex justify-between">
-                                <div class="text-sm text-gray-600">
-                                    Total des paiements: <span class="font-bold text-green-600">
-                                        ${paiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0).toFixed(2)} DA
-                                    </span>
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                loadPaiements();
+            }
+        }
+
+        async function loadDettes() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements/dettes-actives`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const dettes = await response.json();
+                    allDettes = dettes;
+                    renderDettesList();
+                    loadStatistiquesDettes();
+                }
+            } catch (error) {
+                console.error('Erreur chargement dettes:', error);
+                showToast('Erreur lors du chargement des dettes', 'error');
+            }
+        }
+
+        async function loadStatistiquesDettes() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements/statistiques-dettes`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const stats = await response.json();
+                    
+                    if (stats.statistiques) {
+                        const stat = stats.statistiques;
+                        document.getElementById('dettesEnAttente').textContent = stat.nombre_patients_dette || 0;
+                        document.getElementById('montantTotalDu').textContent = `${(stat.montant_total_dettes || 0).toFixed(2)} DA`;
+                        document.getElementById('patientsConcernes').textContent = stat.nombre_patients_dette || 0;
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur chargement statistiques:', error);
+            }
+        }
+
+        function renderDettesList() {
+            const tbody = document.getElementById('listeDettes');
+            
+            if (allDettes.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
+                            <p class="mt-2">Aucune dette active</p>
+                            <p class="text-sm mt-1">Tous les patients sont à jour dans leurs paiements</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = allDettes.map(patient => {
+                const dette = patient.montant_dette || Math.abs(parseFloat(patient.solde || 0));
+                const nomComplet = `${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}`;
+                const dernierPaiement = patient.dernier_paiement ? 
+                    new Date(patient.dernier_paiement).toLocaleDateString('fr-FR') : 'Aucun';
+                
+                return `
+                    <tr class="hover:bg-red-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-red-600"></i>
                                 </div>
-                                <button onclick="closeModalDetail()" 
-                                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">${nomComplet}</div>
+                                    ${patient.age ? `<div class="text-xs text-gray-500">${patient.age} ans</div>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-money-bill-wave text-red-500 mr-2"></i>
+                                <div>
+                                    <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
+                                    ${patient.nombre_paiements ? 
+                                        `<div class="text-xs text-gray-500">${patient.nombre_paiements} paiement(s)</div>` : 
+                                        ''}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-500">${dernierPaiement}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex space-x-2">
+                                <button onclick="payerDette(${patient.id})" 
+                                        class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md hover:shadow-lg">
+                                    <i class="fas fa-money-bill-wave mr-2"></i>Régler
+                                </button>
+                                <button onclick="voirHistoriquePatient(${patient.id})" 
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                    <i class="fas fa-history mr-2"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function updateStatistiques() {
+            try {
+                // Récupérer les paramètres de période
+                const periode = document.getElementById('statPeriode').value;
+                let dateDebut, dateFin;
+                
+                const aujourdhui = new Date();
+                
+                switch(periode) {
+                    case 'mois_courant':
+                        dateDebut = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), 1).toISOString().split('T')[0];
+                        dateFin = aujourdhui.toISOString().split('T')[0];
+                        break;
+                    case 'mois_precedent':
+                        const premierJourMoisPrecedent = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth() - 1, 1);
+                        const dernierJourMoisPrecedent = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), 0);
+                        dateDebut = premierJourMoisPrecedent.toISOString().split('T')[0];
+                        dateFin = dernierJourMoisPrecedent.toISOString().split('T')[0];
+                        break;
+                    case 'personnalise':
+                        dateDebut = document.getElementById('statDateDebut').value;
+                        dateFin = document.getElementById('statDateFin').value;
+                        break;
+                    default:
+                        dateDebut = '';
+                        dateFin = '';
+                }
+                
+                // Charger les statistiques
+                let url = `${API_BASE_URL}/paiements/statistiques`;
+                if (dateDebut) url += `?date_debut=${dateDebut}`;
+                if (dateFin) url += `${dateDebut ? '&' : '?'}date_fin=${dateFin}`;
+                
+                const response = await fetch(url, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+                
+                if (response.ok) {
+                    const stats = await response.json();
+                    renderStatistiques(stats);
+                }
+            } catch (error) {
+                console.error('Erreur chargement statistiques:', error);
+            }
+        }
+
+        function renderStatistiques(stats) {
+            // Mettre à jour les graphiques
+            renderChartPaiements(stats.par_mode_paiement);
+            renderChartEvolution(stats.evolution_mensuelle);
+            
+            // Mettre à jour le tableau Top Patients
+            const tbody = document.getElementById('topPatients');
+            if (stats.top_patients && stats.top_patients.length > 0) {
+                tbody.innerHTML = stats.top_patients.map(patient => `
+                    <tr class="hover:bg-yellow-50">
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">
+                                ${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-bold text-green-600">${parseFloat(patient.total_paye || 0).toFixed(2)} DA</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">${patient.nombre_paiements || 0}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-500">-</div>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                            Aucune donnée disponible
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderChartPaiements(data) {
+            const ctx = document.getElementById('chartPaiements').getContext('2d');
+            
+            // Détruire le graphique existant
+            if (window.chartPaiements) {
+                window.chartPaiements.destroy();
+            }
+            
+            const labels = data.map(item => {
+                switch(item.mode_paiement) {
+                    case 'espece': return 'Comptant';
+                    case 'a_terme': return 'À terme';
+                    case 'paiement_partiel': return 'Partiel';
+                    default: return item.mode_paiement;
+                }
+            });
+            
+            const montants = data.map(item => parseFloat(item.total || 0));
+            const couleurs = ['#10b981', '#f59e0b', '#3b82f6'];
+            
+            window.chartPaiements = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: montants,
+                        backgroundColor: couleurs,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.parsed.toFixed(2)} DA`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderChartEvolution(data) {
+            const ctx = document.getElementById('chartEvolution').getContext('2d');
+            
+            // Détruire le graphique existant
+            if (window.chartEvolution) {
+                window.chartEvolution.destroy();
+            }
+            
+            const labels = data.map(item => item.mois).reverse();
+            const montants = data.map(item => parseFloat(item.total_montant || 0)).reverse();
+            
+            window.chartEvolution = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Montant total (DA)',
+                        data: montants,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' DA';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Montant: ${context.parsed.y.toFixed(2)} DA`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function genererRapportJournalier() {
+            const date = document.getElementById('rapportDate').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements/rapport-journalier?date=${date}`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+                
+                if (response.ok) {
+                    const rapport = await response.json();
+                    
+                    // Afficher le rapport dans une modal
+                    const modalContent = `
+                        <div class="space-y-6">
+                            <div class="p-4 bg-indigo-50 rounded-lg">
+                                <h4 class="text-lg font-semibold text-indigo-800">
+                                    <i class="fas fa-calendar-day mr-2"></i>Rapport Journalier
+                                </h4>
+                                <p class="text-indigo-700">Date: ${date}</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-4 bg-green-50 rounded-lg">
+                                    <p class="text-sm text-green-600">Total général</p>
+                                    <p class="text-2xl font-bold text-green-700">${rapport.total_general.toFixed(2)} DA</p>
+                                </div>
+                                <div class="p-4 bg-blue-50 rounded-lg">
+                                    <p class="text-sm text-blue-600">Nombre de paiements</p>
+                                    <p class="text-2xl font-bold text-blue-700">${rapport.nombre_paiements}</p>
+                                </div>
+                            </div>
+                            
+                            ${rapport.totaux_par_mode.length > 0 ? `
+                                <div class="space-y-2">
+                                    <h5 class="font-medium text-gray-700">Détails par mode de paiement:</h5>
+                                    ${rapport.totaux_par_mode.map(mode => `
+                                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                            <span>${mode.mode_paiement === 'espece' ? 'Comptant' : 
+                                                   mode.mode_paiement === 'a_terme' ? 'À terme' : 
+                                                   'Partiel'}</span>
+                                            <span class="font-bold">${parseFloat(mode.total || 0).toFixed(2)} DA</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="pt-4 border-t border-gray-200 flex justify-end">
+                                <button onclick="imprimerRapport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition mr-2">
+                                    <i class="fas fa-print mr-2"></i>Imprimer
+                                </button>
+                                <button onclick="closeModalDetail()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
                                     Fermer
                                 </button>
                             </div>
                         </div>
-                    </div>
-                `;
-
-                document.getElementById('modalDetailContent').innerHTML = modalContent;
-                document.getElementById('modalDetail').classList.remove('hidden');
-            } else {
-                showToast('Aucun historique de paiement pour ce patient', 'warning');
+                    `;
+                    
+                    document.getElementById('modalDetailContent').innerHTML = modalContent;
+                    document.getElementById('modalDetail').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Erreur génération rapport:', error);
+                showToast('Erreur lors de la génération du rapport', 'error');
             }
         }
-    } catch (error) {
-        console.error('Erreur chargement historique:', error);
-        showToast('Erreur lors du chargement de l\'historique', 'error');
-    }
-}
+
+        async function exporterDonneesCompletes() {
+            const format = document.getElementById('exportFormat').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements/export?format=${format}`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+                
+                if (response.ok) {
+                    if (format === 'json') {
+                        const data = await response.json();
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `paiements_export_${new Date().toISOString().split('T')[0]}.json`;
+                        a.click();
+                    } else if (format === 'csv') {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `paiements_export_${new Date().toISOString().split('T')[0]}.csv`;
+                        a.click();
+                    } else if (format === 'excel') {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `paiements_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+                        a.click();
+                    }
+                    
+                    showToast('Export terminé avec succès', 'success');
+                } else {
+                    throw new Error('Erreur lors de l\'export');
+                }
+            } catch (error) {
+                console.error('Erreur export:', error);
+                showToast('Erreur lors de l\'export des données', 'error');
+            }
+        }
+
+        async function genererSynthesePatient() {
+            const patientId = document.getElementById('rapportPatient').value;
+            
+            if (!patientId) {
+                showToast('Veuillez sélectionner un patient', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements/synthese-patient/${patientId}`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+                
+                if (response.ok) {
+                    const synthese = await response.json();
+                    const patient = synthese.patient;
+                    
+                    const modalContent = `
+                        <div class="space-y-6">
+                            <div class="p-4 bg-indigo-50 rounded-lg">
+                                <h4 class="text-lg font-semibold text-indigo-800 mb-2">
+                                    <i class="fas fa-user-chart mr-2"></i>Synthèse Patient
+                                </h4>
+                                <p class="text-indigo-700 font-bold">${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}</p>
+                                <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
+                                    <div><span class="font-medium">Âge:</span> ${patient.age || '-'}</div>
+                                    <div><span class="font-medium">Sexe:</span> ${patient.sexe || '-'}</div>
+                                    <div><span class="font-medium">Téléphone:</span> ${patient.telephone || '-'}</div>
+                                    <div><span class="font-medium">Solde:</span> <span class="font-bold ${patient.solde < 0 ? 'text-red-600' : 'text-green-600'}">${parseFloat(patient.solde || 0).toFixed(2)} DA</span></div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-4 bg-green-50 rounded-lg">
+                                    <p class="text-sm text-green-600">Total payé</p>
+                                    <p class="text-2xl font-bold text-green-700">${synthese.statistiques.total_paye.toFixed(2)} DA</p>
+                                </div>
+                                <div class="p-4 bg-blue-50 rounded-lg">
+                                    <p class="text-sm text-blue-600">Nombre de paiements</p>
+                                    <p class="text-2xl font-bold text-blue-700">${synthese.statistiques.nombre_total_paiements}</p>
+                                </div>
+                            </div>
+                            
+                            ${synthese.details_a_terme && synthese.details_a_terme.length > 0 ? `
+                                <div class="space-y-2">
+                                    <h5 class="font-medium text-gray-700">Détails des paiements à terme:</h5>
+                                    ${synthese.details_a_terme.map(detail => `
+                                        <div class="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                                            <div class="flex justify-between items-center mb-1">
+                                                <span class="text-sm">${detail.date}</span>
+                                                <span class="text-sm font-bold">${detail.montant_paye.toFixed(2)} / ${detail.montant_total.toFixed(2)} DA</span>
+                                            </div>
+                                            <div class="text-xs text-gray-600">
+                                                Reste à payer: <span class="font-bold">${detail.reste_a_payer.toFixed(2)} DA</span>
+                                                ${detail.numero_cr ? `• Reçu: ${detail.numero_cr}` : ''}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="pt-4 border-t border-gray-200 flex justify-end">
+                                <button onclick="imprimerSynthese()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition mr-2">
+                                    <i class="fas fa-print mr-2"></i>Imprimer
+                                </button>
+                                <button onclick="closeModalDetail()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('modalDetailContent').innerHTML = modalContent;
+                    document.getElementById('modalDetail').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Erreur synthèse patient:', error);
+                showToast('Erreur lors de la génération de la synthèse', 'error');
+            }
+        }
+
+        async function voirHistoriquePatient(patientId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/paiements?patient_id=${patientId}`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const paiements = await response.json();
+                    const patient = allPatients.find(p => p.id == patientId);
+                    
+                    if (patient) {
+                        const modalContent = `
+                            <div class="space-y-6">
+                                <div class="p-4 bg-indigo-50 rounded-lg">
+                                    <h4 class="text-lg font-semibold text-indigo-800 mb-2">
+                                        <i class="fas fa-user-clock mr-2"></i>Historique des paiements
+                                    </h4>
+                                    <p class="text-indigo-700 font-bold">${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}</p>
+                                    <p class="text-sm text-gray-600">Solde actuel: <span class="font-bold ${patient.solde < 0 ? 'text-red-600' : 'text-green-600'}">${parseFloat(patient.solde || 0).toFixed(2)} DA</span></p>
+                                </div>
+                                
+                                <div class="overflow-y-auto max-h-80">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reçu</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            ${paiements.map(p => `
+                                                <tr class="hover:bg-gray-50">
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                                        ${new Date(p.date_paiement).toLocaleDateString('fr-FR')}
+                                                    </td>
+                                                    <td class="px-4 py-3 whitespace-nowrap">
+                                                        <span class="text-sm text-gray-900">${p.type_paiement}</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 whitespace-nowrap">
+                                                        ${p.mode_paiement === 'espece' ? 
+                                                            '<span class="badge-espece px-2 py-1 rounded-full text-xs">Comptant</span>' : 
+                                                            p.mode_paiement === 'a_terme' ? 
+                                                            '<span class="badge-a_terme px-2 py-1 rounded-full text-xs">À terme</span>' : 
+                                                            '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>'}
+                                                    </td>
+                                                    <td class="px-4 py-3 whitespace-nowrap">
+                                                        <div class="text-sm font-medium ${p.mode_paiement === 'paiement_partiel' ? 'text-blue-600' : 'text-gray-900'}">
+                                                            ${parseFloat(p.montant).toFixed(2)} DA
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                        ${p.numero_cr || '-'}
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="pt-4 border-t border-gray-200">
+                                    <div class="flex justify-between">
+                                        <div class="text-sm text-gray-600">
+                                            Total des paiements: <span class="font-bold text-green-600">
+                                                ${paiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0).toFixed(2)} DA
+                                            </span>
+                                        </div>
+                                        <button onclick="closeModalDetail()" 
+                                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+                                            Fermer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        document.getElementById('modalDetailContent').innerHTML = modalContent;
+                        document.getElementById('modalDetail').classList.remove('hidden');
+                    } else {
+                        showToast('Patient non trouvé', 'warning');
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur chargement historique:', error);
+                showToast('Erreur lors du chargement de l\'historique', 'error');
+            }
+        }
+
         async function viewPaymentDetail(paymentId) {
             try {
                 const response = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
@@ -1287,26 +1972,18 @@ async function voirHistoriquePatient(patientId) {
             const icon = document.getElementById('toastIcon');
             const msg = document.getElementById('toastMessage');
 
-            toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center ${type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-orange-500' : 'bg-green-600'} text-white`;
-            icon.className = `fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-3`;
+            toast.className = `toast ${type}`;
+            icon.className = `fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2`;
             msg.textContent = message;
 
-            toast.classList.remove('hidden');
-            toast.style.opacity = '1';
+            toast.classList.add('show');
+            toast.classList.remove('hide');
 
             setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.classList.add('hidden'), 300);
+                toast.classList.add('hide');
+                toast.classList.remove('show');
             }, 3000);
         }
-
-        // Ajouter des écouteurs d'événements pour les mises à jour dynamiques
-        document.getElementById('patientSelect').addEventListener('change', updatePatientInfo);
-        document.getElementById('montantPaye').addEventListener('input', updateRecap);
-        document.getElementById('montantTotal').addEventListener('input', updateRecap);
-        document.querySelectorAll('input[name="modePaiement"]').forEach(radio => {
-            radio.addEventListener('change', toggleMontantTotal);
-        });
     </script>
 </body>
 </html>
