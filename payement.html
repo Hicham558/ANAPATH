@@ -792,57 +792,78 @@
             }
         }
 
-       async function loadDashboardData() {
+      async function loadDashboardData() {
     try {
-        const [paiementsRes, statsRes] = await Promise.all([
+        const [paiementsRes, patientsRes] = await Promise.all([
             fetch(`${API_BASE_URL}/paiements`, {
                 headers: { 'X-User-ID': currentUserId }
             }),
-            fetch(`${API_BASE_URL}/paiements/statistiques`, {
+            fetch(`${API_BASE_URL}/patients`, {
                 headers: { 'X-User-ID': currentUserId }
             })
         ]);
 
+        let totalEncaisse = 0;
+        let totalDettes = 0;
+        let montantDettes = 0;
+        let totalPaiements = 0;
+        let paiementsMois = 0;
+        let patientsDetteurs = 0;
+
         if (paiementsRes.ok) {
             const data = await paiementsRes.json();
             allPaiements = data.paiements || [];
+            totalPaiements = allPaiements.length;
             
-            // Calculer les KPI
-            const totalEncaisse = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+            // Calculer le total encaissé
+            totalEncaisse = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
             
-            const aujourdhui = new Date().toISOString().split('T')[0];
-            const encaisseAujourdhui = allPaiements
-                .filter(p => p.date_paiement && p.date_paiement.includes(aujourdhui))
-                .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+            // Calculer les paiements du mois en cours
+            const aujourdhui = new Date();
+            const moisCourant = aujourdhui.getMonth();
+            const anneeCourante = aujourdhui.getFullYear();
+            
+            paiementsMois = allPaiements.filter(p => {
+                if (!p.date_paiement) return false;
+                const datePaiement = new Date(p.date_paiement);
+                return datePaiement.getMonth() === moisCourant && 
+                       datePaiement.getFullYear() === anneeCourante;
+            }).reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
 
             // Mettre à jour les KPI
             document.getElementById('totalEncaisse').textContent = `${totalEncaisse.toFixed(2)} DA`;
-            document.getElementById('encaisseAujourdhui').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
-            document.getElementById('totalPaiements').textContent = allPaiements.length;
+            document.getElementById('totalPaiements').textContent = totalPaiements;
+            document.getElementById('paiementsMois').textContent = paiementsMois.toFixed(2);
         }
 
-        if (statsRes.ok) {
-            const stats = await statsRes.json();
+        if (patientsRes.ok) {
+            const patients = await patientsRes.json();
+            allPatients = patients;
             
-            // Mettre à jour les graphiques si nécessaire
-            if (stats.par_mode_paiement) {
-                renderChartPaiements(stats.par_mode_paiement);
-            }
+            // Calculer les dettes
+            const patientsAvecDette = patients.filter(p => {
+                const solde = parseFloat(p.solde || 0);
+                return solde < 0;
+            });
             
-            if (stats.evolution_mensuelle) {
-                renderChartEvolution(stats.evolution_mensuelle);
-            }
-            
-            if (stats.top_patients) {
-                renderTopPatients(stats.top_patients);
-            }
+            patientsDetteurs = patientsAvecDette.length;
+            montantDettes = patientsAvecDette.reduce((sum, p) => sum + Math.abs(parseFloat(p.solde || 0)), 0);
+
+            // Mettre à jour les KPI
+            document.getElementById('totalDettes').textContent = patientsAvecDette.length;
+            document.getElementById('montantDettes').textContent = `${montantDettes.toFixed(2)} DA`;
+            document.getElementById('patientsDetteurs').textContent = patientsDetteurs;
         }
         
-        // Charger les dettes séparément
+        // Charger les détails des dettes séparément
         await loadDettes();
+        
+        // Mettre à jour les statistiques
+        updateStatistiques();
         
     } catch (error) {
         console.error('Erreur chargement dashboard:', error);
+        showToast('Erreur lors du chargement des données', 'error');
     }
 }
 function renderTopPatients(topPatients) {
