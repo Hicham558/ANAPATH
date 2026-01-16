@@ -2068,68 +2068,69 @@ function ouvrirModalHistorique(paiements, nomPatient) {
 function imprimerHistorique(paiements, nomPatient) {
     const printWindow = window.open('', '_blank');
     
-    // Construire le contenu HTML pour l'impression
-    const printContent = `
-        <html>
-            <head>
-                <title>Historique Paiements - ${nomPatient}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    h1 { color: #4f46e5; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    th { background-color: #f8fafc; }
-                    .total { font-weight: bold; color: #059669; }
-                </style>
-            </head>
-            <body>
-                <h1>Historique des Paiements</h1>
-                <p><strong>Patient:</strong> ${nomPatient}</p>
-                <p><strong>Date d'émission:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Montant</th>
-                            <th>Mode</th>
-                            <th>Type</th>
-                            <th>Statut</th>
-                            <th>Notes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${paiements.map(p => {
-                            const date = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '-';
-                            const montant = parseFloat(p.montant || 0).toFixed(2);
-                            const mode = p.mode_paiement || '-';
-                            const type = p.type_paiement || '-';
-                            const statut = p.statut || 'payé';
-                            const notes = p.notes || '-';
-                            return `<tr>
-                                <td>${date}</td>
-                                <td>${montant} DA</td>
-                                <td>${mode}</td>
-                                <td>${type}</td>
-                                <td>${statut}</td>
-                                <td>${notes}</td>
-                            </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-                
-                <p class="total">
-                    Total payé: ${paiements.reduce((sum, p) => sum + (parseFloat(p.montant) || 0), 0).toFixed(2)} DA
-                </p>
-                
-                <script>
-                    window.onload = function() { window.print(); };
-                </script>
-            </body>
-        </html>
-    `;
+    // Construire le contenu ligne par ligne
+    let rows = '';
+    let total = 0;
     
-    printWindow.document.write(printContent);
+    paiements.forEach(p => {
+        const date = p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '-';
+        const montant = parseFloat(p.montant || 0);
+        total += montant;
+        
+        rows += `<tr>
+            <td>${date}</td>
+            <td>${montant.toFixed(2)} DA</td>
+            <td>${p.mode_paiement || '-'}</td>
+            <td>${p.type_paiement || '-'}</td>
+            <td>${p.statut || 'payé'}</td>
+            <td>${p.notes || '-'}</td>
+        </tr>`;
+    });
+    
+    const html = `<html>
+        <head>
+            <title>Historique Paiements - ${nomPatient}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #4f46e5; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f8fafc; }
+                .total { font-weight: bold; color: #059669; }
+            </style>
+        </head>
+        <body>
+            <h1>Historique des Paiements</h1>
+            <p><strong>Patient:</strong> ${nomPatient}</p>
+            <p><strong>Date d'émission:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Mode</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+            
+            <p class="total">
+                Total payé: ${total.toFixed(2)} DA
+            </p>
+            
+            <script>
+                window.onload = function() { window.print(); };
+            </script>
+        </body>
+    </html>`;
+    
+    printWindow.document.write(html);
     printWindow.document.close();
 }
 
