@@ -1057,9 +1057,9 @@ def paiements():
                 SELECT 
                     p.*,
                     pat.nom as patient_nom,
+                    pat.prenom as patient_prenom,
                     pat.telephone as patient_telephone,
-                    u.nom as utilisateur_nom,
-                    pat.nom as patient_complet
+                    u.nom as utilisateur_nom
                 FROM paiements p
                 LEFT JOIN patients pat ON p.patient_id = pat.id AND p.user_id = pat.user_id
                 LEFT JOIN utilisateurs u ON p.utilisateur_id = u.numero AND p.user_id = u.user_id
@@ -1074,11 +1074,11 @@ def paiements():
                 params.append(patient_id)
             
             if date_debut:
-                query += ' AND p.date_paiement >= %s'
+                query += ' AND DATE(p.date_paiement) >= %s'
                 params.append(date_debut)
             
             if date_fin:
-                query += ' AND p.date_paiement <= %s'
+                query += ' AND DATE(p.date_paiement) <= %s'
                 params.append(date_fin)
             
             if mode_paiement:
@@ -1093,7 +1093,7 @@ def paiements():
             
             # Pagination
             page = request.args.get('page', 1, type=int)
-            per_page = request.args.get('per_page', 50, type=int)
+            per_page = request.args.get('per_page', 20, type=int)
             offset = (page - 1) * per_page
             
             # D'abord, compter le total
@@ -1117,7 +1117,10 @@ def paiements():
                 payment_dict = dict(p)
                 
                 # Créer le nom complet du patient
-                payment_dict['patient_nom_complet'] = p['patient_nom'] or 'Patient inconnu'
+                nom_complet = p['patient_nom'] or ''
+                if p['patient_prenom']:
+                    nom_complet += f" {p['patient_prenom']}"
+                payment_dict['patient_nom_complet'] = nom_complet or 'Patient inconnu'
                 
                 # Convertir les montants en float
                 payment_dict['montant'] = float(p['montant']) if p['montant'] else 0
@@ -1136,7 +1139,7 @@ def paiements():
                     'page': page,
                     'per_page': per_page,
                     'total': total_count,
-                    'total_pages': (total_count + per_page - 1) // per_page
+                    'total_pages': (total_count + per_page - 1) // per_page if per_page > 0 else 1
                 }
             })
         
@@ -1152,7 +1155,7 @@ def paiements():
             
             # Récupérer le solde actuel du patient
             cur.execute('''
-                SELECT solde FROM patients 
+                SELECT nom, prenom, solde FROM patients 
                 WHERE id = %s AND user_id = %s
             ''', (data['patient_id'], user_id))
             
@@ -1169,9 +1172,16 @@ def paiements():
                 if montant_total <= montant_paye:
                     return jsonify({'erreur': 'Le montant total doit être supérieur au montant payé pour un paiement à terme'}), 400
             
-            # Récupérer l'utilisateur sélectionné
-            selected_user = json.loads(request.headers.get('X-Selected-User', '{}'))
-            utilisateur_id = selected_user.get('numero')
+            # Récupérer l'utilisateur connecté
+            selected_user = None
+            try:
+                selected_user_str = request.headers.get('X-Selected-User')
+                if selected_user_str:
+                    selected_user = json.loads(selected_user_str)
+            except:
+                pass
+            
+            utilisateur_id = selected_user.get('numero') if selected_user else None
             
             # Insérer le paiement
             cur.execute('''
@@ -1198,14 +1208,16 @@ def paiements():
             # Calculer le nouveau solde
             if mode_paiement == 'a_terme':
                 reste_a_payer = montant_total - montant_paye
-                nouveau_solde = -abs(reste_a_payer)
+                nouveau_solde = -reste_a_payer
                 message = f'Paiement à terme enregistré. Reste à payer: {reste_a_payer:.2f} DA'
             elif mode_paiement == 'paiement_partiel':
+                # Pour un paiement partiel, on réduit la dette
                 nouveau_solde = solde_actuel + montant_paye
                 reste = abs(nouveau_solde) if nouveau_solde < 0 else 0
                 message = f'Paiement partiel enregistré. Reste à payer: {reste:.2f} DA'
             else:  # espece
-                nouveau_solde = solde_actuel
+                # Pour un paiement comptant, on ajoute au solde
+                nouveau_solde = solde_actuel + montant_paye
                 message = 'Paiement comptant enregistré'
             
             # Mettre à jour le solde du patient
@@ -1227,6 +1239,7 @@ def paiements():
         if conn:
             conn.rollback()
         print(f"❌ Erreur paiements: {str(e)}")
+        traceback.print_exc()
         return jsonify({'erreur': str(e)}), 500
     
     finally:
@@ -1234,8 +1247,214 @@ def paiements():
             cur.close()
         if conn:
             conn.close()
-
-
+@app.route('/paiements/paiement-partiel', methods=['POST'])
+def paiement_partiel():
+    """Endpoint spécifique pour les paiements partiels"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    data = request.json
+    required = ['patient_id', 'montant']
+    
+    if not data or any(k not in data for k in required):
+        return jsonify({'erreur': 'Champs obligatoires manquants'}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        montant_paye = float(data['montant'])
+        
+        # Récupérer le patient et son solde
+        cur.execute('''
+            SELECT nom, prenom, solde FROM patients 
+            WHERE id = %s AND user_id = %s
+        ''', (data['patient_id'], user_id))
+        
+        patient = cur.fetchone()
+        if not patient:
+            return jsonify({'erreur': 'Patient non trouvé'}), 404
+        
+        solde_actuel = float(patient['solde'] or 0)
+        
+        if solde_actuel >= 0:
+            return jsonify({'erreur': 'Ce patient n\'a pas de dette à régler'}), 400
+        
+        # Calculer le nouveau solde
+        nouveau_solde = solde_actuel + montant_paye
+        dette_reglee = nouveau_solde >= 0
+        
+        if nouveau_solde > 0:
+            nouveau_solde = 0  # Éviter un solde positif
+        
+        # Récupérer l'utilisateur
+        selected_user = None
+        try:
+            selected_user_str = request.headers.get('X-Selected-User')
+            if selected_user_str:
+                selected_user = json.loads(selected_user_str)
+        except:
+            pass
+        
+        utilisateur_id = selected_user.get('numero') if selected_user else None
+        
+        # Insérer le paiement
+        cur.execute('''
+            INSERT INTO paiements (
+                user_id, patient_id, utilisateur_id, montant, 
+                type_paiement, mode_paiement, numero_cr, notes
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, date_paiement
+        ''', (
+            user_id,
+            data['patient_id'],
+            utilisateur_id,
+            montant_paye,
+            data.get('type_paiement', 'consultation'),
+            'paiement_partiel',
+            data.get('numero_cr'),
+            data.get('notes')
+        ))
+        
+        new_payment = cur.fetchone()
+        
+        # Mettre à jour le solde du patient
+        cur.execute('''
+            UPDATE patients 
+            SET solde = %s
+            WHERE id = %s AND user_id = %s
+        ''', (nouveau_solde, data['patient_id'], user_id))
+        
+        conn.commit()
+        
+        result = dict(new_payment)
+        result['nouveau_solde'] = nouveau_solde
+        result['dette_reglee'] = dette_reglee
+        
+        if dette_reglee:
+            result['message'] = 'Dette entièrement réglée'
+        else:
+            result['message'] = f'Paiement partiel enregistré. Dette restante: {abs(nouveau_solde):.2f} DA'
+        
+        return jsonify(result), 201
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur paiement_partiel: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+@app.route('/paiements/<int:id>', methods=['GET', 'PUT', 'DELETE'])
+def paiement_detail(id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.method == 'GET':
+            cur.execute('''
+                SELECT 
+                    p.*,
+                    pat.nom as patient_nom,
+                    pat.prenom as patient_prenom,
+                    pat.telephone as patient_telephone,
+                    pat.solde as patient_solde,
+                    u.nom as utilisateur_nom
+                FROM paiements p
+                LEFT JOIN patients pat ON p.patient_id = pat.id AND p.user_id = pat.user_id
+                LEFT JOIN utilisateurs u ON p.utilisateur_id = u.numero AND p.user_id = u.user_id
+                WHERE p.user_id = %s AND p.id = %s
+            ''', (user_id, id))
+            
+            payment = cur.fetchone()
+            if not payment:
+                return jsonify({'erreur': 'Paiement non trouvé'}), 404
+            
+            # Formater le résultat
+            result = dict(payment)
+            
+            # Nom complet du patient
+            nom_complet = payment['patient_nom'] or ''
+            if payment['patient_prenom']:
+                nom_complet += f" {payment['patient_prenom']}"
+            result['patient_nom_complet'] = nom_complet
+            
+            # Convertir les montants
+            result['montant'] = float(payment['montant']) if payment['montant'] else 0
+            if payment['montant_total']:
+                result['montant_total'] = float(payment['montant_total'])
+            
+            # Formater la date
+            if payment['date_paiement']:
+                result['date_paiement_formatted'] = payment['date_paiement'].strftime('%d/%m/%Y %H:%M')
+            
+            return jsonify(result)
+        
+        elif request.method == 'DELETE':
+            # Récupérer d'abord le paiement pour connaître le patient et le montant
+            cur.execute('''
+                SELECT patient_id, montant, mode_paiement FROM paiements 
+                WHERE user_id = %s AND id = %s
+            ''', (user_id, id))
+            
+            payment = cur.fetchone()
+            if not payment:
+                return jsonify({'erreur': 'Paiement non trouvé'}), 404
+            
+            # Supprimer le paiement
+            cur.execute('''
+                DELETE FROM paiements 
+                WHERE user_id = %s AND id = %s
+            ''', (user_id, id))
+            
+            # Mettre à jour le solde du patient
+            if payment['patient_id']:
+                # Recalculer le solde à partir de tous les paiements restants
+                cur.execute('''
+                    SELECT SUM(montant) as total_paye FROM paiements
+                    WHERE user_id = %s AND patient_id = %s
+                ''', (user_id, payment['patient_id']))
+                
+                total_result = cur.fetchone()
+                total_paye = float(total_result['total_paye'] or 0)
+                
+                # Pour simplifier, on pourrait juste soustraire le montant supprimé
+                # Mais le recalcul est plus sûr
+                
+                cur.execute('''
+                    UPDATE patients 
+                    SET solde = (SELECT SUM(montant) FROM paiements WHERE user_id = %s AND patient_id = %s)
+                    WHERE id = %s AND user_id = %s
+                ''', (user_id, payment['patient_id'], payment['patient_id'], user_id))
+            
+            conn.commit()
+            return jsonify({'message': 'Paiement supprimé avec succès'})
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur paiement_detail: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()            
 @app.route('/paiements/statistiques', methods=['GET'])
 def statistiques_paiements():
     user_id = request.headers.get('X-User-ID')
