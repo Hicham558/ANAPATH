@@ -792,20 +792,16 @@
             }
         }
 
-       async function loadDashboardData() {
+      async function loadDashboardData() {
     try {
-        const [paiementsRes, statsRes] = await Promise.all([
-            fetch(`${API_BASE_URL}/paiements`, {
-                headers: { 'X-User-ID': currentUserId }
-            }),
-            fetch(`${API_BASE_URL}/paiements/statistiques`, {
-                headers: { 'X-User-ID': currentUserId }
-            })
-        ]);
+        // Charger les paiements avec gestion d'erreur
+        const paiementsRes = await fetch(`${API_BASE_URL}/paiements?page=1&per_page=100`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
 
         if (paiementsRes.ok) {
             const data = await paiementsRes.json();
-            allPaiements = data.paiements || [];
+            allPaiements = data.paiements || data || [];
             
             // Calculer les KPI
             const totalEncaisse = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
@@ -819,23 +815,44 @@
             document.getElementById('totalEncaisse').textContent = `${totalEncaisse.toFixed(2)} DA`;
             document.getElementById('encaisseAujourdhui').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
             document.getElementById('totalPaiements').textContent = allPaiements.length;
+            
+            // Calculer le nombre de paiements du mois
+            const debutMois = new Date();
+            debutMois.setDate(1);
+            const paiementsMois = allPaiements.filter(p => {
+                if (!p.date_paiement) return false;
+                const datePaiement = new Date(p.date_paiement);
+                return datePaiement >= debutMois;
+            });
+            document.getElementById('paiementsMois').textContent = paiementsMois.length;
+        } else {
+            console.error('Erreur chargement paiements:', await paiementsRes.text());
         }
 
-        if (statsRes.ok) {
-            const stats = await statsRes.json();
+        // Charger les statistiques avec gestion d'erreur
+        try {
+            const statsRes = await fetch(`${API_BASE_URL}/paiements/statistiques`, {
+                headers: { 'X-User-ID': currentUserId }
+            });
             
-            // Mettre à jour les graphiques si nécessaire
-            if (stats.par_mode_paiement) {
-                renderChartPaiements(stats.par_mode_paiement);
+            if (statsRes.ok) {
+                const stats = await statsRes.json();
+                
+                // Mettre à jour les graphiques si nécessaire
+                if (stats.par_mode_paiement && stats.par_mode_paiement.length > 0) {
+                    renderChartPaiements(stats.par_mode_paiement);
+                }
+                
+                if (stats.evolution_mensuelle && stats.evolution_mensuelle.length > 0) {
+                    renderChartEvolution(stats.evolution_mensuelle);
+                }
+                
+                if (stats.top_patients && stats.top_patients.length > 0) {
+                    renderTopPatients(stats.top_patients);
+                }
             }
-            
-            if (stats.evolution_mensuelle) {
-                renderChartEvolution(stats.evolution_mensuelle);
-            }
-            
-            if (stats.top_patients) {
-                renderTopPatients(stats.top_patients);
-            }
+        } catch (statsError) {
+            console.warn('Erreur chargement statistiques:', statsError);
         }
         
         // Charger les dettes séparément
@@ -843,6 +860,7 @@
         
     } catch (error) {
         console.error('Erreur chargement dashboard:', error);
+        showToast('Erreur lors du chargement des données', 'error');
     }
 }
 function renderTopPatients(topPatients) {
