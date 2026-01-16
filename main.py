@@ -1096,10 +1096,38 @@ def paiements():
             offset = (page - 1) * per_page
             
             # D'abord, compter le total
-            count_query = query.replace('SELECT p.*, pat.nom as patient_nom', 'SELECT COUNT(*) as total')
-            count_query = count_query.replace('ORDER BY p.date_paiement DESC', '')
+            count_query = '''
+                SELECT COUNT(*) as total
+                FROM paiements p
+                LEFT JOIN patients pat ON p.patient_id = pat.id AND p.user_id = pat.user_id
+                LEFT JOIN utilisateurs u ON p.utilisateur_id = u.numero AND p.user_id = u.user_id
+                WHERE p.user_id = %s
+            '''
             
-            cur.execute(count_query, params)
+            count_params = [user_id]
+            
+            # Ajouter les mêmes filtres pour le count
+            if patient_id:
+                count_query += ' AND p.patient_id = %s'
+                count_params.append(patient_id)
+            
+            if date_debut:
+                count_query += ' AND DATE(p.date_paiement) >= %s'
+                count_params.append(date_debut)
+            
+            if date_fin:
+                count_query += ' AND DATE(p.date_paiement) <= %s'
+                count_params.append(date_fin)
+            
+            if mode_paiement:
+                count_query += ' AND p.mode_paiement = %s'
+                count_params.append(mode_paiement)
+            
+            if type_paiement:
+                count_query += ' AND p.type_paiement = %s'
+                count_params.append(type_paiement)
+            
+            cur.execute(count_query, count_params)
             total_result = cur.fetchone()
             total_count = total_result['total'] if total_result else 0
             
@@ -1169,15 +1197,7 @@ def paiements():
                     return jsonify({'erreur': 'Le montant total doit être supérieur au montant payé pour un paiement à terme'}), 400
             
             # Récupérer l'utilisateur connecté
-            selected_user = None
-            try:
-                selected_user_str = request.headers.get('X-Selected-User')
-                if selected_user_str:
-                    selected_user = json.loads(selected_user_str)
-            except:
-                pass
-            
-            utilisateur_id = selected_user.get('numero') if selected_user else None
+            utilisateur_id = data.get('utilisateur_id')
             
             # Insérer le paiement
             cur.execute('''
