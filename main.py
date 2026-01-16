@@ -423,51 +423,52 @@ def patients():
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
-    
+
     conn = None
     cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
-        
+
         if request.method == 'GET':
             cur.execute('''
-                SELECT id, nom, age, sexe, telephone, adresse, created_at
+                SELECT id, nom, age, sexe, telephone, adresse, solde, created_at
                 FROM patients
                 WHERE user_id = %s
                 ORDER BY created_at DESC
             ''', (user_id,))
             patients_list = cur.fetchall()
             return jsonify([dict(p) for p in patients_list])
-        
+
         elif request.method == 'POST':
             data = request.json
             if not data or 'nom' not in data:
                 return jsonify({'erreur': 'Nom obligatoire'}), 400
-            
+
             cur.execute('''
-                INSERT INTO patients (user_id, nom, age, sexe, telephone, adresse)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id, nom, age, sexe, telephone, adresse
+                INSERT INTO patients (user_id, nom, age, sexe, telephone, adresse, solde)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, nom, age, sexe, telephone, adresse, solde, created_at
             ''', (
                 user_id,
                 data['nom'],
                 data.get('age'),
                 data.get('sexe'),
                 data.get('telephone'),
-                data.get('adresse')
+                data.get('adresse'),
+                data.get('solde', 0)  # Valeur par défaut à 0 si non fourni
             ))
-            
+
             new_patient = cur.fetchone()
             conn.commit()
             return jsonify(dict(new_patient)), 201
-    
+
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"? Erreur patients: {str(e)}")
+        print(f"❌ Erreur patients: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-    
+
     finally:
         if cur:
             cur.close()
