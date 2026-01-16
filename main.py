@@ -1057,7 +1057,6 @@ def paiements():
                 SELECT 
                     p.*,
                     pat.nom as patient_nom,
-                    pat.prenom as patient_prenom,
                     pat.telephone as patient_telephone,
                     u.nom as utilisateur_nom
                 FROM paiements p
@@ -1116,11 +1115,8 @@ def paiements():
             for p in payments:
                 payment_dict = dict(p)
                 
-                # Créer le nom complet du patient
-                nom_complet = p['patient_nom'] or ''
-                if p['patient_prenom']:
-                    nom_complet += f" {p['patient_prenom']}"
-                payment_dict['patient_nom_complet'] = nom_complet or 'Patient inconnu'
+                # Créer le nom complet du patient (uniquement avec nom)
+                payment_dict['patient_nom_complet'] = p['patient_nom'] or 'Patient inconnu'
                 
                 # Convertir les montants en float
                 payment_dict['montant'] = float(p['montant']) if p['montant'] else 0
@@ -1153,9 +1149,9 @@ def paiements():
             montant_paye = float(data['montant'])
             mode_paiement = data['mode_paiement']
             
-            # Récupérer le solde actuel du patient
+            # Récupérer le patient
             cur.execute('''
-                SELECT nom, prenom, solde FROM patients 
+                SELECT nom, solde FROM patients 
                 WHERE id = %s AND user_id = %s
             ''', (data['patient_id'], user_id))
             
@@ -1205,20 +1201,19 @@ def paiements():
             
             new_payment = cur.fetchone()
             
-            # Calculer le nouveau solde
+            # Calculer le nouveau solde selon le mode de paiement
             if mode_paiement == 'a_terme':
                 reste_a_payer = montant_total - montant_paye
-                nouveau_solde = -reste_a_payer
+                nouveau_solde = solde_actuel - reste_a_payer
                 message = f'Paiement à terme enregistré. Reste à payer: {reste_a_payer:.2f} DA'
             elif mode_paiement == 'paiement_partiel':
-                # Pour un paiement partiel, on réduit la dette
+                # Pour un paiement partiel, on réduit la dette (solde négatif)
                 nouveau_solde = solde_actuel + montant_paye
-                reste = abs(nouveau_solde) if nouveau_solde < 0 else 0
-                message = f'Paiement partiel enregistré. Reste à payer: {reste:.2f} DA'
-            else:  # espece
-                # Pour un paiement comptant, on ajoute au solde
+                message = f'Paiement partiel enregistré. Nouveau solde: {nouveau_solde:.2f} DA'
+            else:  # espece (comptant)
+                # Pour un paiement comptant, on augmente le solde (crédit positif)
                 nouveau_solde = solde_actuel + montant_paye
-                message = 'Paiement comptant enregistré'
+                message = f'Paiement comptant enregistré. Nouveau solde: {nouveau_solde:.2f} DA'
             
             # Mettre à jour le solde du patient
             cur.execute('''
@@ -1249,7 +1244,6 @@ def paiements():
             conn.close()
 @app.route('/paiements/paiement-partiel', methods=['POST'])
 def paiement_partiel():
-    """Endpoint spécifique pour les paiements partiels"""
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         return jsonify({'erreur': 'X-User-ID manquant'}), 401
@@ -1268,9 +1262,9 @@ def paiement_partiel():
         
         montant_paye = float(data['montant'])
         
-        # Récupérer le patient et son solde
+        # Récupérer le patient
         cur.execute('''
-            SELECT nom, prenom, solde FROM patients 
+            SELECT nom, solde FROM patients 
             WHERE id = %s AND user_id = %s
         ''', (data['patient_id'], user_id))
         
@@ -1280,15 +1274,13 @@ def paiement_partiel():
         
         solde_actuel = float(patient['solde'] or 0)
         
-        if solde_actuel >= 0:
-            return jsonify({'erreur': 'Ce patient n\'a pas de dette à régler'}), 400
-        
         # Calculer le nouveau solde
         nouveau_solde = solde_actuel + montant_paye
         dette_reglee = nouveau_solde >= 0
         
+        # Éviter un solde positif pour une dette
         if nouveau_solde > 0:
-            nouveau_solde = 0  # Éviter un solde positif
+            nouveau_solde = 0
         
         # Récupérer l'utilisateur
         selected_user = None
@@ -1353,7 +1345,7 @@ def paiement_partiel():
             cur.close()
         if conn:
             conn.close()
-@app.route('/paiements/<int:id>', methods=['GET', 'PUT', 'DELETE'])
+@app.route('/paiements/<int:id>', methods=['GET', 'DELETE'])
 def paiement_detail(id):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
@@ -1370,7 +1362,6 @@ def paiement_detail(id):
                 SELECT 
                     p.*,
                     pat.nom as patient_nom,
-                    pat.prenom as patient_prenom,
                     pat.telephone as patient_telephone,
                     pat.solde as patient_solde,
                     u.nom as utilisateur_nom
@@ -1387,11 +1378,8 @@ def paiement_detail(id):
             # Formater le résultat
             result = dict(payment)
             
-            # Nom complet du patient
-            nom_complet = payment['patient_nom'] or ''
-            if payment['patient_prenom']:
-                nom_complet += f" {payment['patient_prenom']}"
-            result['patient_nom_complet'] = nom_complet
+            # Nom du patient
+            result['patient_nom_complet'] = payment['patient_nom'] or 'Patient inconnu'
             
             # Convertir les montants
             result['montant'] = float(payment['montant']) if payment['montant'] else 0
@@ -1405,7 +1393,7 @@ def paiement_detail(id):
             return jsonify(result)
         
         elif request.method == 'DELETE':
-            # Récupérer d'abord le paiement pour connaître le patient et le montant
+            # Récupérer d'abord le paiement
             cur.execute('''
                 SELECT patient_id, montant, mode_paiement FROM paiements 
                 WHERE user_id = %s AND id = %s
@@ -1421,25 +1409,22 @@ def paiement_detail(id):
                 WHERE user_id = %s AND id = %s
             ''', (user_id, id))
             
-            # Mettre à jour le solde du patient
+            # Recalculer le solde du patient
             if payment['patient_id']:
-                # Recalculer le solde à partir de tous les paiements restants
                 cur.execute('''
-                    SELECT SUM(montant) as total_paye FROM paiements
+                    SELECT COALESCE(SUM(montant), 0) as total_paye FROM paiements
                     WHERE user_id = %s AND patient_id = %s
                 ''', (user_id, payment['patient_id']))
                 
                 total_result = cur.fetchone()
                 total_paye = float(total_result['total_paye'] or 0)
                 
-                # Pour simplifier, on pourrait juste soustraire le montant supprimé
-                # Mais le recalcul est plus sûr
-                
+                # Mettre à jour le solde
                 cur.execute('''
                     UPDATE patients 
-                    SET solde = (SELECT SUM(montant) FROM paiements WHERE user_id = %s AND patient_id = %s)
+                    SET solde = %s
                     WHERE id = %s AND user_id = %s
-                ''', (user_id, payment['patient_id'], payment['patient_id'], user_id))
+                ''', (total_paye, payment['patient_id'], user_id))
             
             conn.commit()
             return jsonify({'message': 'Paiement supprimé avec succès'})
@@ -1454,7 +1439,7 @@ def paiement_detail(id):
         if cur:
             cur.close()
         if conn:
-            conn.close()            
+            conn.close()           
 @app.route('/paiements/statistiques', methods=['GET'])
 def statistiques_paiements():
     user_id = request.headers.get('X-User-ID')
@@ -1658,6 +1643,10 @@ def dettes_actives():
         for d in dettes:
             dette = dict(d)
             dette['montant_dette'] = abs(float(d['solde'])) if d['solde'] else 0
+            
+            # Nom du patient (sans prenom)
+            dette['nom_complet'] = d['nom']
+            
             dettes_formatees.append(dette)
         
         return jsonify(dettes_formatees)
@@ -1671,8 +1660,6 @@ def dettes_actives():
             cur.close()
         if conn:
             conn.close()
-
-
 @app.route('/paiements/statistiques-dettes', methods=['GET'])
 def statistiques_dettes():
     user_id = request.headers.get('X-User-ID')
