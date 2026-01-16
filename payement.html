@@ -1134,86 +1134,100 @@ function renderTopPatients(topPatients) {
             document.getElementById('recapNouveauSolde').className = `font-bold text-lg ${nouveauSolde < 0 ? 'text-red-600' : nouveauSolde > 0 ? 'text-green-600' : 'text-gray-600'}`;
         }
 
-        async function enregistrerPaiement() {
-            const patientId = document.getElementById('patientSelect').value;
-            const mode = document.querySelector('input[name="modePaiement"]:checked').value;
-            const montantPaye = parseFloat(document.getElementById('montantPaye').value);
-            const montantTotal = parseFloat(document.getElementById('montantTotal').value);
-            const typePaiement = document.getElementById('typePaiement').value;
-            const numeroCR = document.getElementById('numeroCR').value;
-            const notes = document.getElementById('notes').value;
+async function enregistrerPaiement() {
+    const patientId = document.getElementById('patientSelect').value;
+    const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+    const montantPaye = parseFloat(document.getElementById('montantPaye').value);
+    const montantTotal = parseFloat(document.getElementById('montantTotal').value);
+    const typePaiement = document.getElementById('typePaiement').value;
+    const numeroCR = document.getElementById('numeroCR').value;
+    const notes = document.getElementById('notes').value;
 
-            // Validation
-            if (!patientId) {
-                showToast('Veuillez sélectionner un patient', 'error');
-                return;
-            }
+    // Validation
+    if (!patientId) {
+        showToast('Veuillez sélectionner un patient', 'error');
+        return;
+    }
 
-            if (!montantPaye || montantPaye <= 0) {
-                showToast('Veuillez saisir un montant valide', 'error');
-                return;
-            }
+    if (!montantPaye || montantPaye <= 0) {
+        showToast('Veuillez saisir un montant valide', 'error');
+        return;
+    }
 
-            if (mode === 'a_terme' && (!montantTotal || montantTotal <= montantPaye)) {
-                showToast('Pour un paiement à terme, le montant total doit être supérieur au montant payé', 'error');
-                return;
-            }
+    if (mode === 'a_terme' && (!montantTotal || montantTotal <= montantPaye)) {
+        showToast('Pour un paiement à terme, le montant total doit être supérieur au montant payé', 'error');
+        return;
+    }
 
-            try {
-                const data = {
-                    patient_id: patientId,
-                    montant: montantPaye,
-                    type_paiement: typePaiement,
-                    mode_paiement: mode,
-                    numero_cr: numeroCR,
-                    notes: notes
-                };
+    try {
+        const data = {
+            patient_id: patientId,
+            montant: montantPaye,
+            type_paiement: typePaiement,
+            mode_paiement: mode,
+            numero_cr: numeroCR,
+            notes: notes
+        };
 
-                if (mode === 'a_terme') {
-                    data.montant_total = montantTotal;
-                }
-
-                let endpoint = `${API_BASE_URL}/paiements`;
-                if (mode === 'paiement_partiel') {
-                    endpoint = `${API_BASE_URL}/paiements/paiement-partiel`;
-                }
-
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-ID': currentUserId
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    showToast(result.message || 'Paiement enregistré avec succès', 'success');
-                    
-                    // Réinitialiser le formulaire
-                    document.getElementById('montantPaye').value = '';
-                    document.getElementById('montantTotal').value = '';
-                    document.getElementById('numeroCR').value = '';
-                    document.getElementById('notes').value = '';
-                    
-                    // Recharger les données
-                    loadDashboardData();
-                    loadPaiements();
-                    loadDettes();
-                    
-                    // Revenir à l'onglet liste
-                    showTab('liste');
-                } else {
-                    const error = await response.json();
-                    throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
-                }
-            } catch (error) {
-                console.error('Erreur enregistrement paiement:', error);
-                showToast(error.message, 'error');
-            }
+        if (mode === 'a_terme') {
+            data.montant_total = montantTotal;
         }
 
+        let endpoint = `${API_BASE_URL}/paiements`;
+        if (mode === 'paiement_partiel') {
+            endpoint = `${API_BASE_URL}/paiements/paiement-partiel`;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-ID': currentUserId
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showToast(result.message || 'Paiement enregistré avec succès', 'success');
+            
+            // Réinitialiser le formulaire
+            document.getElementById('montantPaye').value = '';
+            document.getElementById('montantTotal').value = '';
+            document.getElementById('numeroCR').value = '';
+            document.getElementById('notes').value = '';
+            document.getElementById('patientSelect').value = '';
+            document.getElementById('patientInfo').classList.add('hidden');
+            
+            // ✅ AJOUT IMPORTANT : Recharger toutes les données incluant les patients
+            await Promise.all([
+                loadPatients(),           // ← Recharger la liste des patients avec les soldes mis à jour
+                chargerPatientsFiltre(),  // ← Recharger aussi les filtres
+                loadDashboardData(),
+                loadPaiements(),
+                loadDettes()
+            ]);
+            
+            // Réinitialiser le récapitulatif
+            document.getElementById('recapContent').innerHTML = `
+                <div class="text-center py-12 text-gray-400">
+                    <i class="fas fa-file-invoice-dollar text-4xl mb-4"></i>
+                    <p>Les détails du paiement apparaîtront ici</p>
+                </div>
+            `;
+            document.getElementById('recapDetails').classList.add('hidden');
+            
+            // Revenir à l'onglet liste
+            showTab('liste');
+        } else {
+            const error = await response.json();
+            throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
+        }
+    } catch (error) {
+        console.error('Erreur enregistrement paiement:', error);
+        showToast(error.message, 'error');
+    }
+}
        async function loadPaiements() {
     try {
         // Construire l'URL avec les filtres
