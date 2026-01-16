@@ -792,51 +792,92 @@
             }
         }
 
-        async function loadDashboardData() {
-            try {
-                const [paiementsRes, patientsRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/paiements`, {
-                        headers: { 'X-User-ID': currentUserId }
-                    }),
-                    fetch(`${API_BASE_URL}/patients`, {
-                        headers: { 'X-User-ID': currentUserId }
-                    })
-                ]);
+       async function loadDashboardData() {
+    try {
+        const [paiementsRes, statsRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/paiements`, {
+                headers: { 'X-User-ID': currentUserId }
+            }),
+            fetch(`${API_BASE_URL}/paiements/statistiques`, {
+                headers: { 'X-User-ID': currentUserId }
+            })
+        ]);
 
-                if (paiementsRes.ok && patientsRes.ok) {
-                    const paiements = await paiementsRes.json();
-                    const patients = await patientsRes.json();
+        if (paiementsRes.ok) {
+            const data = await paiementsRes.json();
+            allPaiements = data.paiements || [];
+            
+            // Calculer les KPI
+            const totalEncaisse = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+            
+            const aujourdhui = new Date().toISOString().split('T')[0];
+            const encaisseAujourdhui = allPaiements
+                .filter(p => p.date_paiement && p.date_paiement.includes(aujourdhui))
+                .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
 
-                    // Calculer les KPI
-                    const totalEncaisse = paiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
-                    const aujourdhui = new Date().toISOString().split('T')[0];
-                    const encaisseAujourdhui = paiements
-                        .filter(p => p.date_paiement && p.date_paiement.startsWith(aujourdhui))
-                        .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
-
-                    const dettes = patients.filter(p => parseFloat(p.solde || 0) < 0);
-                    const montantDettes = dettes.reduce((sum, p) => sum + Math.abs(parseFloat(p.solde || 0)), 0);
-
-                    // Paiements ce mois
-                    const moisCourant = new Date().toISOString().slice(0, 7);
-                    const paiementsMois = paiements.filter(p => 
-                        p.date_paiement && p.date_paiement.startsWith(moisCourant)
-                    ).length;
-
-                    // Mettre à jour les KPI
-                    document.getElementById('totalEncaisse').textContent = `${totalEncaisse.toFixed(2)} DA`;
-                    document.getElementById('encaisseAujourdhui').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
-                    document.getElementById('totalDettes').textContent = dettes.length;
-                    document.getElementById('montantDettes').textContent = `${montantDettes.toFixed(2)} DA`;
-                    document.getElementById('totalPaiements').textContent = paiements.length;
-                    document.getElementById('patientsDetteurs').textContent = dettes.length;
-                    document.getElementById('paiementsMois').textContent = paiementsMois;
-                }
-            } catch (error) {
-                console.error('Erreur chargement dashboard:', error);
-            }
+            // Mettre à jour les KPI
+            document.getElementById('totalEncaisse').textContent = `${totalEncaisse.toFixed(2)} DA`;
+            document.getElementById('encaisseAujourdhui').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
+            document.getElementById('totalPaiements').textContent = allPaiements.length;
         }
 
+        if (statsRes.ok) {
+            const stats = await statsRes.json();
+            
+            // Mettre à jour les graphiques si nécessaire
+            if (stats.par_mode_paiement) {
+                renderChartPaiements(stats.par_mode_paiement);
+            }
+            
+            if (stats.evolution_mensuelle) {
+                renderChartEvolution(stats.evolution_mensuelle);
+            }
+            
+            if (stats.top_patients) {
+                renderTopPatients(stats.top_patients);
+            }
+        }
+        
+        // Charger les dettes séparément
+        await loadDettes();
+        
+    } catch (error) {
+        console.error('Erreur chargement dashboard:', error);
+    }
+}
+function renderTopPatients(topPatients) {
+    const tbody = document.getElementById('topPatients');
+    
+    if (topPatients.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                    Aucune donnée disponible
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = topPatients.map(patient => `
+        <tr class="hover:bg-yellow-50">
+            <td class="px-6 py-4">
+                <div class="text-sm font-medium text-gray-900">
+                    ${patient.nom}
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm font-bold text-green-600">${parseFloat(patient.total_paye || 0).toFixed(2)} DA</div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">${patient.nombre_paiements || 0}</div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-500">-</div>
+            </td>
+        </tr>
+    `).join('');
+}
         async function loadPatients() {
             try {
                 const response = await fetch(`${API_BASE_URL}/patients`, {
@@ -1126,75 +1167,71 @@
             }
         }
 
-        function renderPaiementsList() {
-            const tbody = document.getElementById('listePaiements');
-            
-            if (allPaiements.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                            <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
-                            <p class="mt-2">Aucun paiement enregistré</p>
-                            ${Object.keys(filtresActifs).length > 0 ? 
-                                '<p class="text-sm mt-1">Essayez de modifier vos filtres</p>' : ''}
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
+     function renderPaiementsList() {
+    const tbody = document.getElementById('listePaiements');
+    
+    if (allPaiements.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
+                    <p class="mt-2">Aucun paiement enregistré</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-            tbody.innerHTML = allPaiements.map(p => {
-                const date = new Date(p.date_paiement).toLocaleDateString('fr-FR');
-                const heure = new Date(p.date_paiement).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                
-                let modeBadge = '';
-                if (p.mode_paiement === 'espece') {
-                    modeBadge = '<span class="badge-espece px-2 py-1 rounded-full text-xs">Comptant</span>';
-                } else if (p.mode_paiement === 'a_terme') {
-                    modeBadge = '<span class="badge-a_terme px-2 py-1 rounded-full text-xs">À terme</span>';
-                } else {
-                    modeBadge = '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>';
-                }
-
-                return `
-                    <tr class="payment-card status-${p.mode_paiement} hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">${date}</div>
-                            <div class="text-sm text-gray-500">${heure}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm font-medium text-gray-900">${p.patient_nom_complet || p.patient_nom || 'N/A'}</div>
-                            <div class="text-sm text-gray-500">${p.patient_telephone || ''}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${p.type_paiement}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            ${modeBadge}
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm font-bold text-gray-900">${parseFloat(p.montant).toFixed(2)} DA</div>
-                            ${p.mode_paiement === 'a_terme' && p.montant_total ? 
-                                `<div class="text-xs text-gray-500">Total: ${parseFloat(p.montant_total).toFixed(2)} DA</div>` : ''}
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${p.numero_cr || '-'}</div>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-medium">
-                            <button onclick="viewPaymentDetail(${p.id})" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Voir détail">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button onclick="printReceipt(${p.id})" class="text-green-600 hover:text-green-900 mr-3" title="Imprimer reçu">
-                                <i class="fas fa-print"></i>
-                            </button>
-                            <button onclick="deletePayment(${p.id})" class="text-red-600 hover:text-red-900" title="Supprimer">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+    tbody.innerHTML = allPaiements.map(p => {
+        const dateObj = p.date_paiement ? new Date(p.date_paiement) : new Date();
+        const date = dateObj.toLocaleDateString('fr-FR');
+        const heure = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        
+        let modeBadge = '';
+        if (p.mode_paiement === 'espece') {
+            modeBadge = '<span class="badge-espece px-2 py-1 rounded-full text-xs">Comptant</span>';
+        } else if (p.mode_paiement === 'a_terme') {
+            modeBadge = '<span class="badge-a_terme px-2 py-1 rounded-full text-xs">À terme</span>';
+        } else {
+            modeBadge = '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>';
         }
+
+        return `
+            <tr class="payment-card status-${p.mode_paiement} hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${date}</div>
+                    <div class="text-sm text-gray-500">${heure}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-gray-900">${p.patient_nom_complet || p.patient_nom || 'N/A'}</div>
+                    <div class="text-sm text-gray-500">${p.patient_telephone || ''}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${p.type_paiement}</div>
+                </td>
+                <td class="px-6 py-4">
+                    ${modeBadge}
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm font-bold text-gray-900">${parseFloat(p.montant || 0).toFixed(2)} DA</div>
+                    ${p.mode_paiement === 'a_terme' && p.montant_total ? 
+                        `<div class="text-xs text-gray-500">Total: ${parseFloat(p.montant_total || 0).toFixed(2)} DA</div>` : ''}
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${p.numero_cr || '-'}</div>
+                </td>
+                <td class="px-6 py-4 text-sm font-medium">
+                    <button onclick="viewPaymentDetail(${p.id})" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Voir détail">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="deletePayment(${p.id})" class="text-red-600 hover:text-red-900" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
         function toggleFiltres() {
             document.getElementById('filtresPanel').classList.toggle('open');
