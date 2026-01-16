@@ -1149,41 +1149,55 @@ function renderTopPatients(topPatients) {
             }
         }
 
-        async function loadPaiements() {
-            try {
-                // Construire l'URL avec les filtres
-                let url = `${API_BASE_URL}/paiements?page=${currentPage}&per_page=${perPage}`;
-                
-                if (filtresActifs.patient_id) {
-                    url += `&patient_id=${filtresActifs.patient_id}`;
-                }
-                if (filtresActifs.date_debut) {
-                    url += `&date_debut=${filtresActifs.date_debut}`;
-                }
-                if (filtresActifs.date_fin) {
-                    url += `&date_fin=${filtresActifs.date_fin}`;
-                }
-                if (filtresActifs.mode_paiement) {
-                    url += `&mode_paiement=${filtresActifs.mode_paiement}`;
-                }
-
-                const response = await fetch(url, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    allPaiements = data.paiements || data;
-                    totalPaiements = data.pagination ? data.pagination.total : allPaiements.length;
-                    
-                    renderPaiementsList();
-                    updatePagination();
-                }
-            } catch (error) {
-                console.error('Erreur chargement paiements:', error);
-                showToast('Erreur lors du chargement des paiements', 'error');
-            }
+       async function loadPaiements() {
+    try {
+        // Construire l'URL avec les filtres
+        let url = `${API_BASE_URL}/paiements?page=${currentPage}&per_page=${perPage}`;
+        
+        if (filtresActifs.patient_id) {
+            url += `&patient_id=${filtresActifs.patient_id}`;
         }
+        if (filtresActifs.date_debut) {
+            url += `&date_debut=${filtresActifs.date_debut}`;
+        }
+        if (filtresActifs.date_fin) {
+            url += `&date_fin=${filtresActifs.date_fin}`;
+        }
+        if (filtresActifs.mode_paiement) {
+            url += `&mode_paiement=${filtresActifs.mode_paiement}`;
+        }
+
+        const response = await fetch(url, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Gérer les deux formats de réponse possibles
+            if (data.paiements) {
+                allPaiements = data.paiements;
+                totalPaiements = data.pagination ? data.pagination.total : allPaiements.length;
+            } else if (Array.isArray(data)) {
+                allPaiements = data;
+                totalPaiements = data.length;
+            } else {
+                allPaiements = [];
+                totalPaiements = 0;
+            }
+            
+            renderPaiementsList();
+            updatePagination();
+        } else {
+            const errorText = await response.text();
+            console.error('Erreur serveur:', errorText);
+            showToast('Erreur lors du chargement des paiements', 'error');
+        }
+    } catch (error) {
+        console.error('Erreur chargement paiements:', error);
+        showToast('Erreur lors du chargement des paiements', 'error');
+    }
+}
 
      function renderPaiementsList() {
     const tbody = document.getElementById('listePaiements');
@@ -1311,45 +1325,56 @@ function renderTopPatients(topPatients) {
             }
         }
 
-        async function loadDettes() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/paiements/dettes-actives`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
+       async function loadDettes() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/paiements/dettes-actives`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
 
-                if (response.ok) {
-                    const dettes = await response.json();
-                    allDettes = dettes;
-                    renderDettesList();
-                    loadStatistiquesDettes();
-                }
-            } catch (error) {
-                console.error('Erreur chargement dettes:', error);
-                showToast('Erreur lors du chargement des dettes', 'error');
+        if (response.ok) {
+            const dettes = await response.json();
+            allDettes = dettes;
+            
+            // Mettre à jour le KPI patients detteurs
+            document.getElementById('patientsDetteurs').textContent = dettes.length;
+            
+            renderDettesList();
+            loadStatistiquesDettes();
+        } else {
+            console.error('Erreur chargement dettes:', await response.text());
+        }
+    } catch (error) {
+        console.error('Erreur chargement dettes:', error);
+        showToast('Erreur lors du chargement des dettes', 'error');
+    }
+}
+
+      async function loadStatistiquesDettes() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/paiements/statistiques-dettes`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const stats = await response.json();
+            
+            if (stats.statistiques) {
+                const stat = stats.statistiques;
+                const montantDettes = parseFloat(stat.montant_total_dettes || 0);
+                
+                document.getElementById('dettesEnAttente').textContent = stat.nombre_patients_dette || 0;
+                document.getElementById('montantTotalDu').textContent = `${montantDettes.toFixed(2)} DA`;
+                document.getElementById('patientsConcernes').textContent = stat.nombre_patients_dette || 0;
+                
+                // Mettre à jour aussi le KPI de dettes dans le header
+                document.getElementById('totalDettes').textContent = stat.nombre_patients_dette || 0;
+                document.getElementById('montantDettes').textContent = `${montantDettes.toFixed(2)} DA`;
             }
         }
-
-        async function loadStatistiquesDettes() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/paiements/statistiques-dettes`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
-
-                if (response.ok) {
-                    const stats = await response.json();
-                    
-                    if (stats.statistiques) {
-                        const stat = stats.statistiques;
-                        document.getElementById('dettesEnAttente').textContent = stat.nombre_patients_dette || 0;
-                        document.getElementById('montantTotalDu').textContent = `${(stat.montant_total_dettes || 0).toFixed(2)} DA`;
-                        document.getElementById('patientsConcernes').textContent = stat.nombre_patients_dette || 0;
-                    }
-                }
-            } catch (error) {
-                console.error('Erreur chargement statistiques:', error);
-            }
-        }
-
+    } catch (error) {
+        console.error('Erreur chargement statistiques dettes:', error);
+    }
+}
         function renderDettesList() {
             const tbody = document.getElementById('listeDettes');
             
@@ -1502,105 +1527,129 @@ function renderTopPatients(topPatients) {
             }
         }
 
-        function renderChartPaiements(data) {
-            const ctx = document.getElementById('chartPaiements').getContext('2d');
-            
-            // Détruire le graphique existant
-            if (window.chartPaiements) {
-                window.chartPaiements.destroy();
-            }
-            
-            const labels = data.map(item => {
-                switch(item.mode_paiement) {
-                    case 'espece': return 'Comptant';
-                    case 'a_terme': return 'À terme';
-                    case 'paiement_partiel': return 'Partiel';
-                    default: return item.mode_paiement;
-                }
-            });
-            
-            const montants = data.map(item => parseFloat(item.total || 0));
-            const couleurs = ['#10b981', '#f59e0b', '#3b82f6'];
-            
-            window.chartPaiements = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: montants,
-                        backgroundColor: couleurs,
-                        borderWidth: 1
-                    }]
+       function renderChartPaiements(data) {
+    const ctx = document.getElementById('chartPaiements');
+    if (!ctx) return;
+    
+    const context = ctx.getContext('2d');
+    
+    // Détruire le graphique existant seulement s'il existe
+    if (window.chartPaiements && typeof window.chartPaiements.destroy === 'function') {
+        window.chartPaiements.destroy();
+    }
+    
+    // Vérifier que nous avons des données
+    if (!data || data.length === 0) {
+        context.clearRect(0, 0, ctx.width, ctx.height);
+        context.font = '14px Arial';
+        context.fillStyle = '#999';
+        context.textAlign = 'center';
+        context.fillText('Aucune donnée disponible', ctx.width / 2, ctx.height / 2);
+        return;
+    }
+    
+    const labels = data.map(item => {
+        switch(item.mode_paiement) {
+            case 'espece': return 'Comptant';
+            case 'a_terme': return 'À terme';
+            case 'paiement_partiel': return 'Partiel';
+            default: return item.mode_paiement;
+        }
+    });
+    
+    const montants = data.map(item => parseFloat(item.total || 0));
+    const couleurs = ['#10b981', '#f59e0b', '#3b82f6'];
+    
+    window.chartPaiements = new Chart(context, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: montants,
+                backgroundColor: couleurs,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.label}: ${context.parsed.toFixed(2)} DA`;
-                                }
-                            }
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed.toFixed(2)} DA`;
                         }
                     }
                 }
-            });
-        }
-
-        function renderChartEvolution(data) {
-            const ctx = document.getElementById('chartEvolution').getContext('2d');
-            
-            // Détruire le graphique existant
-            if (window.chartEvolution) {
-                window.chartEvolution.destroy();
             }
-            
-            const labels = data.map(item => item.mois).reverse();
-            const montants = data.map(item => parseFloat(item.total_montant || 0)).reverse();
-            
-            window.chartEvolution = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Montant total (DA)',
-                        data: montants,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + ' DA';
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Montant: ${context.parsed.y.toFixed(2)} DA`;
-                                }
-                            }
+        }
+    });
+}
+       function renderChartEvolution(data) {
+    const ctx = document.getElementById('chartEvolution');
+    if (!ctx) return;
+    
+    const context = ctx.getContext('2d');
+    
+    // Détruire le graphique existant seulement s'il existe
+    if (window.chartEvolution && typeof window.chartEvolution.destroy === 'function') {
+        window.chartEvolution.destroy();
+    }
+    
+    // Vérifier que nous avons des données
+    if (!data || data.length === 0) {
+        context.clearRect(0, 0, ctx.width, ctx.height);
+        context.font = '14px Arial';
+        context.fillStyle = '#999';
+        context.textAlign = 'center';
+        context.fillText('Aucune donnée disponible', ctx.width / 2, ctx.height / 2);
+        return;
+    }
+    
+    const labels = data.map(item => item.mois).reverse();
+    const montants = data.map(item => parseFloat(item.total_montant || 0)).reverse();
+    
+    window.chartEvolution = new Chart(context, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Montant total (DA)',
+                data: montants,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value + ' DA';
                         }
                     }
                 }
-            });
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Montant: ${context.parsed.y.toFixed(2)} DA`;
+                        }
+                    }
+                }
+            }
         }
-
+    });
+}
         async function genererRapportJournalier() {
             const date = document.getElementById('rapportDate').value;
             
