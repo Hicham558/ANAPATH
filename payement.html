@@ -899,48 +899,47 @@ function renderTopPatients(topPatients) {
         </tr>
     `).join('');
 }
-        async function loadPatients() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/patients`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
+       async function loadPatients() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/patients`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
 
-                if (response.ok) {
-                    allPatients = await response.json();
-                    const select = document.getElementById('patientSelect');
+        if (response.ok) {
+            allPatients = await response.json();
+            const select = document.getElementById('patientSelect');
+            
+            select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
+                allPatients.map(p => {
+                    const solde = parseFloat(p.solde || 0);
+                    const soldeFormatted = Math.abs(solde).toFixed(2);
                     
-                    select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
-                        allPatients.map(p => {
-                            const solde = parseFloat(p.solde || 0);
-                            const soldeFormatted = Math.abs(solde).toFixed(2);
-                            
-                            let soldeText = '';
-                            let soldeClass = '';
-                            
-                            if (solde < 0) {
-                                soldeText = ` (Dette: ${soldeFormatted} DA)`;
-                                soldeClass = 'text-red-600 font-semibold';
-                            } else if (solde > 0) {
-                                soldeText = ` (Crédit: ${soldeFormatted} DA)`;
-                                soldeClass = 'text-green-600 font-semibold';
-                            }
-                            
-                            return `<option value="${p.id}" 
-                                data-age="${p.age || ''}" 
-                                data-sexe="${p.sexe || ''}" 
-                                data-tel="${p.telephone || ''}" 
-                                data-solde="${solde}"
-                                class="${soldeClass}">
-                                ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
-                            </option>`;
-                        }).join('');
-                }
-            } catch (error) {
-                console.error('Erreur chargement patients:', error);
-                showToast('Erreur lors du chargement des patients', 'error');
-            }
+                    let soldeText = '';
+                    let soldeClass = '';
+                    
+                    if (solde < 0) {
+                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
+                        soldeClass = 'text-red-600 font-semibold';
+                    } else if (solde > 0) {
+                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
+                        soldeClass = 'text-green-600 font-semibold';
+                    }
+                    
+                    return `<option value="${p.id}" 
+                        data-age="${p.age || ''}" 
+                        data-sexe="${p.sexe || ''}" 
+                        data-tel="${p.telephone || ''}" 
+                        data-solde="${solde}"
+                        class="${soldeClass}">
+                        ${p.nom}${soldeText}
+                    </option>`;
+                }).join('');
         }
-
+    } catch (error) {
+        console.error('Erreur chargement patients:', error);
+        showToast('Erreur lors du chargement des patients', 'error');
+    }
+}
         async function chargerPatientsFiltre() {
             try {
                 const response = await fetch(`${API_BASE_URL}/patients`, {
@@ -1188,7 +1187,7 @@ function renderTopPatients(topPatients) {
             }
         }
 
-     function renderPaiementsList() {
+    function renderPaiementsList() {
     const tbody = document.getElementById('listePaiements');
     
     if (allPaiements.length === 0) {
@@ -1253,7 +1252,6 @@ function renderTopPatients(topPatients) {
         `;
     }).join('');
 }
-
         function toggleFiltres() {
             document.getElementById('filtresPanel').classList.toggle('open');
         }
@@ -1353,74 +1351,74 @@ function renderTopPatients(topPatients) {
             }
         }
 
-        function renderDettesList() {
-            const tbody = document.getElementById('listeDettes');
-            
-            if (allDettes.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                            <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
-                            <p class="mt-2">Aucune dette active</p>
-                            <p class="text-sm mt-1">Tous les patients sont à jour dans leurs paiements</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
+      function renderDettesList() {
+    const tbody = document.getElementById('listeDettes');
+    
+    if (allDettes.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
+                    <p class="mt-2">Aucune dette active</p>
+                    <p class="text-sm mt-1">Tous les patients sont à jour dans leurs paiements</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-            tbody.innerHTML = allDettes.map(patient => {
-                const dette = patient.montant_dette || Math.abs(parseFloat(patient.solde || 0));
-                const nomComplet = `${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}`;
-                const dernierPaiement = patient.dernier_paiement ? 
-                    new Date(patient.dernier_paiement).toLocaleDateString('fr-FR') : 'Aucun';
-                
-                return `
-                    <tr class="hover:bg-red-50 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-user text-red-600"></i>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">${nomComplet}</div>
-                                    ${patient.age ? `<div class="text-xs text-gray-500">${patient.age} ans</div>` : ''}
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center">
-                                <i class="fas fa-money-bill-wave text-red-500 mr-2"></i>
-                                <div>
-                                    <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
-                                    ${patient.nombre_paiements ? 
-                                        `<div class="text-xs text-gray-500">${patient.nombre_paiements} paiement(s)</div>` : 
-                                        ''}
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-500">${dernierPaiement}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex space-x-2">
-                                <button onclick="payerDette(${patient.id})" 
-                                        class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md hover:shadow-lg">
-                                    <i class="fas fa-money-bill-wave mr-2"></i>Régler
-                                </button>
-                                <button onclick="voirHistoriquePatient(${patient.id})" 
-                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                                    <i class="fas fa-history mr-2"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+    tbody.innerHTML = allDettes.map(patient => {
+        const dette = patient.montant_dette || Math.abs(parseFloat(patient.solde || 0));
+        const nomComplet = patient.nom_complet || patient.nom || 'Patient inconnu';
+        const dernierPaiement = patient.dernier_paiement ? 
+            new Date(patient.dernier_paiement).toLocaleDateString('fr-FR') : 'Aucun';
+        
+        return `
+            <tr class="hover:bg-red-50 transition-colors">
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-red-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${nomComplet}</div>
+                            ${patient.age ? `<div class="text-xs text-gray-500">${patient.age} ans</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-money-bill-wave text-red-500 mr-2"></i>
+                        <div>
+                            <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
+                            ${patient.nombre_paiements ? 
+                                `<div class="text-xs text-gray-500">${patient.nombre_paiements} paiement(s)</div>` : 
+                                ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-500">${dernierPaiement}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex space-x-2">
+                        <button onclick="payerDette(${patient.id})" 
+                                class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md hover:shadow-lg">
+                            <i class="fas fa-money-bill-wave mr-2"></i>Régler
+                        </button>
+                        <button onclick="voirHistoriquePatient(${patient.id})" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                            <i class="fas fa-history mr-2"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
         async function updateStatistiques() {
             try {
