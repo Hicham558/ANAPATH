@@ -308,34 +308,39 @@
         </div>
       </div>
     </div>
-    <!-- Actions Rapides -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
-      <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <i class="fas fa-bolt mr-2 text-indigo-500"></i> Actions Rapides
-      </h2>
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <button onclick="openNewReport()" class="bg-indigo-600 text-white p-4 rounded-lg hover:bg-indigo-700 transition flex flex-col items-center group">
-          <i class="fas fa-plus-circle text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Nouveau Compte Rendu</span>
-        </button>
-        <button onclick="toggleSection('patientsSection')" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition flex flex-col items-center group">
-          <i class="fas fa-users text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Patients</span>
-        </button>
-        <button onclick="toggleSection('medecinsSection')" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
-          <i class="fas fa-stethoscope text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Médecins</span>
-        </button>
-        <button onclick="toggleSection('utilisateursSection')" class="bg-pink-600 text-white p-4 rounded-lg hover:bg-pink-700 transition flex flex-col items-center group">
-          <i class="fas fa-user-cog text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Utilisateurs</span>
-        </button>
-        <button onclick="toggleSearchPanel()" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition flex flex-col items-center group">
-          <i class="fas fa-search text-3xl mb-2 group-hover:scale-110 transition"></i>
-          <span>Rechercher</span>
-        </button>
-      </div>
-    </div>
+<!-- Actions Rapides -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
+  <h2 class="text-xl font-semibold mb-4 flex items-center">
+    <i class="fas fa-bolt mr-2 text-indigo-500"></i> Actions Rapides
+  </h2>
+  <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+    <button onclick="openNewReport()" class="bg-indigo-600 text-white p-4 rounded-lg hover:bg-indigo-700 transition flex flex-col items-center group">
+      <i class="fas fa-plus-circle text-3xl mb-2 group-hover:scale-110 transition"></i>
+      <span>Nouveau Compte Rendu</span>
+    </button>
+    <button onclick="toggleSection('patientsSection')" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition flex flex-col items-center group">
+      <i class="fas fa-users text-3xl mb-2 group-hover:scale-110 transition"></i>
+      <span>Patients</span>
+    </button>
+    <button onclick="toggleSection('medecinsSection')" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition flex flex-col items-center group">
+      <i class="fas fa-stethoscope text-3xl mb-2 group-hover:scale-110 transition"></i>
+      <span>Médecins</span>
+    </button>
+    <button onclick="toggleSection('utilisateursSection')" class="bg-pink-600 text-white p-4 rounded-lg hover:bg-pink-700 transition flex flex-col items-center group">
+      <i class="fas fa-user-cog text-3xl mb-2 group-hover:scale-110 transition"></i>
+      <span>Utilisateurs</span>
+    </button>
+    <button onclick="toggleSearchPanel()" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition flex flex-col items-center group">
+      <i class="fas fa-search text-3xl mb-2 group-hover:scale-110 transition"></i>
+      <span>Rechercher</span>
+    </button>
+    <!-- NOUVELLE CARTE PAIEMENT -->
+    <a href="payement.html" class="bg-amber-600 text-white p-4 rounded-lg hover:bg-amber-700 transition flex flex-col items-center group text-center no-underline">
+      <i class="fas fa-credit-card text-3xl mb-2 group-hover:scale-110 transition"></i>
+      <span>Paiements</span>
+    </a>
+  </div>
+</div>
     <!-- Panneau de Recherche -->
     <div id="searchSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in hidden">
       <div class="p-6 border-b">
