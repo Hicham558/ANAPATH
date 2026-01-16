@@ -1886,6 +1886,75 @@ def synthese_patient(patient_id):
         if conn:
             conn.close()  
 # ================================================
+# HISTORIQUE DES PAIEMENTS D'UN PATIENT
+# ================================================
+@app.route('/paiements/patient/<int:patient_id>', methods=['GET'])
+def historique_patient_paiements(patient_id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier d'abord que le patient existe et appartient à l'utilisateur
+        cur.execute('''
+            SELECT id, nom FROM patients 
+            WHERE id = %s AND user_id = %s
+        ''', (patient_id, user_id))
+        
+        patient = cur.fetchone()
+        if not patient:
+            return jsonify({'erreur': 'Patient non trouvé'}), 404
+        
+        # Récupérer tous les paiements du patient
+        cur.execute('''
+            SELECT 
+                p.*,
+                u.nom as utilisateur_nom
+            FROM paiements p
+            LEFT JOIN utilisateurs u ON p.utilisateur_id = u.numero AND p.user_id = u.user_id
+            WHERE p.patient_id = %s AND p.user_id = %s
+            ORDER BY p.date_paiement DESC
+        ''', (patient_id, user_id))
+        
+        paiements = cur.fetchall()
+        
+        # Formater les résultats
+        paiements_formates = []
+        for paiement in paiements:
+            paiement_dict = dict(paiement)
+            
+            # Convertir les montants
+            paiement_dict['montant'] = float(paiement['montant']) if paiement['montant'] else 0
+            if paiement['montant_total']:
+                paiement_dict['montant_total'] = float(paiement['montant_total'])
+            
+            # Formater les dates
+            if paiement['date_paiement']:
+                paiement_dict['date_paiement_formatted'] = paiement['date_paiement'].strftime('%d/%m/%Y')
+            
+            paiements_formates.append(paiement_dict)
+        
+        return jsonify({
+            'patient': dict(patient),
+            'paiements': paiements_formates,
+            'nombre_paiements': len(paiements_formates)
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur historique_patient_paiements: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+# ================================================
 # DÉMARRAGE
 # ================================================
 if __name__ == '__main__':
