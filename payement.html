@@ -105,6 +105,30 @@
         .toast.warning { background: #f59e0b; }
         .toast.show { display: flex; align-items: center; }
         .toast.hide { display: none; }
+        /* Ajouter dans la section <style> */
+option.text-red-600 {
+    color: #dc2626 !important;
+    font-weight: 600;
+}
+
+option.text-green-600 {
+    color: #059669 !important;
+    font-weight: 600;
+}
+
+option.text-gray-600 {
+    color: #4b5563 !important;
+}
+
+/* Pour l'affichage du solde dans le combobox */
+select option {
+    padding: 8px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+select option:hover {
+    background-color: #f8fafc;
+}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -896,98 +920,139 @@ function renderTopPatients(topPatients) {
         </tr>
     `).join('');
 }
-        async function loadPatients() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/patients`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
+       async function loadPatients() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/patients`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
 
-                if (response.ok) {
-                    allPatients = await response.json();
-                    const select = document.getElementById('patientSelect');
-                    
-                    select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
-                        allPatients.map(p => {
-                            const solde = parseFloat(p.solde || 0);
-                            const soldeFormatted = Math.abs(solde).toFixed(2);
-                            
-                            let soldeText = '';
-                            let soldeClass = '';
-                            
-                            if (solde < 0) {
-                                soldeText = ` (Dette: ${soldeFormatted} DA)`;
-                                soldeClass = 'text-red-600 font-semibold';
-                            } else if (solde > 0) {
-                                soldeText = ` (Crédit: ${soldeFormatted} DA)`;
-                                soldeClass = 'text-green-600 font-semibold';
-                            }
-                            
-                            return `<option value="${p.id}" 
-                                data-age="${p.age || ''}" 
-                                data-sexe="${p.sexe || ''}" 
-                                data-tel="${p.telephone || ''}" 
-                                data-solde="${solde}"
-                                class="${soldeClass}">
-                                ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
-                            </option>`;
-                        }).join('');
-                }
-            } catch (error) {
-                console.error('Erreur chargement patients:', error);
-                showToast('Erreur lors du chargement des patients', 'error');
-            }
-        }
-
-        async function chargerPatientsFiltre() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/patients`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
-
-                if (response.ok) {
-                    const patients = await response.json();
-                    const selectFiltre = document.getElementById('filterPatient');
-                    const selectRapport = document.getElementById('rapportPatient');
-                    
-                    const options = '<option value="">Tous les patients</option>' +
-                        patients.map(p => 
-                            `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}</option>`
-                        ).join('');
-                    
-                    selectFiltre.innerHTML = options;
-                    selectRapport.innerHTML = '<option value="">Sélectionner un patient...</option>' +
-                        patients.map(p => 
-                            `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}</option>`
-                        ).join('');
-                }
-            } catch (error) {
-                console.error('Erreur chargement patients filtre:', error);
-            }
-        }
-
-        function updatePatientInfo() {
+        if (response.ok) {
+            allPatients = await response.json();
             const select = document.getElementById('patientSelect');
-            const selectedOption = select.options[select.selectedIndex];
-            const infoDiv = document.getElementById('patientInfo');
-
-            if (selectedOption && selectedOption.value) {
-                const age = selectedOption.dataset.age || '-';
-                const sexe = selectedOption.dataset.sexe || '-';
-                const tel = selectedOption.dataset.tel || '-';
-                const solde = parseFloat(selectedOption.dataset.solde || 0);
-
-                document.getElementById('infoAge').textContent = age;
-                document.getElementById('infoSexe').textContent = sexe;
-                document.getElementById('infoTel').textContent = tel;
-                document.getElementById('infoSolde').textContent = `${solde.toFixed(2)} DA`;
-                document.getElementById('infoSolde').className = `font-bold ${solde < 0 ? 'text-red-600' : solde > 0 ? 'text-green-600' : 'text-gray-600'}`;
-
-                infoDiv.classList.remove('hidden');
-                updateRecap();
-            } else {
-                infoDiv.classList.add('hidden');
-            }
+            
+            select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
+                allPatients.map(p => {
+                    const solde = parseFloat(p.solde || 0);
+                    const soldeFormatted = Math.abs(solde).toFixed(2);
+                    
+                    // Déterminer le texte et la couleur en fonction du solde
+                    let soldeText = '';
+                    let soldeClass = '';
+                    
+                    if (solde < 0) {
+                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
+                        soldeClass = 'text-red-600 font-semibold';
+                    } else if (solde > 0) {
+                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
+                        soldeClass = 'text-green-600 font-semibold';
+                    } else {
+                        soldeText = ` (Solde: ${soldeFormatted} DA)`;
+                        soldeClass = 'text-gray-600';
+                    }
+                    
+                    // Retourner l'option avec le nom complet et le solde
+                    return `<option value="${p.id}" 
+                        data-age="${p.age || ''}" 
+                        data-sexe="${p.sexe || ''}" 
+                        data-tel="${p.telephone || ''}" 
+                        data-solde="${solde}"
+                        class="${soldeClass}">
+                        ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
+                    </option>`;
+                }).join('');
         }
+    } catch (error) {
+        console.error('Erreur chargement patients:', error);
+        showToast('Erreur lors du chargement des patients', 'error');
+    }
+}
+
+       async function chargerPatientsFiltre() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/patients`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const patients = await response.json();
+            const selectFiltre = document.getElementById('filterPatient');
+            const selectRapport = document.getElementById('rapportPatient');
+            
+            const options = '<option value="">Tous les patients</option>' +
+                patients.map(p => {
+                    const solde = parseFloat(p.solde || 0);
+                    const soldeFormatted = Math.abs(solde).toFixed(2);
+                    
+                    let soldeText = '';
+                    if (solde < 0) {
+                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
+                    } else if (solde > 0) {
+                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
+                    } else {
+                        soldeText = ` (Solde: ${soldeFormatted} DA)`;
+                    }
+                    
+                    return `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}</option>`;
+                }).join('');
+            
+            selectFiltre.innerHTML = options;
+            selectRapport.innerHTML = '<option value="">Sélectionner un patient...</option>' +
+                patients.map(p => {
+                    const solde = parseFloat(p.solde || 0);
+                    const soldeFormatted = Math.abs(solde).toFixed(2);
+                    
+                    let soldeText = '';
+                    if (solde < 0) {
+                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
+                    } else if (solde > 0) {
+                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
+                    } else {
+                        soldeText = ` (Solde: ${soldeFormatted} DA)`;
+                    }
+                    
+                    return `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}</option>`;
+                }).join('');
+        }
+    } catch (error) {
+        console.error('Erreur chargement patients filtre:', error);
+    }
+}
+       function updatePatientInfo() {
+    const select = document.getElementById('patientSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    const infoDiv = document.getElementById('patientInfo');
+
+    if (selectedOption && selectedOption.value) {
+        const age = selectedOption.dataset.age || '-';
+        const sexe = selectedOption.dataset.sexe || '-';
+        const tel = selectedOption.dataset.tel || '-';
+        const solde = parseFloat(selectedOption.dataset.solde || 0);
+
+        document.getElementById('infoAge').textContent = age;
+        document.getElementById('infoSexe').textContent = sexe;
+        document.getElementById('infoTel').textContent = tel;
+        
+        // Afficher correctement le solde avec la bonne couleur
+        const infoSolde = document.getElementById('infoSolde');
+        infoSolde.textContent = `${solde.toFixed(2)} DA`;
+        
+        if (solde < 0) {
+            infoSolde.className = 'font-bold text-red-600';
+            infoSolde.innerHTML = `${solde.toFixed(2)} DA <span class="text-xs">(Dette)</span>`;
+        } else if (solde > 0) {
+            infoSolde.className = 'font-bold text-green-600';
+            infoSolde.innerHTML = `${solde.toFixed(2)} DA <span class="text-xs">(Crédit)</span>`;
+        } else {
+            infoSolde.className = 'font-bold text-gray-600';
+            infoSolde.textContent = `${solde.toFixed(2)} DA`;
+        }
+
+        infoDiv.classList.remove('hidden');
+        updateRecap();
+    } else {
+        infoDiv.classList.add('hidden');
+    }
+}
 
         function toggleMontantTotal() {
             const mode = document.querySelector('input[name="modePaiement"]:checked').value;
