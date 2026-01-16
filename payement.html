@@ -1840,304 +1840,46 @@ function renderTopPatients(topPatients) {
             }
         }
 function ouvrirModalHistorique(paiements, nomPatient) {
-    // Fonctions utilitaires pour formater
-    function formatDate(dateStr) {
-        if (!dateStr) return '-';
-        try {
-            return new Date(dateStr).toLocaleDateString('fr-FR');
-        } catch {
-            return dateStr;
-        }
-    }
-    
-    function formatMontant(montant) {
-        if (!montant) return '0,00 DA';
-        return new Intl.NumberFormat('fr-FR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(montant) + ' DA';
-    }
-    
-    function getStatusClass(statut) {
-        const classes = {
-            'payé': 'bg-green-100 text-green-800',
-            'partiel': 'bg-yellow-100 text-yellow-800',
-            'impayé': 'bg-red-100 text-red-800',
-            'en_attente': 'bg-blue-100 text-blue-800',
-            'comptant': 'bg-green-100 text-green-800',
-            'a_terme': 'bg-purple-100 text-purple-800',
-            'paiement_partiel': 'bg-orange-100 text-orange-800'
-        };
-        return classes[statut] || 'bg-gray-100 text-gray-800';
-    }
-    
-    function getModeClass(mode) {
-        const classes = {
-            'espece': 'bg-blue-100 text-blue-800',
-            'carte_bancaire': 'bg-indigo-100 text-indigo-800',
-            'cheque': 'bg-purple-100 text-purple-800',
-            'virement': 'bg-green-100 text-green-800',
-            'a_terme': 'bg-yellow-100 text-yellow-800',
-            'paiement_partiel': 'bg-orange-100 text-orange-800'
-        };
-        return classes[mode] || 'bg-gray-100 text-gray-800';
-    }
-    
-    // Créer le HTML du modal
     const modalHTML = `
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay" id="historiqueModal">
-        <div class="bg-white rounded-lg p-6 w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto modal-content">
-            <div class="flex justify-between items-center mb-6 pb-4 border-b">
-                <div>
-                    <h2 class="text-2xl font-semibold text-indigo-700">
-                        <i class="fas fa-history mr-3"></i>
-                        Historique des Paiements
-                    </h2>
-                    <p class="text-gray-600 mt-1">
-                        Patient: <span class="font-semibold">${nomPatient}</span>
-                        ${paiements.length > 0 ? `(${paiements.length} paiement(s))` : ''}
-                    </p>
-                </div>
-                <button onclick="this.closest('.modal-overlay').remove()" 
-                        class="text-gray-600 hover:text-gray-800 transition p-2 rounded-full hover:bg-gray-100">
-                    <i class="fas fa-times text-2xl"></i>
-                </button>
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Historique - ${nomPatient}</h2>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-600">✕</button>
             </div>
             
             ${paiements.length > 0 ? `
-                <div class="mb-6 bg-blue-50 p-4 rounded-lg">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="text-center">
-                            <p class="text-sm text-gray-600">Total Payé</p>
-                            <p class="text-2xl font-bold text-green-600">
-                                ${formatMontant(paiements.reduce((sum, p) => sum + (parseFloat(p.montant) || 0), 0))}
-                            </p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-sm text-gray-600">Dernier Paiement</p>
-                            <p class="text-lg font-semibold">
-                                ${paiements[0].date_paiement ? formatDate(paiements[0].date_paiement) : '-'}
-                            </p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-sm text-gray-600">Statut</p>
-                            <span class="inline-block px-3 py-1 rounded-full ${paiements.some(p => p.statut === 'impayé' || p.mode_paiement === 'a_terme') ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
-                                ${paiements.some(p => p.statut === 'impayé' || p.mode_paiement === 'a_terme') ? 'Dette active' : 'À jour'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="overflow-x-auto border rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° CR</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            ${paiements.map(p => `
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                        ${p.date_paiement ? formatDate(p.date_paiement) : '-'}
-                                        ${p.date_paiement_formatted ? `<br><span class="text-xs text-gray-500">${p.date_paiement_formatted}</span>` : ''}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="text-sm font-semibold ${p.montant >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                            ${formatMontant(p.montant)}
-                                        </div>
-                                        ${p.montant_total ? `
-                                            <div class="text-xs text-gray-500">
-                                                Total: ${formatMontant(p.montant_total)}
-                                            </div>
-                                        ` : ''}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getModeClass(p.mode_paiement)}">
-                                            ${p.mode_paiement || 'Non spécifié'}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                        ${p.type_paiement || '-'}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(p.statut)}">
-                                            ${p.statut || 'payé'}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                        ${p.numero_cr || '-'}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                        ${p.utilisateur_nom || '-'}
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-600 max-w-xs">
-                                        ${p.notes || '-'}
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-700 mb-2">Récapitulatif</h4>
-                        <ul class="text-sm space-y-1">
-                            <li>Paiements comptant: ${paiements.filter(p => p.mode_paiement === 'espece').length}</li>
-                            <li>Paiements à terme: ${paiements.filter(p => p.mode_paiement === 'a_terme').length}</li>
-                            <li>Paiements partiels: ${paiements.filter(p => p.mode_paiement === 'paiement_partiel').length}</li>
-                        </ul>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-700 mb-2">Statistiques</h4>
-                        <ul class="text-sm space-y-1">
-                            <li>Montant moyen: ${formatMontant(paiements.reduce((sum, p) => sum + (parseFloat(p.montant) || 0), 0) / paiements.length)}</li>
-                            <li>Plus grand paiement: ${formatMontant(Math.max(...paiements.map(p => parseFloat(p.montant) || 0)))}</li>
-                            <li>Plus petit paiement: ${formatMontant(Math.min(...paiements.map(p => parseFloat(p.montant) || 0)))}</li>
-                        </ul>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-gray-700 mb-2">Actions</h4>
-                        <div class="space-y-2">
-                            <button onclick="imprimerHistorique(${JSON.stringify(paiements)}, '${nomPatient}')"
-                                    class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition text-sm flex items-center justify-center gap-2">
-                                <i class="fas fa-print"></i> Imprimer
-                            </button>
-                            <button onclick="exporterHistoriqueCSV(${JSON.stringify(paiements)}, '${nomPatient}')"
-                                    class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition text-sm flex items-center justify-center gap-2">
-                                <i class="fas fa-download"></i> Exporter CSV
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ` : `
-                <div class="text-center py-16">
-                    <i class="fas fa-file-invoice-dollar text-5xl text-gray-300 mb-4"></i>
-                    <h3 class="text-xl font-medium text-gray-700 mb-2">Aucun historique de paiement</h3>
-                    <p class="text-gray-500 mb-6">Aucun paiement n'a été enregistré pour ce patient</p>
-                    <button onclick="this.closest('.modal-overlay').remove()" 
-                            class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition">
-                        Fermer
-                    </button>
-                </div>
-            `}
-            
-            <div class="mt-8 pt-6 border-t flex justify-end">
-                <button onclick="this.closest('.modal-overlay').remove()" 
-                        class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
-                    Fermer l'historique
-                </button>
-            </div>
-        </div>
-    </div>
-    `;
-    
-    // Ajouter le modal au DOM
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Focus sur le modal pour l'accessibilité
-    setTimeout(() => {
-        const modal = document.getElementById('historiqueModal');
-        if (modal) modal.focus();
-    }, 100);
-}
-
-// Fonctions utilitaires pour les actions du modal
-function imprimerHistorique(paiements, nomPatient) {
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>Historique Paiements - ${nomPatient}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    h1 { color: #4f46e5; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    th { background-color: #f8fafc; }
-                    .total { font-weight: bold; color: #059669; }
-                </style>
-            </head>
-            <body>
-                <h1>Historique des Paiements</h1>
-                <p><strong>Patient:</strong> ${nomPatient}</p>
-                <p><strong>Date d'émission:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
-                
-                <table>
+                <table class="min-w-full border">
                     <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Montant</th>
-                            <th>Mode</th>
-                            <th>Type</th>
-                            <th>Statut</th>
-                            <th>Notes</th>
+                        <tr class="bg-gray-100">
+                            <th class="p-2 border">Date</th>
+                            <th class="p-2 border">Montant</th>
+                            <th class="p-2 border">Mode</th>
+                            <th class="p-2 border">Statut</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${paiements.map(p => `
                             <tr>
-                                <td>${p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '-'}</td>
-                                <td>${parseFloat(p.montant || 0).toFixed(2)} DA</td>
-                                <td>${p.mode_paiement || '-'}</td>
-                                <td>${p.type_paiement || '-'}</td>
-                                <td>${p.statut || 'payé'}</td>
-                                <td>${p.notes || '-'}</td>
+                                <td class="p-2 border">${p.date_paiement || '-'}</td>
+                                <td class="p-2 border">${p.montant || '0'} DA</td>
+                                <td class="p-2 border">${p.mode_paiement || '-'}</td>
+                                <td class="p-2 border">${p.statut || 'payé'}</td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
-                
-                <p class="total">
-                    Total payé: ${paiements.reduce((sum, p) => sum + (parseFloat(p.montant) || 0), 0).toFixed(2)} DA
-                </p>
-                
-                <script>
-                    window.onload = function() { window.print(); };
-                </script>
-            </body>
-        </html>
-    `);
-    printWindow.document.close();
-}
-
-function exporterHistoriqueCSV(paiements, nomPatient) {
-    const headers = ['Date', 'Montant', 'Mode', 'Type', 'Statut', 'N° CR', 'Notes'];
-    const csvContent = [
-        `Historique des paiements - ${nomPatient}`,
-        `Date d'export: ${new Date().toLocaleDateString('fr-FR')}`,
-        '',
-        headers.join(','),
-        ...paiements.map(p => [
-            p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '',
-            parseFloat(p.montant || 0).toFixed(2),
-            p.mode_paiement || '',
-            p.type_paiement || '',
-            p.statut || '',
-            p.numero_cr || '',
-            `"${(p.notes || '').replace(/"/g, '""')}"`
-        ].join(','))
-    ].join('\n');
+            ` : `<p class="text-gray-500 text-center py-8">Aucun paiement trouvé</p>`}
+            
+            <div class="mt-4 text-right">
+                <button onclick="this.closest('.fixed').remove()" 
+                        class="bg-gray-500 text-white px-4 py-2 rounded">Fermer</button>
+            </div>
+        </div>
+    </div>
+    `;
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `historique_paiements_${nomPatient.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
      async function voirHistoriquePatient(pId, nomPatient) {
     try {
