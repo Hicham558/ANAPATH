@@ -1840,96 +1840,82 @@ function renderTopPatients(topPatients) {
             }
         }
 
-        async function voirHistoriquePatient(patientId) {
+     async function voirHistoriquePatient(pId, nomPatient) {
+    try {
+        console.log(`🔍 Chargement historique patient ${pId}: ${nomPatient}`);
+        
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+            showToast('Veuillez vous reconnecter', 'error');
+            return;
+        }
+        
+        // Essayer plusieurs endpoints possibles
+        const endpoints = [
+            `${API_BASE_URL}/paiements/patient/${pId}`,
+            `${API_BASE_URL}/paiements?patient_id=${pId}`,
+            `${API_BASE_URL}/patients/${pId}/paiements`
+        ];
+        
+        let paiements = [];
+        let lastError = null;
+        
+        // Essayer chaque endpoint jusqu'à ce qu'un fonctionne
+        for (const endpoint of endpoints) {
             try {
-                const response = await fetch(`${API_BASE_URL}/paiements?patient_id=${patientId}`, {
-                    headers: { 'X-User-ID': currentUserId }
+                console.log(`🔄 Essai endpoint: ${endpoint}`);
+                
+                const response = await fetch(endpoint, {
+                    headers: { 'X-User-ID': userId }
                 });
-
-                if (response.ok) {
-                    const paiements = await response.json();
-                    const patient = allPatients.find(p => p.id == patientId);
-                    
-                    if (patient) {
-                        const modalContent = `
-                            <div class="space-y-6">
-                                <div class="p-4 bg-indigo-50 rounded-lg">
-                                    <h4 class="text-lg font-semibold text-indigo-800 mb-2">
-                                        <i class="fas fa-user-clock mr-2"></i>Historique des paiements
-                                    </h4>
-                                    <p class="text-indigo-700 font-bold">${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}</p>
-                                    <p class="text-sm text-gray-600">Solde actuel: <span class="font-bold ${patient.solde < 0 ? 'text-red-600' : 'text-green-600'}">${parseFloat(patient.solde || 0).toFixed(2)} DA</span></p>
-                                </div>
-                                
-                                <div class="overflow-y-auto max-h-80">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50">
-                                            <tr>
-                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reçu</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                                            ${paiements.map(p => `
-                                                <tr class="hover:bg-gray-50">
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                                        ${new Date(p.date_paiement).toLocaleDateString('fr-FR')}
-                                                    </td>
-                                                    <td class="px-4 py-3 whitespace-nowrap">
-                                                        <span class="text-sm text-gray-900">${p.type_paiement}</span>
-                                                    </td>
-                                                    <td class="px-4 py-3 whitespace-nowrap">
-                                                        ${p.mode_paiement === 'espece' ? 
-                                                            '<span class="badge-espece px-2 py-1 rounded-full text-xs">Comptant</span>' : 
-                                                            p.mode_paiement === 'a_terme' ? 
-                                                            '<span class="badge-a_terme px-2 py-1 rounded-full text-xs">À terme</span>' : 
-                                                            '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>'}
-                                                    </td>
-                                                    <td class="px-4 py-3 whitespace-nowrap">
-                                                        <div class="text-sm font-medium ${p.mode_paiement === 'paiement_partiel' ? 'text-blue-600' : 'text-gray-900'}">
-                                                            ${parseFloat(p.montant).toFixed(2)} DA
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                        ${p.numero_cr || '-'}
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                
-                                <div class="pt-4 border-t border-gray-200">
-                                    <div class="flex justify-between">
-                                        <div class="text-sm text-gray-600">
-                                            Total des paiements: <span class="font-bold text-green-600">
-                                                ${paiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0).toFixed(2)} DA
-                                            </span>
-                                        </div>
-                                        <button onclick="closeModalDetail()" 
-                                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
-                                            Fermer
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-
-                        document.getElementById('modalDetailContent').innerHTML = modalContent;
-                        document.getElementById('modalDetail').classList.remove('hidden');
-                    } else {
-                        showToast('Patient non trouvé', 'warning');
-                    }
+                
+                if (!response.ok) {
+                    console.log(`❌ Endpoint ${endpoint}: ${response.status}`);
+                    continue;
                 }
-            } catch (error) {
-                console.error('Erreur chargement historique:', error);
-                showToast('Erreur lors du chargement de l\'historique', 'error');
+                
+                const result = await response.json();
+                console.log(`📦 Résultat de ${endpoint}:`, result);
+                
+                // Fonction pour extraire les paiements
+                const extractPaiements = (data) => {
+                    if (Array.isArray(data)) return data;
+                    if (data?.paiements) return data.paiements;
+                    if (data?.data?.paiements) return data.data.paiements;
+                    if (data?.historique) return data.historique;
+                    if (data?.payments) return data.payments;
+                    return [];
+                };
+                
+                paiements = extractPaiements(result);
+                
+                if (Array.isArray(paiements) && paiements.length > 0) {
+                    console.log(`✅ ${paiements.length} paiement(s) trouvé(s) avec ${endpoint}`);
+                    break;
+                }
+                
+            } catch (err) {
+                lastError = err;
+                console.log(`⚠️ Erreur avec ${endpoint}:`, err.message);
+                continue;
             }
         }
-
+        
+        if (paiements.length === 0) {
+            console.log('ℹ️ Aucun paiement trouvé pour ce patient');
+        }
+        
+        // Ouvrir le modal avec les paiements trouvés
+        ouvrirModalHistorique(paiements, nomPatient);
+        
+    } catch (error) {
+        console.error('🔥 Erreur critique dans voirHistoriquePatient:', error);
+        showToast('Impossible de charger l\'historique', 'error');
+        
+        // Ouvrir un modal vide
+        ouvrirModalHistorique([], nomPatient);
+    }
+}
         async function viewPaymentDetail(paymentId) {
             try {
                 const response = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
