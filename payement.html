@@ -816,8 +816,25 @@ select option:hover {
             }
         }
 
- async function loadDashboardData() {
+async function loadDashboardData() {
     try {
+        // ✅ Charger les statistiques (plus fiable)
+        const statsRes = await fetch(`${API_BASE_URL}/paiements/statistiques`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+        
+        if (statsRes.ok) {
+            const stats = await statsRes.json();
+            console.log("📊 Stats reçues:", stats);
+            
+            // Mettre à jour les KPI avec les données du backend
+            document.getElementById('totalEncaisse').textContent = 
+                `${(stats.total_encaisse_jour || 0).toFixed(2)} DA`;
+            document.getElementById('encaisseAujourdhui').textContent = 
+                `Total cumulé: ${(stats.total_encaisse || 0).toFixed(2)} DA`;
+        }
+        
+        // Charger tous les paiements pour la liste
         const paiementsRes = await fetch(`${API_BASE_URL}/paiements?page=1&per_page=1000`, {
             headers: { 'X-User-ID': currentUserId }
         });
@@ -826,27 +843,9 @@ select option:hover {
             const data = await paiementsRes.json();
             allPaiements = data.paiements || data || [];
             
-            // Date du jour au format YYYY-MM-DD
-            const aujourdhui = new Date().toISOString().split('T')[0];
-            
-            // Calculer l'encaisse du jour
-            const encaisseAujourdhui = allPaiements
-                .filter(p => {
-                    if (!p.date_paiement) return false;
-                    const datePaiement = p.date_paiement.split('T')[0];
-                    return datePaiement === aujourdhui;
-                })
-                .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
-            
-            // Calculer le total cumulé
-            const totalEncaisse = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
-
-            // Mettre à jour les KPI - INVERSÉ: journée en gros, total en petit
-            document.getElementById('totalEncaisse').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
-            document.getElementById('encaisseAujourdhui').textContent = `Total cumulé: ${totalEncaisse.toFixed(2)} DA`;
             document.getElementById('totalPaiements').textContent = allPaiements.length;
             
-            // Calculer le nombre de paiements du mois
+            // Calculer paiements du mois
             const debutMois = new Date();
             debutMois.setDate(1);
             const paiementsMois = allPaiements.filter(p => {
@@ -855,41 +854,13 @@ select option:hover {
                 return datePaiement >= debutMois;
             });
             document.getElementById('paiementsMois').textContent = paiementsMois.length;
-        } else {
-            console.error('Erreur chargement paiements:', await paiementsRes.text());
-        }
-
-        // Charger les statistiques avec gestion d'erreur
-        try {
-            const statsRes = await fetch(`${API_BASE_URL}/paiements/statistiques`, {
-                headers: { 'X-User-ID': currentUserId }
-            });
-            
-            if (statsRes.ok) {
-                const stats = await statsRes.json();
-                
-                // Mettre à jour les graphiques si nécessaire
-                if (stats.par_mode_paiement && stats.par_mode_paiement.length > 0) {
-                    renderChartPaiements(stats.par_mode_paiement);
-                }
-                
-                if (stats.evolution_mensuelle && stats.evolution_mensuelle.length > 0) {
-                    renderChartEvolution(stats.evolution_mensuelle);
-                }
-                
-                if (stats.top_patients && stats.top_patients.length > 0) {
-                    renderTopPatients(stats.top_patients);
-                }
-            }
-        } catch (statsError) {
-            console.warn('Erreur chargement statistiques:', statsError);
         }
         
-        // Charger les dettes séparément
+        // Charger les dettes
         await loadDettes();
         
     } catch (error) {
-        console.error('Erreur chargement dashboard:', error);
+        console.error('❌ Erreur chargement dashboard:', error);
         showToast('Erreur lors du chargement des données', 'error');
     }
 }
