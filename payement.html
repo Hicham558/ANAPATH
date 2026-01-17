@@ -158,18 +158,18 @@ select option:hover {
 
         <!-- KPI Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
-            <div class="kpi-card bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-xl shadow-md">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm opacity-90">Total Encaisse</p>
-                        <p id="totalEncaisse" class="text-3xl font-bold">0 DA</p>
-                    </div>
-                    <i class="fas fa-money-bill-wave text-4xl opacity-30"></i>
-                </div>
-                <div class="mt-4 pt-3 border-t border-white/20">
-                    <p class="text-xs opacity-80">Aujourd'hui: <span id="encaisseAujourdhui">0 DA</span></p>
-                </div>
-            </div>
+         <div class="kpi-card bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-xl shadow-md">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm opacity-90">Encaisse du Jour</p>
+            <p id="totalEncaisse" class="text-3xl font-bold">0 DA</p>
+        </div>
+        <i class="fas fa-money-bill-wave text-4xl opacity-30"></i>
+    </div>
+    <div class="mt-4 pt-3 border-t border-white/20">
+        <p class="text-xs opacity-80"><span id="encaisseAujourdhui">Total cumulé: 0 DA</span></p>
+    </div>
+</div>
 
             <div class="kpi-card bg-gradient-to-br from-orange-500 to-red-600 text-white p-6 rounded-xl shadow-md">
                 <div class="flex items-center justify-between">
@@ -816,10 +816,9 @@ select option:hover {
             }
         }
 
-      async function loadDashboardData() {
+ async function loadDashboardData() {
     try {
-        // Charger les paiements avec gestion d'erreur
-        const paiementsRes = await fetch(`${API_BASE_URL}/paiements?page=1&per_page=100`, {
+        const paiementsRes = await fetch(`${API_BASE_URL}/paiements?page=1&per_page=1000`, {
             headers: { 'X-User-ID': currentUserId }
         });
 
@@ -827,17 +826,24 @@ select option:hover {
             const data = await paiementsRes.json();
             allPaiements = data.paiements || data || [];
             
-            // Calculer les KPI
-            const totalEncaisse = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
-            
+            // Date du jour au format YYYY-MM-DD
             const aujourdhui = new Date().toISOString().split('T')[0];
+            
+            // Calculer l'encaisse du jour
             const encaisseAujourdhui = allPaiements
-                .filter(p => p.date_paiement && p.date_paiement.includes(aujourdhui))
+                .filter(p => {
+                    if (!p.date_paiement) return false;
+                    const datePaiement = p.date_paiement.split('T')[0];
+                    return datePaiement === aujourdhui;
+                })
                 .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+            
+            // Calculer le total cumulé
+            const totalEncaisse = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
 
-            // Mettre à jour les KPI
-            document.getElementById('totalEncaisse').textContent = `${totalEncaisse.toFixed(2)} DA`;
-            document.getElementById('encaisseAujourdhui').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
+            // Mettre à jour les KPI - INVERSÉ: journée en gros, total en petit
+            document.getElementById('totalEncaisse').textContent = `${encaisseAujourdhui.toFixed(2)} DA`;
+            document.getElementById('encaisseAujourdhui').textContent = `Total cumulé: ${totalEncaisse.toFixed(2)} DA`;
             document.getElementById('totalPaiements').textContent = allPaiements.length;
             
             // Calculer le nombre de paiements du mois
