@@ -1476,6 +1476,25 @@ def statistiques_paiements():
         conn = get_db()
         cur = conn.cursor()
         
+        # ✅ AJOUT IMPORTANT : Statistiques du jour
+        aujourdhui = datetime.now().strftime('%Y-%m-%d')
+        
+        # Total encaisse du jour
+        cur.execute('''
+            SELECT COALESCE(SUM(montant), 0) as total_jour
+            FROM paiements
+            WHERE user_id = %s AND DATE(date_paiement) = %s
+        ''', (user_id, aujourdhui))
+        encaisse_jour = cur.fetchone()
+        
+        # Total encaisse global
+        cur.execute('''
+            SELECT COALESCE(SUM(montant), 0) as total_global
+            FROM paiements
+            WHERE user_id = %s
+        ''', (user_id,))
+        encaisse_totale = cur.fetchone()
+        
         # Statistiques générales
         stats_query = '''
             SELECT 
@@ -1608,6 +1627,11 @@ def statistiques_paiements():
         top_patients = cur.fetchall()
         
         return jsonify({
+            # ✅ NOUVEAU : Données du jour
+            'total_encaisse_jour': float(encaisse_jour['total_jour']) if encaisse_jour else 0,
+            'total_encaisse': float(encaisse_totale['total_global']) if encaisse_totale else 0,
+            
+            # Données existantes
             'statistiques_generales': dict(stats) if stats else {},
             'par_mode_paiement': [dict(m) for m in par_mode],
             'par_type_paiement': [dict(t) for t in par_type],
@@ -1624,7 +1648,6 @@ def statistiques_paiements():
             cur.close()
         if conn:
             conn.close()
-
 
 @app.route('/paiements/dettes-actives', methods=['GET'])
 def dettes_actives():
