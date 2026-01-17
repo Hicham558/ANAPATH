@@ -1222,26 +1222,39 @@ def paiements():
             
             new_payment = cur.fetchone()
             
-            # Calculer le nouveau solde selon le mode de paiement
+            # ✅ CORRECTION : Calculer le nouveau solde selon le mode de paiement
             if mode_paiement == 'a_terme':
+                # Paiement à terme : créer une dette
                 reste_a_payer = montant_total - montant_paye
                 nouveau_solde = solde_actuel - reste_a_payer
                 message = f'Paiement à terme enregistré. Reste à payer: {reste_a_payer:.2f} DA'
+                
+                # Mettre à jour le solde du patient
+                cur.execute('''
+                    UPDATE patients 
+                    SET solde = %s
+                    WHERE id = %s AND user_id = %s
+                ''', (nouveau_solde, data['patient_id'], user_id))
+                
             elif mode_paiement == 'paiement_partiel':
-                # Pour un paiement partiel, on réduit la dette (solde négatif)
+                # Paiement partiel : réduire la dette existante
                 nouveau_solde = solde_actuel + montant_paye
                 message = f'Paiement partiel enregistré. Nouveau solde: {nouveau_solde:.2f} DA'
+                
+                # Mettre à jour le solde du patient
+                cur.execute('''
+                    UPDATE patients 
+                    SET solde = %s
+                    WHERE id = %s AND user_id = %s
+                ''', (nouveau_solde, data['patient_id'], user_id))
+                
             else:  # espece (comptant)
-                # Pour un paiement comptant, on augmente le solde (crédit positif)
-                nouveau_solde = solde_actuel + montant_paye
-                message = f'Paiement comptant enregistré. Nouveau solde: {nouveau_solde:.2f} DA'
-            
-            # Mettre à jour le solde du patient
-            cur.execute('''
-                UPDATE patients 
-                SET solde = %s
-                WHERE id = %s AND user_id = %s
-            ''', (nouveau_solde, data['patient_id'], user_id))
+                # ✅ Paiement comptant : PAS de modification du solde
+                nouveau_solde = solde_actuel  # Le solde reste inchangé
+                message = f'Paiement comptant enregistré: {montant_paye:.2f} DA'
+                
+                # ✅ NE PAS mettre à jour le solde pour un paiement comptant
+                # Le solde reste tel quel - pas d'UPDATE
             
             conn.commit()
             
