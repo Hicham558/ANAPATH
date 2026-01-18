@@ -2067,87 +2067,187 @@ function ouvrirModalHistorique(paiements, nomPatient) {
         // Ouvrir un modal vide
         ouvrirModalHistorique([], nomPatient);
     }
-}
-        async function viewPaymentDetail(paymentId) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
-                    headers: { 'X-User-ID': currentUserId }
-                });
+}async function viewPaymentDetail(paymentId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
 
-                if (response.ok) {
-                    const payment = await response.json();
-                    
-                    const modalContent = `
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-2 gap-6">
-                                <div class="p-4 bg-indigo-50 rounded-lg">
-                                    <p class="text-sm text-indigo-600">Patient</p>
-                                    <p class="text-lg font-semibold">${payment.patient_nom_complet || payment.patient_nom}</p>
-                                </div>
-                                <div class="p-4 bg-green-50 rounded-lg">
-                                    <p class="text-sm text-green-600">Montant</p>
-                                    <p class="text-lg font-semibold">${parseFloat(payment.montant).toFixed(2)} DA</p>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-6">
-                                <div class="p-4 bg-gray-50 rounded-lg">
-                                    <p class="text-sm text-gray-600">Date</p>
-                                    <p class="font-medium">${new Date(payment.date_paiement).toLocaleDateString('fr-FR')}</p>
-                                </div>
-                                <div class="p-4 bg-purple-50 rounded-lg">
-                                    <p class="text-sm text-purple-600">Type</p>
-                                    <p class="font-medium">${payment.type_paiement}</p>
-                                </div>
-                            </div>
-                            
-                            ${payment.mode_paiement === 'a_terme' && payment.montant_total ? `
-                                <div class="p-4 bg-orange-50 rounded-lg">
-                                    <p class="text-sm text-orange-600">Paiement à terme</p>
-                                    <div class="mt-2 space-y-2">
-                                        <div class="flex justify-between">
-                                            <span>Montant total:</span>
-                                            <span class="font-bold">${parseFloat(payment.montant_total).toFixed(2)} DA</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Montant payé:</span>
-                                            <span class="font-bold text-green-600">${parseFloat(payment.montant).toFixed(2)} DA</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Reste à payer:</span>
-                                            <span class="font-bold text-red-600">${(parseFloat(payment.montant_total) - parseFloat(payment.montant)).toFixed(2)} DA</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${payment.notes ? `
-                                <div class="p-4 bg-blue-50 rounded-lg">
-                                    <p class="text-sm text-blue-600">Notes</p>
-                                    <p class="mt-2 text-gray-700">${payment.notes}</p>
-                                </div>
-                            ` : ''}
-                            
-                            <div class="pt-4 border-t border-gray-200 flex justify-end space-x-3">
-                                <button onclick="printReceipt(${payment.id})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                                    <i class="fas fa-print mr-2"></i>Imprimer reçu
-                                </button>
-                                <button onclick="closeModalDetail()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
-                                    Fermer
-                                </button>
-                            </div>
-                        </div>
-                    `;
-
-                    document.getElementById('modalDetailContent').innerHTML = modalContent;
-                    document.getElementById('modalDetail').classList.remove('hidden');
-                }
-            } catch (error) {
-                console.error('Erreur chargement détail:', error);
-                showToast('Erreur lors du chargement du détail', 'error');
-            }
+        if (!response.ok) {
+            throw new Error("Erreur lors du chargement des détails du paiement");
         }
 
+        const payment = await response.json();
+
+        // Calcul du reste à payer si paiement à terme
+        const reste = payment.mode_paiement === 'a_terme' && payment.montant_total
+            ? (parseFloat(payment.montant_total) - parseFloat(payment.montant)).toFixed(2)
+            : 0;
+
+        const modalContent = `
+            <div class="space-y-6">
+                <!-- En-tête avec infos principales -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="p-4 bg-indigo-50 rounded-lg">
+                        <p class="text-sm text-indigo-600 font-medium">Patient</p>
+                        <p class="text-lg font-semibold text-gray-900 mt-1">
+                            ${payment.patient_nom_complet || payment.patient_nom || '—'}
+                        </p>
+                    </div>
+                    
+                    <div class="p-4 bg-green-50 rounded-lg">
+                        <p class="text-sm text-green-600 font-medium">Montant payé</p>
+                        <p class="text-2xl font-bold text-green-700 mt-1">
+                            ${parseFloat(payment.montant || 0).toFixed(2)} DA
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Informations détaillées -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-600 font-medium">Date</p>
+                        <p class="font-medium mt-1">
+                            ${new Date(payment.date_paiement).toLocaleDateString('fr-FR', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            })}
+                            <br>
+                            <span class="text-sm text-gray-500">
+                                ${new Date(payment.date_paiement).toLocaleTimeString('fr-FR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-purple-50 rounded-lg">
+                        <p class="text-sm text-purple-600 font-medium">Type d'acte</p>
+                        <p class="font-medium mt-1">${payment.type_paiement || '—'}</p>
+                    </div>
+                </div>
+
+                <!-- Bloc paiement à terme (si concerné) -->
+                ${payment.mode_paiement === 'a_terme' && payment.montant_total ? `
+                    <div class="p-5 bg-orange-50 rounded-lg border border-orange-200">
+                        <p class="text-sm font-medium text-orange-700 mb-3">Paiement à terme</p>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-700">Montant total de la facture :</span>
+                                <span class="font-bold">${parseFloat(payment.montant_total).toFixed(2)} DA</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-700">Montant versé :</span>
+                                <span class="font-bold text-green-700">${parseFloat(payment.montant).toFixed(2)} DA</span>
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-orange-200 mt-2">
+                                <span class="text-gray-800 font-medium">Reste à payer :</span>
+                                <span class="font-bold text-red-600 text-lg">${reste} DA</span>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Notes -->
+                ${payment.notes ? `
+                    <div class="p-4 bg-blue-50 rounded-lg">
+                        <p class="text-sm font-medium text-blue-600 mb-2">Notes / Observations</p>
+                        <p class="text-gray-700 whitespace-pre-line">${payment.notes}</p>
+                    </div>
+                ` : ''}
+
+                <!-- Boutons d'action -->
+                <div class="pt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3">
+                    <button onclick="prepareAndShowPrintModal(${payment.id})"
+                            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-lg transition flex items-center justify-center shadow-sm font-medium">
+                        <i class="fas fa-print mr-2"></i>
+                        Imprimer Reçu
+                    </button>
+                    
+                    <button onclick="closeModalDetail()"
+                            class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg transition font-medium">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('modalDetailContent').innerHTML = modalContent;
+        document.getElementById('modalDetail').classList.remove('hidden');
+
+    } catch (error) {
+        console.error('Erreur chargement détail paiement:', error);
+        showToast('Impossible de charger les détails du paiement', 'error');
+    }
+}
+        async function prepareAndShowPrintModal(paymentId) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (!res.ok) throw new Error("Erreur chargement paiement");
+
+        const paiement = await res.json();
+
+        // Format compatible avec afficherModalChoixImpression()
+        const paiementInfo = {
+            id: paiement.id,
+            patient_nom: paiement.patient_nom_complet || paiement.patient_nom || "—",
+            montant: paiement.montant,
+            montant_total: paiement.montant_total || null,
+            mode_paiement: paiement.mode_paiement,
+            type_paiement: paiement.type_paiement || "—",
+            numero_cr: paiement.numero_cr || "—",
+            notes: paiement.notes || "",
+            date_paiement: paiement.date_paiement || new Date().toISOString()
+        };
+
+        // On réutilise exactement le même modal de choix que pour les nouveaux paiements
+        afficherModalChoixImpression(paiementInfo);
+
+    } catch (err) {
+        console.error("Erreur préparation modal impression:", err);
+        showToast("Impossible de préparer l'impression", "error");
+    }
+}
+async function prepareAndShowPrintModal(paymentId) {
+    try {
+        // Récupérer les données complètes du paiement
+        const res = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (!res.ok) {
+            throw new Error("Impossible de charger les détails du paiement");
+        }
+
+        const paiement = await res.json();
+
+        // Format compatible avec ce que attend genererRecuA4 / genererRecuTicket
+        const paiementInfo = {
+            id: paiement.id,
+            patient_nom: paiement.patient_nom_complet || paiement.patient_nom || "—",
+            montant: paiement.montant,
+            montant_total: paiement.montant_total || null,
+            mode_paiement: paiement.mode_paiement,
+            type_paiement: paiement.type_paiement || "—",
+            numero_cr: paiement.numero_cr || "—",
+            notes: paiement.notes || "",
+            date_paiement: paiement.date_paiement || new Date().toISOString()
+        };
+
+        // → On réutilise exactement la même logique que après l'enregistrement
+        afficherModalChoixImpression(paiementInfo);
+
+    } catch (err) {
+        console.error("Erreur préparation impression:", err);
+        showToast("Impossible de préparer l'impression", "error");
+    }
+}
         function closeModalDetail() {
             document.getElementById('modalDetail').classList.add('hidden');
         }
