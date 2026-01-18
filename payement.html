@@ -2145,14 +2145,308 @@ function ouvrirModalHistorique(paiements, nomPatient) {
         }
 
         function exporterExcel() {
-            // Implémentez l'export Excel ici
-            showToast('Fonctionnalité d\'export Excel en développement', 'warning');
-        }
+    if (allPaiements.length === 0) {
+        showToast('Aucun paiement à exporter', 'warning');
+        return;
+    }
 
-        function imprimerListe() {
-            // Implémentez l'impression de la liste ici
-            showToast('Fonctionnalité d\'impression en développement', 'warning');
-        }
+    // Créer le contenu CSV
+    const headers = ['Date', 'Heure', 'Patient', 'Téléphone', 'Type', 'Mode Paiement', 'Montant (DA)', 'Montant Total (DA)', 'Reste (DA)', 'Numéro CR', 'Notes'];
+    const rows = allPaiements.map(p => {
+        const dateObj = p.date_paiement ? new Date(p.date_paiement) : new Date();
+        const date = dateObj.toLocaleDateString('fr-FR');
+        const heure = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        
+        const modePaiement = p.mode_paiement === 'espece' ? 'Comptant' : 
+                            p.mode_paiement === 'a_terme' ? 'À terme' : 'Partiel';
+        
+        const montantTotal = p.montant_total ? parseFloat(p.montant_total).toFixed(2) : '';
+        const reste = p.montant_total ? (parseFloat(p.montant_total) - parseFloat(p.montant)).toFixed(2) : '';
+        
+        return [
+            date,
+            heure,
+            p.patient_nom_complet || p.patient_nom || '',
+            p.patient_telephone || '',
+            p.type_paiement || '',
+            modePaiement,
+            parseFloat(p.montant || 0).toFixed(2),
+            montantTotal,
+            reste,
+            p.numero_cr || '',
+            p.notes || ''
+        ];
+    });
+
+    // Convertir en CSV
+    let csvContent = '\uFEFF'; // BOM pour Excel
+    csvContent += headers.join(';') + '\n';
+    rows.forEach(row => {
+        csvContent += row.map(cell => `"${cell}"`).join(';') + '\n';
+    });
+
+    // Créer et télécharger le fichier
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const dateExport = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `paiements_${dateExport}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast(`${allPaiements.length} paiement(s) exporté(s) avec succès`, 'success');
+}
+
+function imprimerListe() {
+    if (allPaiements.length === 0) {
+        showToast('Aucun paiement à imprimer', 'warning');
+        return;
+    }
+
+    // Calculer les totaux
+    const totalGeneral = allPaiements.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+    const totalComptant = allPaiements.filter(p => p.mode_paiement === 'espece')
+                                     .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+    const totalATerme = allPaiements.filter(p => p.mode_paiement === 'a_terme')
+                                   .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+    const totalPartiel = allPaiements.filter(p => p.mode_paiement === 'paiement_partiel')
+                                    .reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);
+
+    // Créer le contenu HTML pour l'impression
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Liste des Paiements - ANAPATH</title>
+            <style>
+                @media print {
+                    @page { margin: 1cm; }
+                    body { margin: 0; }
+                    .no-print { display: none; }
+                }
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 20px;
+                    color: #333;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                    border-bottom: 3px solid #4f46e5;
+                    padding-bottom: 20px;
+                }
+                .header h1 {
+                    color: #4f46e5;
+                    margin: 0;
+                    font-size: 28px;
+                }
+                .header p {
+                    margin: 5px 0;
+                    color: #666;
+                }
+                .info-box {
+                    background: #f8fafc;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 10px;
+                }
+                .info-item {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 8px;
+                    background: white;
+                    border-radius: 4px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                    font-size: 12px;
+                }
+                th {
+                    background: #4f46e5;
+                    color: white;
+                    padding: 12px 8px;
+                    text-align: left;
+                    font-weight: 600;
+                }
+                td {
+                    padding: 10px 8px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                tr:hover {
+                    background: #f9fafb;
+                }
+                .mode-comptant { color: #10b981; font-weight: 600; }
+                .mode-a-terme { color: #f59e0b; font-weight: 600; }
+                .mode-partiel { color: #3b82f6; font-weight: 600; }
+                .totaux {
+                    margin-top: 30px;
+                    padding: 20px;
+                    background: #f8fafc;
+                    border-radius: 8px;
+                    border-left: 4px solid #4f46e5;
+                }
+                .totaux h3 {
+                    margin-top: 0;
+                    color: #4f46e5;
+                }
+                .total-row {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .total-row:last-child {
+                    border-bottom: none;
+                    font-weight: bold;
+                    font-size: 16px;
+                    color: #4f46e5;
+                    padding-top: 15px;
+                    margin-top: 10px;
+                    border-top: 2px solid #4f46e5;
+                }
+                .footer {
+                    margin-top: 40px;
+                    text-align: center;
+                    color: #666;
+                    font-size: 11px;
+                    padding-top: 20px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                .btn-print {
+                    background: #4f46e5;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    margin-bottom: 20px;
+                }
+                .btn-print:hover {
+                    background: #4338ca;
+                }
+            </style>
+        </head>
+        <body>
+            <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimer</button>
+            
+            <div class="header">
+                <h1>📋 LISTE DES PAIEMENTS</h1>
+                <p><strong>ANAPATH - Gestion des Paiements</strong></p>
+                <p>Date d'édition: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
+            </div>
+
+            <div class="info-box">
+                <div class="info-item">
+                    <span>Nombre total de paiements:</span>
+                    <strong>${allPaiements.length}</strong>
+                </div>
+                <div class="info-item">
+                    <span>Montant total encaissé:</span>
+                    <strong>${totalGeneral.toFixed(2)} DA</strong>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th>Type</th>
+                        <th>Mode</th>
+                        <th style="text-align: right">Montant</th>
+                        <th>N° CR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${allPaiements.map(p => {
+                        const dateObj = p.date_paiement ? new Date(p.date_paiement) : new Date();
+                        const date = dateObj.toLocaleDateString('fr-FR');
+                        const heure = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                        
+                        let modeClass = 'mode-comptant';
+                        let modeText = 'Comptant';
+                        if (p.mode_paiement === 'a_terme') {
+                            modeClass = 'mode-a-terme';
+                            modeText = 'À terme';
+                        } else if (p.mode_paiement === 'paiement_partiel') {
+                            modeClass = 'mode-partiel';
+                            modeText = 'Partiel';
+                        }
+                        
+                        return `
+                            <tr>
+                                <td>${date}<br><small style="color: #666;">${heure}</small></td>
+                                <td>
+                                    <strong>${p.patient_nom_complet || p.patient_nom || 'N/A'}</strong>
+                                    ${p.patient_telephone ? `<br><small style="color: #666;">${p.patient_telephone}</small>` : ''}
+                                </td>
+                                <td>${p.type_paiement}</td>
+                                <td class="${modeClass}">${modeText}</td>
+                                <td style="text-align: right; font-weight: 600;">
+                                    ${parseFloat(p.montant || 0).toFixed(2)} DA
+                                    ${p.montant_total ? `<br><small style="color: #666;">/${parseFloat(p.montant_total).toFixed(2)} DA</small>` : ''}
+                                </td>
+                                <td>${p.numero_cr || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+
+            <div class="totaux">
+                <h3>💰 Récapitulatif des Totaux</h3>
+                <div class="total-row">
+                    <span>Paiements comptant (${allPaiements.filter(p => p.mode_paiement === 'espece').length}):</span>
+                    <span class="mode-comptant">${totalComptant.toFixed(2)} DA</span>
+                </div>
+                <div class="total-row">
+                    <span>Paiements à terme (${allPaiements.filter(p => p.mode_paiement === 'a_terme').length}):</span>
+                    <span class="mode-a-terme">${totalATerme.toFixed(2)} DA</span>
+                </div>
+                <div class="total-row">
+                    <span>Paiements partiels (${allPaiements.filter(p => p.mode_paiement === 'paiement_partiel').length}):</span>
+                    <span class="mode-partiel">${totalPartiel.toFixed(2)} DA</span>
+                </div>
+                <div class="total-row">
+                    <span>TOTAL GÉNÉRAL:</span>
+                    <span>${totalGeneral.toFixed(2)} DA</span>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Document généré automatiquement par ANAPATH - Système de Gestion des Paiements</p>
+                <p>Ce document est confidentiel et ne peut être reproduit sans autorisation</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Attendre que le contenu soit chargé avant d'ouvrir la boîte de dialogue d'impression
+    printWindow.onload = function() {
+        setTimeout(() => {
+            printWindow.focus();
+        }, 250);
+    };
+    
+    showToast('Aperçu avant impression généré', 'success');
+}
 
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
