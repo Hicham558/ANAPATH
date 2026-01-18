@@ -1168,6 +1168,23 @@ async function enregistrerPaiement() {
             const result = await response.json();
             showToast(result.message || 'Paiement enregistré avec succès', 'success');
             
+            // Stocker les informations du paiement pour l'impression
+            const paiementInfo = {
+                id: result.paiement_id || result.id,
+                patient_nom: document.getElementById('patientSelect').selectedOptions[0].text.split('(')[0].trim(),
+                patient_id: patientId,
+                montant: montantPaye,
+                montant_total: montantTotal,
+                mode_paiement: mode,
+                type_paiement: typePaiement,
+                numero_cr: numeroCR,
+                notes: notes,
+                date_paiement: new Date().toISOString()
+            };
+            
+            // Afficher la modal de choix d'impression
+            afficherModalChoixImpression(paiementInfo);
+            
             // Réinitialiser le formulaire
             document.getElementById('montantPaye').value = '';
             document.getElementById('montantTotal').value = '';
@@ -1176,10 +1193,10 @@ async function enregistrerPaiement() {
             document.getElementById('patientSelect').value = '';
             document.getElementById('patientInfo').classList.add('hidden');
             
-            // ✅ AJOUT IMPORTANT : Recharger toutes les données incluant les patients
+            // Recharger toutes les données
             await Promise.all([
-                loadPatients(),           // ← Recharger la liste des patients avec les soldes mis à jour
-                chargerPatientsFiltre(),  // ← Recharger aussi les filtres
+                loadPatients(),
+                chargerPatientsFiltre(),
                 loadDashboardData(),
                 loadPaiements(),
                 loadDettes()
@@ -1193,9 +1210,6 @@ async function enregistrerPaiement() {
                 </div>
             `;
             document.getElementById('recapDetails').classList.add('hidden');
-            
-            // Revenir à l'onglet liste
-            showTab('liste');
         } else {
             const error = await response.json();
             throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
@@ -2465,6 +2479,685 @@ function imprimerListe() {
                 toast.classList.remove('show');
             }, 3000);
         }
+        // Variables globales pour l'impression
+let paiementEnCours = null;
+
+function afficherModalChoixImpression(paiementInfo) {
+    paiementEnCours = paiementInfo;
+    document.getElementById('modalChoixImpression').classList.remove('hidden');
+}
+
+function fermerModalImpression() {
+    document.getElementById('modalChoixImpression').classList.add('hidden');
+    paiementEnCours = null;
+    // Revenir à l'onglet liste après fermeture
+    showTab('liste');
+}
+
+function imprimerRecu(format) {
+    if (!paiementEnCours) {
+        showToast('Erreur: Aucun paiement à imprimer', 'error');
+        return;
+    }
+
+    if (format === 'a4') {
+        genererRecuA4(paiementEnCours);
+    } else if (format === 'ticket') {
+        genererRecuTicket(paiementEnCours);
+    }
+
+    // Fermer la modal après impression
+    setTimeout(() => {
+        fermerModalImpression();
+    }, 500);
+}
+
+function genererRecuA4(paiement) {
+    const dateObj = new Date(paiement.date_paiement);
+    const date = dateObj.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const heure = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    
+    const modePaiementTexte = paiement.mode_paiement === 'espece' ? 'Comptant' : 
+                             paiement.mode_paiement === 'a_terme' ? 'À Terme' : 'Paiement Partiel';
+    
+    const reste = paiement.montant_total ? (parseFloat(paiement.montant_total) - parseFloat(paiement.montant)) : 0;
+
+    const printWindow = window.open('', '', 'height=800,width=600');
+    
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Reçu de Paiement - ${paiement.numero_cr || 'N/A'}</title>
+            <style>
+                @media print {
+                    @page { 
+                        size: A4;
+                        margin: 2cm;
+                    }
+                    body { margin: 0; }
+                    .no-print { display: none !important; }
+                }
+                
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Arial', sans-serif;
+                    color: #333;
+                    line-height: 1.6;
+                    padding: 20px;
+                }
+                
+                .recu-container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    border: 2px solid #4f46e5;
+                    border-radius: 10px;
+                    overflow: hidden;
+                }
+                
+                .header {
+                    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+                    color: white;
+                    padding: 30px;
+                    text-align: center;
+                }
+                
+                .header h1 {
+                    font-size: 32px;
+                    margin-bottom: 5px;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                }
+                
+                .header p {
+                    font-size: 14px;
+                    opacity: 0.9;
+                }
+                
+                .numero-recu {
+                    background: white;
+                    color: #4f46e5;
+                    display: inline-block;
+                    padding: 8px 20px;
+                    border-radius: 20px;
+                    font-weight: bold;
+                    margin-top: 15px;
+                    font-size: 16px;
+                }
+                
+                .content {
+                    padding: 40px;
+                }
+                
+                .info-section {
+                    margin-bottom: 30px;
+                }
+                
+                .info-section h3 {
+                    color: #4f46e5;
+                    font-size: 14px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    margin-bottom: 15px;
+                    border-bottom: 2px solid #e5e7eb;
+                    padding-bottom: 8px;
+                }
+                
+                .info-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 15px;
+                }
+                
+                .info-item {
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .info-label {
+                    font-size: 11px;
+                    color: #6b7280;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 4px;
+                }
+                
+                .info-value {
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #1f2937;
+                }
+                
+                .montant-principal {
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: white;
+                    padding: 25px;
+                    border-radius: 10px;
+                    text-align: center;
+                    margin: 30px 0;
+                }
+                
+                .montant-principal .label {
+                    font-size: 14px;
+                    opacity: 0.9;
+                    margin-bottom: 10px;
+                }
+                
+                .montant-principal .montant {
+                    font-size: 42px;
+                    font-weight: bold;
+                    letter-spacing: 1px;
+                }
+                
+                .details-paiement {
+                    background: #f9fafb;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border-left: 4px solid #4f46e5;
+                }
+                
+                .detail-row {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 10px 0;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                
+                .detail-row:last-child {
+                    border-bottom: none;
+                }
+                
+                .detail-label {
+                    color: #6b7280;
+                }
+                
+                .detail-value {
+                    font-weight: 600;
+                    color: #1f2937;
+                }
+                
+                .reste-a-payer {
+                    color: #dc2626;
+                    font-size: 18px;
+                }
+                
+                .notes {
+                    background: #fef3c7;
+                    border-left: 4px solid #f59e0b;
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 4px;
+                }
+                
+                .notes h4 {
+                    color: #92400e;
+                    font-size: 12px;
+                    margin-bottom: 8px;
+                    text-transform: uppercase;
+                }
+                
+                .notes p {
+                    color: #78350f;
+                    font-size: 14px;
+                }
+                
+                .footer {
+                    background: #f9fafb;
+                    padding: 25px 40px;
+                    border-top: 2px solid #e5e7eb;
+                    text-align: center;
+                }
+                
+                .signature-section {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 40px;
+                    margin-top: 40px;
+                    text-align: center;
+                }
+                
+                .signature-box {
+                    padding: 15px;
+                }
+                
+                .signature-line {
+                    border-top: 2px solid #9ca3af;
+                    margin-top: 60px;
+                    padding-top: 10px;
+                    color: #6b7280;
+                    font-size: 12px;
+                }
+                
+                .footer-info {
+                    margin-top: 30px;
+                    font-size: 11px;
+                    color: #6b7280;
+                    line-height: 1.8;
+                }
+                
+                .btn-print {
+                    background: #4f46e5;
+                    color: white;
+                    border: none;
+                    padding: 12px 30px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    margin: 20px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    transition: all 0.3s;
+                }
+                
+                .btn-print:hover {
+                    background: #4338ca;
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+                }
+                
+                .watermark {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) rotate(-45deg);
+                    font-size: 100px;
+                    color: rgba(79, 70, 229, 0.05);
+                    font-weight: bold;
+                    z-index: -1;
+                    pointer-events: none;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="watermark">ANAPATH</div>
+            
+            <button onclick="window.print()" class="btn-print no-print">
+                🖨️ Imprimer le Reçu
+            </button>
+            
+            <div class="recu-container">
+                <div class="header">
+                    <h1>🏥 ANAPATH</h1>
+                    <p>Centre d'Anatomie Pathologique</p>
+                    <div class="numero-recu">
+                        Reçu N° ${paiement.numero_cr || 'Non spécifié'}
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <div class="info-section">
+                        <h3>📅 Informations de Transaction</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Date</span>
+                                <span class="info-value">${date}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Heure</span>
+                                <span class="info-value">${heure}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h3>👤 Informations Patient</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Nom du Patient</span>
+                                <span class="info-value">${paiement.patient_nom}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Type d'Acte</span>
+                                <span class="info-value">${paiement.type_paiement}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="montant-principal">
+                        <div class="label">MONTANT PAYÉ</div>
+                        <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
+                    </div>
+                    
+                    <div class="details-paiement">
+                        <div class="detail-row">
+                            <span class="detail-label">Mode de paiement:</span>
+                            <span class="detail-value">${modePaiementTexte}</span>
+                        </div>
+                        ${paiement.montant_total ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Montant total de la facture:</span>
+                                <span class="detail-value">${parseFloat(paiement.montant_total).toFixed(2)} DA</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Montant versé:</span>
+                                <span class="detail-value">${parseFloat(paiement.montant).toFixed(2)} DA</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Reste à payer:</span>
+                                <span class="detail-value reste-a-payer">${reste.toFixed(2)} DA</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${paiement.notes ? `
+                        <div class="notes">
+                            <h4>📝 Notes</h4>
+                            <p>${paiement.notes}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="signature-section">
+                        <div class="signature-box">
+                            <div class="signature-line">Signature du Patient</div>
+                        </div>
+                        <div class="signature-box">
+                            <div class="signature-line">Signature du Caissier</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <div class="footer-info">
+                        <strong>ANAPATH - Centre d'Anatomie Pathologique</strong><br>
+                        Merci de votre confiance | Ce reçu fait foi de paiement<br>
+                        Pour toute réclamation, veuillez conserver ce reçu
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    printWindow.onload = function() {
+        setTimeout(() => {
+            printWindow.focus();
+        }, 250);
+    };
+}
+
+function genererRecuTicket(paiement) {
+    const dateObj = new Date(paiement.date_paiement);
+    const date = dateObj.toLocaleDateString('fr-FR');
+    const heure = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    
+    const modePaiementTexte = paiement.mode_paiement === 'espece' ? 'COMPTANT' : 
+                             paiement.mode_paiement === 'a_terme' ? 'A TERME' : 'PARTIEL';
+    
+    const reste = paiement.montant_total ? (parseFloat(paiement.montant_total) - parseFloat(paiement.montant)) : 0;
+
+    const printWindow = window.open('', '', 'height=600,width=320');
+    
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Ticket - ${paiement.numero_cr || 'N/A'}</title>
+            <style>
+                @media print {
+                    @page { 
+                        size: 80mm auto;
+                        margin: 0;
+                    }
+                    body { margin: 0; }
+                    .no-print { display: none !important; }
+                }
+                
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Courier New', monospace;
+                    width: 80mm;
+                    background: white;
+                    color: #000;
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
+                
+                .ticket {
+                    padding: 10px;
+                }
+                
+                .header {
+                    text-align: center;
+                    border-bottom: 2px dashed #000;
+                    padding-bottom: 10px;
+                    margin-bottom: 10px;
+                }
+                
+                .header h1 {
+                    font-size: 20px;
+                    font-weight: bold;
+                    margin-bottom: 3px;
+                }
+                
+                .header p {
+                    font-size: 10px;
+                    margin: 2px 0;
+                }
+                
+                .numero-recu {
+                    text-align: center;
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin: 10px 0;
+                    padding: 5px;
+                    border: 2px solid #000;
+                }
+                
+                .section {
+                    margin: 10px 0;
+                    padding: 8px 0;
+                    border-bottom: 1px dashed #000;
+                }
+                
+                .section:last-child {
+                    border-bottom: 2px dashed #000;
+                }
+                
+                .row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 4px 0;
+                }
+                
+                .label {
+                    font-size: 11px;
+                }
+                
+                .value {
+                    font-weight: bold;
+                    text-align: right;
+                }
+                
+                .montant-principal {
+                    text-align: center;
+                    margin: 15px 0;
+                    padding: 10px;
+                    background: #000;
+                    color: #fff;
+                }
+                
+                .montant-principal .label {
+                    font-size: 10px;
+                    margin-bottom: 5px;
+                }
+                
+                .montant-principal .montant {
+                    font-size: 24px;
+                    font-weight: bold;
+                    letter-spacing: 1px;
+                }
+                
+                .detail-important {
+                    font-size: 13px;
+                    font-weight: bold;
+                }
+                
+                .reste-payer {
+                    background: #f0f0f0;
+                    padding: 8px;
+                    margin: 10px 0;
+                    text-align: center;
+                    border: 2px solid #000;
+                }
+                
+                .reste-payer .montant {
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+                
+                .notes {
+                    background: #f5f5f5;
+                    padding: 8px;
+                    margin: 10px 0;
+                    font-size: 10px;
+                    border-left: 3px solid #000;
+                }
+                
+                .footer {
+                    text-align: center;
+                    margin-top: 15px;
+                    padding-top: 10px;
+                    border-top: 2px dashed #000;
+                    font-size: 10px;
+                }
+                
+                .footer p {
+                    margin: 3px 0;
+                }
+                
+                .merci {
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin: 10px 0;
+                }
+                
+                .btn-print {
+                    background: #000;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    margin: 10px;
+                    width: calc(100% - 20px);
+                    border-radius: 4px;
+                }
+                
+                .btn-print:hover {
+                    background: #333;
+                }
+            </style>
+        </head>
+        <body>
+            <button onclick="window.print()" class="btn-print no-print">
+                🖨️ IMPRIMER
+            </button>
+            
+            <div class="ticket">
+                <div class="header">
+                    <h1>ANAPATH</h1>
+                    <p>Centre d'Anatomie Pathologique</p>
+                    <p>================================</p>
+                </div>
+                
+                <div class="numero-recu">
+                    RECU N° ${paiement.numero_cr || 'N/A'}
+                </div>
+                
+                <div class="section">
+                    <div class="row">
+                        <span class="label">Date:</span>
+                        <span class="value">${date}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Heure:</span>
+                        <span class="value">${heure}</span>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="row">
+                        <span class="label">Patient:</span>
+                    </div>
+                    <div class="row">
+                        <span class="value" style="width: 100%; text-align: left; font-size: 13px;">${paiement.patient_nom}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Type:</span>
+                        <span class="value">${paiement.type_paiement}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Mode:</span>
+                        <span class="value">${modePaiementTexte}</span>
+                    </div>
+                </div>
+                
+                <div class="montant-principal">
+                    <div class="label">MONTANT PAYE</div>
+                    <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
+                </div>
+                
+                ${paiement.montant_total ? `
+                    <div class="section">
+                        <div class="row">
+                            <span class="label">Total facture:</span>
+                            <span class="value">${parseFloat(paiement.montant_total).toFixed(2)} DA</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Versé:</span>
+                            <span class="value">${parseFloat(paiement.montant).toFixed(2)} DA</span>
+                        </div>
+                    </div>
+                    
+                    <div class="reste-payer">
+                        <div style="font-size: 11px; margin-bottom: 5px;">RESTE A PAYER</div>
+                        <div class="montant">${reste.toFixed(2)} DA</div>
+                    </div>
+                ` : ''}
+                
+                ${paiement.notes ? `
+                    <div class="notes">
+                        <strong>Notes:</strong><br>
+                        ${paiement.notes}
+                    </div>
+                ` : ''}
+                
+                <div class="footer">
+                    <p class="merci">MERCI DE VOTRE CONFIANCE</p>
+                    <p>================================</p>
+                    <p>Conservez ce ticket</p>
+                    <p>Il fait foi de paiement</p>
+                    <p>--------------------------------</p>
+                    <p>${new Date().toLocaleString('fr-FR')}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    printWindow.onload = function() {
+        setTimeout(() => {
+            printWindow.focus();
+        }, 250);
+    };
+}
     </script>
 </body>
 </html>
