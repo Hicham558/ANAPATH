@@ -1424,21 +1424,31 @@
           tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Aucun patient trouvé</td></tr>';
           select.innerHTML = '<option value="">Sélectionner...</option>';
         } else {
-          tbody.innerHTML = patients.map(p => `
+    tbody.innerHTML = patients.map(p => `
   <tr class="hover:bg-gray-50">
-    <td class="px-6 py-4 text-sm font-medium">${p.nom}</td>
+    <td class="px-6 py-4 text-sm font-medium">${p.nom || '-'}</td>
     <td class="px-6 py-4 text-sm">${p.age || '-'}</td>
-    <td class="px-6 py-4 text-sm">${p.sexe === 'M' ? '♂' : p.sexe === 'F' ? '♀' : '-'}</td>
+    <td class="px-6 py-4 text-sm">${p.sexe === 'M' ? '♂ Masculin' : p.sexe === 'F' ? '♀ Féminin' : '-'}</td>
     <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
-    <!-- NOUVEAU : affichage du solde avec couleur -->
     <td class="px-6 py-4 text-sm font-medium ${
-      p.solde > 0 ? 'text-green-600' :
-      p.solde < 0 ? 'text-red-600' : 'text-gray-500'
+      p.solde > 0 ? 'text-green-600 font-semibold' :
+      p.solde < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'
     }">
-      ${p.solde != null ? p.solde.toLocaleString('fr-DZ', { minimumFractionDigits: 2 }) + ' DA' : '-'}
+      ${p.solde != null ? p.solde.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DA' : '—'}
     </td>
     <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
-    <td class="px-6 py-4 text-sm">...</td>
+    <td class="px-6 py-4 text-sm whitespace-nowrap">
+      <button onclick='editPatient(${JSON.stringify(p)})' 
+              class="text-indigo-600 hover:text-indigo-900 mr-4" 
+              title="Modifier">
+        <i class="fas fa-edit fa-lg"></i>
+      </button>
+      <button onclick="deletePatient(${p.id})" 
+              class="text-red-600 hover:text-red-900" 
+              title="Supprimer">
+        <i class="fas fa-trash fa-lg"></i>
+      </button>
+    </td>
   </tr>
 `).join('');
          
@@ -1505,28 +1515,29 @@
         showToast(err.message, 'error');
       }
     }
-   function editPatient(patient) {
-  document.getElementById('patientId').value = patient.id;
-  document.getElementById('patientNom').value = patient.nom;
-  document.getElementById('patientAge').value = patient.age || '';
-  document.getElementById('patientSexe').value = patient.sexe || '';
-  document.getElementById('patientTel').value = patient.telephone || '';
+  function editPatient(patient) {
+  document.getElementById('patientId').value      = patient.id;
+  document.getElementById('patientNom').value     = patient.nom;
+  document.getElementById('patientAge').value     = patient.age || '';
+  document.getElementById('patientSexe').value    = patient.sexe || '';
+  document.getElementById('patientTel').value     = patient.telephone || '';
+  document.getElementById('patientSolde').value   = patient.solde != null ? patient.solde : '';
   document.getElementById('patientAdresse').value = patient.adresse || '';
-  document.getElementById('patientSolde').value = patient.solde != null ? patient.solde : '';  // ← NOUVEAU
 
   if (!document.getElementById('patientForm').classList.contains('open')) {
     togglePatientForm();
   }
 }
-    function resetPatientForm() {
-      document.getElementById('patientId').value = '';
-      document.getElementById('patientNom').value = '';
-      document.getElementById('patientAge').value = '';
-      document.getElementById('patientSexe').value = '';
-      document.getElementById('patientTel').value = '';
-      document.getElementById('patientAdresse').value = '';
-      document.getElementById('patientSolde').value = '';
-    }
+
+function resetPatientForm() {
+  document.getElementById('patientId').value = '';
+  document.getElementById('patientNom').value = '';
+  document.getElementById('patientAge').value = '';
+  document.getElementById('patientSexe').value = '';
+  document.getElementById('patientTel').value = '';
+  document.getElementById('patientSolde').value = '';   // ← important
+  document.getElementById('patientAdresse').value = '';
+}
     async function deletePatient(id) {
       if (!confirm('Supprimer ce patient ?')) return;
      
