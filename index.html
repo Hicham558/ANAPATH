@@ -484,6 +484,10 @@
                   </select>
                 </div>
                 <div>
+    <label class="block text-sm font-medium mb-1">Solde actuel (DA)</label>
+    <input type="number" id="patientSolde" step="0.01" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Ex: 1250.50 ou -450.00">
+  </div>
+                <div>
                   <label class="block text-sm font-medium mb-1">Téléphone</label>
                   <input type="tel" id="patientTel" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                 </div>
@@ -510,8 +514,8 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom & Prénom</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Âge</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sexe</th>
+                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solde (DA)</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solde</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adresse</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -1307,9 +1311,7 @@
           `).join('');
         }
        
-        allUtilisateurs = users;
-renderUtilisateursList(users);
-updateKPIs();
+        updateKPIs();
       } catch (err) {
         console.error(err);
         showToast('Erreur lors du chargement des utilisateurs', 'error');
@@ -1402,95 +1404,78 @@ updateKPIs();
     // GESTION DES PATIENTS
     // ────────────────────────────────────────────
     async function loadPatients() {
-  try {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
-   
-    const res = await fetch(`${API_BASE_URL}/patients`, {
-      headers: { 'X-User-ID': userId }
-    });
-   
-    if (!res.ok) throw new Error('Erreur lors du chargement des patients');
-   
-    const patients = await res.json();
-    allPatients = patients;
-   
-    renderPatientsList(patients); // Utiliser une fonction de rendu
-    updateKPIs();
-  } catch (err) {
-    console.error(err);
-    showToast('Erreur lors du chargement des patients', 'error');
-  }
-}
-
-// Nouvelle fonction pour afficher les patients
-function renderPatientsList(patients) {
-  const tbody = document.getElementById('patientsList');
-  const select = document.getElementById('reportPatient');
- 
-  if (patients.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">Aucun patient trouvé</td></tr>';
-    select.innerHTML = '<option value="">Sélectionner...</option>';
-  } else {
-    tbody.innerHTML = patients.map(p => {
-      const solde = p.solde || 0;
-      const soldeClass = solde > 0 ? 'solde-positif' : solde < 0 ? 'solde-negatif' : 'solde-zero';
-      
-      return `
-        <tr class="hover:bg-gray-50">
-          <td class="px-6 py-4 text-sm font-medium">${p.nom}</td>
-          <td class="px-6 py-4 text-sm">${p.age || '-'}</td>
-          <td class="px-6 py-4 text-sm">${p.sexe === 'M' ? '♂' : p.sexe === 'F' ? '♀' : '-'}</td>
-          <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
-          <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
-          <td class="px-6 py-4 text-sm ${soldeClass}">${solde.toFixed(2)} DA</td>
-          <td class="px-6 py-4 text-sm">
-            <button onclick='editPatient(${JSON.stringify(p).replace(/'/g, "\\'")})'class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button onclick="deletePatient(${p.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-   
-    select.innerHTML = '<option value="">Sélectionner...</option>' +
-      patients.map(p => `<option value="${p.id}" data-age="${p.age || ''}" data-sexe="${p.sexe || ''}">${p.nom}</option>`).join('');
-  }
-}
-
-// Fonction de filtrage des patients
-function filterPatients() {
-  const searchTerm = document.getElementById('searchPatient').value.toLowerCase();
-  
-  if (!searchTerm) {
-    renderPatientsList(allPatients);
-  } else {
-    const filtered = allPatients.filter(p => 
-      p.nom.toLowerCase().includes(searchTerm) ||
-      (p.telephone && p.telephone.includes(searchTerm)) ||
-      (p.adresse && p.adresse.toLowerCase().includes(searchTerm))
-    );
-    renderPatientsList(filtered);
-  }
-}
-    async function savePatient() {
-      const id = document.getElementById('patientId').value;
-      const nom = document.getElementById('patientNom').value.trim();
-      const age = document.getElementById('patientAge').value;
-      const sexe = document.getElementById('patientSexe').value;
-      const telephone = document.getElementById('patientTel').value.trim();
-      const adresse = document.getElementById('patientAdresse').value.trim();
-     
-      if (!nom) {
-        return showToast('Nom du patient requis', 'error');
-      }
-     
       try {
         const userId = localStorage.getItem('userId');
-        const data = { nom, age: age || null, sexe: sexe || null, telephone, adresse };
+        if (!userId) return;
+       
+        const res = await fetch(`${API_BASE_URL}/patients`, {
+          headers: { 'X-User-ID': userId }
+        });
+       
+        if (!res.ok) throw new Error('Erreur lors du chargement des patients');
+       
+        const patients = await res.json();
+        allPatients = patients;
+       
+        const tbody = document.getElementById('patientsList');
+        const select = document.getElementById('reportPatient');
+       
+        if (patients.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Aucun patient trouvé</td></tr>';
+          select.innerHTML = '<option value="">Sélectionner...</option>';
+        } else {
+          tbody.innerHTML = patients.map(p => `
+  <tr class="hover:bg-gray-50">
+    <td class="px-6 py-4 text-sm font-medium">${p.nom}</td>
+    <td class="px-6 py-4 text-sm">${p.age || '-'}</td>
+    <td class="px-6 py-4 text-sm">${p.sexe === 'M' ? '♂' : p.sexe === 'F' ? '♀' : '-'}</td>
+    <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
+    <!-- NOUVEAU : affichage du solde avec couleur -->
+    <td class="px-6 py-4 text-sm font-medium ${
+      p.solde > 0 ? 'text-green-600' :
+      p.solde < 0 ? 'text-red-600' : 'text-gray-500'
+    }">
+      ${p.solde != null ? p.solde.toLocaleString('fr-DZ', { minimumFractionDigits: 2 }) + ' DA' : '-'}
+    </td>
+    <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
+    <td class="px-6 py-4 text-sm">...</td>
+  </tr>
+`).join('');
+         
+          // Mettre à jour le select dans le modal des comptes rendus
+          select.innerHTML = '<option value="">Sélectionner...</option>' +
+            patients.map(p => `<option value="${p.id}" data-age="${p.age || ''}" data-sexe="${p.sexe || ''}">${p.nom}</option>`).join('');
+        }
+       
+        updateKPIs();
+      } catch (err) {
+        console.error(err);
+        showToast('Erreur lors du chargement des patients', 'error');
+      }
+    }
+    async function savePatient() {
+  const id = document.getElementById('patientId').value;
+  const nom = document.getElementById('patientNom').value.trim();
+  const age = document.getElementById('patientAge').value;
+  const sexe = document.getElementById('patientSexe').value;
+  const telephone = document.getElementById('patientTel').value.trim();
+  const adresse = document.getElementById('patientAdresse').value.trim();
+  const solde = document.getElementById('patientSolde').value;   // ← NOUVEAU
+
+  if (!nom) {
+    return showToast('Nom du patient requis', 'error');
+  }
+
+  try {
+    const userId = localStorage.getItem('userId');
+    const data = {
+      nom,
+      age: age || null,
+      sexe: sexe || null,
+      telephone,
+      adresse,
+      solde: solde !== '' ? parseFloat(solde) : null   // ← IMPORTANT
+    };
        
         let res;
         if (id) {
@@ -1520,18 +1505,19 @@ function filterPatients() {
         showToast(err.message, 'error');
       }
     }
-    function editPatient(patient) {
-      document.getElementById('patientId').value = patient.id;
-      document.getElementById('patientNom').value = patient.nom;
-      document.getElementById('patientAge').value = patient.age || '';
-      document.getElementById('patientSexe').value = patient.sexe || '';
-      document.getElementById('patientTel').value = patient.telephone || '';
-      document.getElementById('patientAdresse').value = patient.adresse || '';
-     
-      if (!document.getElementById('patientForm').classList.contains('open')) {
-        togglePatientForm();
-      }
-    }
+   function editPatient(patient) {
+  document.getElementById('patientId').value = patient.id;
+  document.getElementById('patientNom').value = patient.nom;
+  document.getElementById('patientAge').value = patient.age || '';
+  document.getElementById('patientSexe').value = patient.sexe || '';
+  document.getElementById('patientTel').value = patient.telephone || '';
+  document.getElementById('patientAdresse').value = patient.adresse || '';
+  document.getElementById('patientSolde').value = patient.solde != null ? patient.solde : '';  // ← NOUVEAU
+
+  if (!document.getElementById('patientForm').classList.contains('open')) {
+    togglePatientForm();
+  }
+}
     function resetPatientForm() {
       document.getElementById('patientId').value = '';
       document.getElementById('patientNom').value = '';
@@ -1539,98 +1525,8 @@ function filterPatients() {
       document.getElementById('patientSexe').value = '';
       document.getElementById('patientTel').value = '';
       document.getElementById('patientAdresse').value = '';
+      document.getElementById('patientSolde').value = '';
     }
- // Fonction de rendu des médecins
-function renderMedecinsList(medecins) {
-  const tbody = document.getElementById('medecinsList');
-  const select = document.getElementById('reportMedecin');
- 
-  if (medecins.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Aucun médecin trouvé</td></tr>';
-    select.innerHTML = '<option value="">Sélectionner...</option>';
-  } else {
-    tbody.innerHTML = medecins.map(m => `
-      <tr class="hover:bg-gray-50">
-        <td class="px-6 py-4 text-sm font-medium">${m.nom}</td>
-        <td class="px-6 py-4 text-sm">${m.specialite || '-'}</td>
-        <td class="px-6 py-4 text-sm">${m.service || '-'}</td>
-        <td class="px-6 py-4 text-sm">${m.telephone || '-'}</td>
-        <td class="px-6 py-4 text-sm">
-          <button onclick='editMedecin(${JSON.stringify(m).replace(/'/g, "\\'")})'class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
-            <i class="fas fa-edit"></i>
-          </button>
-          <button onclick="deleteMedecin(${m.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
-            <i class="fas fa-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `).join('');
-   
-    select.innerHTML = '<option value="">Sélectionner...</option>' +
-      medecins.map(m => `<option value="${m.id}">${m.nom}${m.specialite ? ` - ${m.specialite}` : ''}</option>`).join('');
-  }
-}
-
-function filterMedecins() {
-  const searchTerm = document.getElementById('searchMedecin').value.toLowerCase();
-  
-  if (!searchTerm) {
-    renderMedecinsList(allMedecins);
-  } else {
-    const filtered = allMedecins.filter(m => 
-      m.nom.toLowerCase().includes(searchTerm) ||
-      (m.specialite && m.specialite.toLowerCase().includes(searchTerm)) ||
-      (m.service && m.service.toLowerCase().includes(searchTerm)) ||
-      (m.telephone && m.telephone.includes(searchTerm))
-    );
-    renderMedecinsList(filtered);
-  }
-}
-
-// Fonction de rendu des utilisateurs
-function renderUtilisateursList(utilisateurs) {
-  const tbody = document.getElementById('utilisateursList');
-  
-  if (utilisateurs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Aucun utilisateur trouvé</td></tr>';
-  } else {
-    tbody.innerHTML = utilisateurs.map(u => `
-      <tr class="hover:bg-gray-50">
-        <td class="px-6 py-4 text-sm font-medium">${u.numero}</td>
-        <td class="px-6 py-4 text-sm">${u.nom}</td>
-        <td class="px-6 py-4 text-sm">
-          <span class="px-2 py-1 rounded-full text-xs ${u.statut === 'admin' ? 'bg-purple-100 text-purple-800' : u.statut === 'medecin' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
-            ${u.statut}
-          </span>
-        </td>
-        <td class="px-6 py-4 text-sm">${new Date().toLocaleDateString('fr-FR')}</td>
-        <td class="px-6 py-4 text-sm">
-          <button onclick='editUtilisateur(${JSON.stringify(u).replace(/'/g, "\\'")})'class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
-            <i class="fas fa-edit"></i>
-          </button>
-          <button onclick="deleteUtilisateur(${u.numero})" class="text-red-600 hover:text-red-800" title="Supprimer">
-            <i class="fas fa-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `).join('');
-  }
-}
-
-function filterUtilisateurs() {
-  const searchTerm = document.getElementById('searchUtilisateur').value.toLowerCase();
-  
-  if (!searchTerm) {
-    renderUtilisateursList(allUtilisateurs);
-  } else {
-    const filtered = allUtilisateurs.filter(u => 
-      u.nom.toLowerCase().includes(searchTerm) ||
-      u.statut.toLowerCase().includes(searchTerm) ||
-      u.numero.toString().includes(searchTerm)
-    );
-    renderUtilisateursList(filtered);
-  }
-}
     async function deletePatient(id) {
       if (!confirm('Supprimer ce patient ?')) return;
      
@@ -1697,9 +1593,7 @@ function filterUtilisateurs() {
             medecins.map(m => `<option value="${m.id}">${m.nom}${m.specialite ? ` - ${m.specialite}` : ''}</option>`).join('');
         }
        
-        allMedecins = medecins;
-renderMedecinsList(medecins);
-updateKPIs();
+        updateKPIs();
       } catch (err) {
         console.error(err);
         showToast('Erreur lors du chargement des médecins', 'error');
