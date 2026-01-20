@@ -42,6 +42,34 @@
       transform: translateY(-4px);
       box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
     }
+
+    /* Animation pour le modal */
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    #certModal > div {
+      animation: modalFadeIn 0.3s ease-out;
+    }
+
+    /* Style pour les étapes numérotées */
+    #certModal ol li {
+      transition: all 0.2s ease;
+    }
+
+    #certModal ol li:hover {
+      transform: translateX(5px);
+      background-color: rgba(79, 70, 229, 0.05);
+      padding-left: 8px;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body class="bg-gray-100">
@@ -76,9 +104,19 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">URL de l'API</label>
             <input id="apiBaseUrl" type="text" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="https://anapath.onrender.com">
           </div>
-          <button onclick="testConnection()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-            <i class="fas fa-plug mr-2"></i>Tester
-          </button>
+          
+          <!-- Boutons d'action alignés horizontalement -->
+          <div class="flex space-x-2 mb-1">
+            <button onclick="openApiUrlInBrowser()" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Ouvrir l'URL dans le navigateur">
+              <i class="fas fa-external-link-alt text-lg"></i>
+            </button>
+            <button onclick="scanQrCode()" class="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Scanner un QR code">
+              <i class="fas fa-qrcode text-lg"></i>
+            </button>
+            <button onclick="testConnection()" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Tester la connexion">
+              <i class="fas fa-plug text-lg"></i>
+            </button>
+          </div>
         </div>
         
         <div class="flex justify-center gap-6 mt-6">
@@ -196,6 +234,7 @@
     </div>
   </main>
 
+  <!-- Toast notification -->
   <div id="toast" class="fixed bottom-4 right-4 hidden">
     <div class="flex items-center px-6 py-3 rounded-md shadow-lg">
       <i id="toastIcon" class="mr-2"></i>
@@ -203,8 +242,47 @@
     </div>
   </div>
 
+  <!-- Modal pour accepter le certificat -->
+  <div id="certModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
+      <div class="text-center">
+        <i class="fas fa-shield-alt text-6xl text-yellow-500 mb-4 animate-pulse"></i>
+        <h3 class="text-2xl font-bold mb-4 text-gray-800">Accepter le certificat</h3>
+        <p class="text-gray-600 mb-4">Pour connecter votre mobile au serveur local :</p>
+        <ol class="text-left text-sm text-gray-700 space-y-3 mb-6 bg-gray-50 p-4 rounded-lg">
+          <li class="flex items-start">
+            <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">1</span>
+            <span>Cliquez sur <strong>"Ouvrir"</strong> ci-dessous</span>
+          </li>
+          <li class="flex items-start">
+            <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">2</span>
+            <span>Dans la nouvelle page, cliquez sur <strong class="text-indigo-600">"Avancé"</strong> ou <strong class="text-indigo-600">"Advanced"</strong></span>
+          </li>
+          <li class="flex items-start">
+            <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">3</span>
+            <span>Puis sur <strong class="text-indigo-600">"Continuer vers le site"</strong> ou <strong class="text-indigo-600">"Proceed to..."</strong></span>
+          </li>
+          <li class="flex items-start">
+            <span class="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">✓</span>
+            <span>Fermez l'onglet et utilisez l'application normalement</span>
+          </li>
+        </ol>
+        <div class="flex gap-3">
+          <button onclick="closeModal()" class="flex-1 bg-gray-500 text-white px-4 py-3 rounded-lg hover:bg-gray-600 transition-all duration-300 shadow-md hover:shadow-lg">
+            <i class="fas fa-times mr-2"></i>Annuler
+          </button>
+          <button onclick="confirmOpenUrl()" class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg">
+            <i class="fas fa-external-link-alt mr-2"></i>Ouvrir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const DEFAULT_API = 'https://anapath.onrender.com';
+    let pendingUrl = null;
+    let stream = null; // Pour la caméra QR code
 
     function showToast(message, isError = false) {
       const toast = document.getElementById('toast');
@@ -219,6 +297,174 @@
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 3000);
     }
+
+    // Fonction pour ouvrir l'URL dans le navigateur avec gestion du certificat
+    function openApiUrlInBrowser() {
+      const apiBaseUrlInput = document.getElementById('apiBaseUrl');
+      const apiUrl = apiBaseUrlInput.value.trim();
+      
+      if (!apiUrl) {
+        showToast('Veuillez saisir une URL valide', true);
+        return;
+      }
+      
+      try {
+        const url = new URL(apiUrl);
+        
+        // Si c'est HTTPS avec une IP locale ou :5000, montrer le modal
+        if (url.protocol === 'https:' && 
+            (url.hostname.startsWith('192.168.') || 
+             url.hostname.startsWith('10.') || 
+             url.hostname.startsWith('172.') ||
+             url.hostname === 'localhost' ||
+             url.port === '5000')) {
+          pendingUrl = url.toString();
+          document.getElementById('certModal').classList.remove('hidden');
+        } else {
+          // Sinon ouvrir directement
+          window.open(url.toString(), '_blank', 'noopener,noreferrer');
+          showToast(`Ouverture de ${apiUrl}`);
+        }
+        
+        console.log('URL préparée:', apiUrl);
+        
+      } catch (error) {
+        showToast('URL invalide. Format attendu: https://192.168.1.135:5000', true);
+        console.error('URL invalide:', apiUrl, error);
+      }
+    }
+
+    // Fermer le modal
+    function closeModal() {
+      document.getElementById('certModal').classList.add('hidden');
+      pendingUrl = null;
+    }
+
+    // Confirmer et ouvrir l'URL
+    function confirmOpenUrl() {
+      if (pendingUrl) {
+        window.open(pendingUrl, '_blank', 'noopener,noreferrer');
+        showToast('✅ Suivez les 4 étapes dans le nouvel onglet');
+        
+        // Message de rappel après 3 secondes
+        setTimeout(() => {
+          showToast('💡 Après avoir accepté le certificat, fermez l\'onglet', false);
+        }, 3000);
+        
+        closeModal();
+      }
+    }
+
+    // Scanner un QR code pour remplir l'URL
+    async function scanQrCode() {
+      if (!('BarcodeDetector' in window)) {
+        showToast('Le scan de QR code n\'est pas pris en charge par ce navigateur', true);
+        return;
+      }
+      
+      try {
+        // Demander l'accès à la caméra
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment', // Utiliser la caméra arrière
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        
+        // Créer un modal pour afficher la caméra
+        const cameraModal = document.createElement('div');
+        cameraModal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+        cameraModal.innerHTML = `
+          <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-bold">Scanner un QR code</h3>
+              <button onclick="stopCamera()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-2xl"></i>
+              </button>
+            </div>
+            <div class="relative">
+              <video id="cameraView" class="w-full h-64 object-cover rounded-lg bg-black"></video>
+              <div class="absolute inset-0 border-2 border-green-500 rounded-lg pointer-events-none"></div>
+            </div>
+            <p class="text-center text-sm text-gray-600 mt-4">Pointez la caméra vers un QR code contenant une URL</p>
+          </div>
+        `;
+        
+        document.body.appendChild(cameraModal);
+        
+        // Afficher le flux vidéo
+        const video = document.getElementById('cameraView');
+        video.srcObject = stream;
+        video.play();
+        
+        // Configurer le détecteur de QR code
+        const barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        
+        // Scanner toutes les secondes
+        const scanInterval = setInterval(async () => {
+          try {
+            const barcodes = await barcodeDetector.detect(video);
+            if (barcodes.length > 0) {
+              const qrCodeValue = barcodes[0].rawValue;
+              
+              // Valider que c'est une URL
+              try {
+                const url = new URL(qrCodeValue);
+                document.getElementById('apiBaseUrl').value = qrCodeValue;
+                saveSettings();
+                showToast(`QR code scanné: ${qrCodeValue}`);
+                
+                // Nettoyer
+                clearInterval(scanInterval);
+                stopCamera();
+                cameraModal.remove();
+                
+                // Demander si on veut ouvrir l'URL
+                if (confirm(`URL détectée: ${qrCodeValue}\nVoulez-vous ouvrir cette URL dans un nouvel onglet ?`)) {
+                  pendingUrl = qrCodeValue;
+                  document.getElementById('certModal').classList.remove('hidden');
+                }
+              } catch (e) {
+                showToast('Le QR code ne contient pas une URL valide', true);
+              }
+            }
+          } catch (error) {
+            console.error('Erreur de scan:', error);
+          }
+        }, 1000);
+        
+        // Arrêter après 30 secondes
+        setTimeout(() => {
+          if (stream) {
+            clearInterval(scanInterval);
+            stopCamera();
+            cameraModal.remove();
+            showToast('Temps de scan écoulé', true);
+          }
+        }, 30000);
+        
+      } catch (error) {
+        showToast(`Erreur d'accès à la caméra: ${error.message}`, true);
+        console.error('Erreur caméra:', error);
+      }
+    }
+
+    // Arrêter la caméra
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+    }
+
+    // Fermer le modal en cliquant en dehors
+    document.addEventListener('click', function(event) {
+      const modal = document.getElementById('certModal');
+      if (event.target === modal) {
+        closeModal();
+      }
+    });
 
     function setLocalMode() {
       document.getElementById('apiBaseUrl').value = '/api';
