@@ -2629,7 +2629,7 @@ function resetPatientForm() {
       }
     }
 
-    // ────────────────────────────────────────────
+  // ────────────────────────────────────────────
     // INITIALISATION
     // ────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
@@ -2664,6 +2664,31 @@ function resetPatientForm() {
         }
       });
 
+      // ═══════════════════════════════════════════════════════════════
+      // AJOUT DES EVENT LISTENERS POUR LES CHAMPS DE RECHERCHE
+      // ═══════════════════════════════════════════════════════════════
+      
+      // Recherche patients
+      const searchPatientInput = document.getElementById('searchPatient');
+      if (searchPatientInput) {
+        searchPatientInput.addEventListener('input', searchInPatients);
+        searchPatientInput.addEventListener('keyup', searchInPatients);
+      }
+      
+      // Recherche médecins
+      const searchMedecinInput = document.getElementById('searchMedecin');
+      if (searchMedecinInput) {
+        searchMedecinInput.addEventListener('input', searchInMedecins);
+        searchMedecinInput.addEventListener('keyup', searchInMedecins);
+      }
+      
+      // Recherche utilisateurs
+      const searchUtilisateurInput = document.getElementById('searchUtilisateur');
+      if (searchUtilisateurInput) {
+        searchUtilisateurInput.addEventListener('input', searchInUtilisateurs);
+        searchUtilisateurInput.addEventListener('keyup', searchInUtilisateurs);
+      }
+
       // Date par défaut pour les champs date dans le formulaire de compte rendu
       const today = new Date().toISOString().split('T')[0];
       if (document.getElementById('reportDateCR')) {
@@ -2683,6 +2708,120 @@ function resetPatientForm() {
         }
       });
     });
+      // ────────────────────────────────────────────
+    // FONCTIONS DE RECHERCHE DANS LES LISTES
+    // ────────────────────────────────────────────
+    function searchInPatients() {
+      const searchTerm = document.getElementById('searchPatient').value.toLowerCase();
+      const tbody = document.getElementById('patientsList');
+      
+      const filteredPatients = allPatients.filter(p => {
+        return (p.nom && p.nom.toLowerCase().includes(searchTerm)) ||
+               (p.telephone && p.telephone.includes(searchTerm)) ||
+               (p.adresse && p.adresse.toLowerCase().includes(searchTerm));
+      });
+      
+      if (filteredPatients.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">Aucun patient trouvé</td></tr>';
+      } else {
+        tbody.innerHTML = filteredPatients.map(p => `
+          <tr class="hover:bg-gray-50" data-patient-id="${p.id}">
+            <td class="px-6 py-4 text-sm font-medium">${p.nom || '-'}</td>
+            <td class="px-6 py-4 text-sm">${p.age || '-'}</td>
+            <td class="px-6 py-4 text-sm">${p.sexe === 'M' ? '♂ Masculin' : p.sexe === 'F' ? '♀ Féminin' : '-'}</td>
+            <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
+            <td class="px-6 py-4 text-sm font-medium ${
+              p.solde > 0 ? 'text-green-600 font-semibold' :
+              p.solde < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'
+            }">
+              ${p.solde != null ? p.solde.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DA' : '—'}
+            </td>
+            <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
+            <td class="px-6 py-4 text-sm whitespace-nowrap">
+              <button onclick='editPatient(${JSON.stringify(p)})' 
+                      class="text-indigo-600 hover:text-indigo-900 mr-4" 
+                      title="Modifier">
+                <i class="fas fa-edit fa-lg"></i>
+              </button>
+              <button onclick="deletePatient(${p.id})" 
+                      class="text-red-600 hover:text-red-900" 
+                      title="Supprimer">
+                <i class="fas fa-trash fa-lg"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function searchInMedecins() {
+      const searchTerm = document.getElementById('searchMedecin').value.toLowerCase();
+      const tbody = document.getElementById('medecinsList');
+      
+      const filteredMedecins = allMedecins.filter(m => {
+        return (m.nom && m.nom.toLowerCase().includes(searchTerm)) ||
+               (m.specialite && m.specialite.toLowerCase().includes(searchTerm)) ||
+               (m.service && m.service.toLowerCase().includes(searchTerm)) ||
+               (m.telephone && m.telephone.includes(searchTerm));
+      });
+      
+      if (filteredMedecins.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Aucun médecin trouvé</td></tr>';
+      } else {
+        tbody.innerHTML = filteredMedecins.map(m => `
+          <tr class="hover:bg-gray-50" data-medecin-id="${m.id}">
+            <td class="px-6 py-4 text-sm font-medium">${m.nom}</td>
+            <td class="px-6 py-4 text-sm">${m.specialite || '-'}</td>
+            <td class="px-6 py-4 text-sm">${m.service || '-'}</td>
+            <td class="px-6 py-4 text-sm">${m.telephone || '-'}</td>
+            <td class="px-6 py-4 text-sm">
+              <button onclick='editMedecin(${JSON.stringify(m)})' class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="deleteMedecin(${m.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function searchInUtilisateurs() {
+      const searchTerm = document.getElementById('searchUtilisateur').value.toLowerCase();
+      const tbody = document.getElementById('utilisateursList');
+      
+      const filteredUtilisateurs = allUtilisateurs.filter(u => {
+        return (u.nom && u.nom.toLowerCase().includes(searchTerm)) ||
+               (u.statut && u.statut.toLowerCase().includes(searchTerm));
+      });
+      
+      if (filteredUtilisateurs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Aucun utilisateur trouvé</td></tr>';
+      } else {
+        tbody.innerHTML = filteredUtilisateurs.map(u => `
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm font-medium">${u.numero}</td>
+            <td class="px-6 py-4 text-sm">${u.nom}</td>
+            <td class="px-6 py-4 text-sm">
+              <span class="px-2 py-1 rounded-full text-xs ${u.statut === 'admin' ? 'bg-purple-100 text-purple-800' : u.statut === 'medecin' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                ${u.statut}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm">${new Date().toLocaleDateString('fr-FR')}</td>
+            <td class="px-6 py-4 text-sm">
+              <button onclick='editUtilisateur(${JSON.stringify(u)})' class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="deleteUtilisateur(${u.numero})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
   </script>
 </body>
 </html>
