@@ -1965,19 +1965,22 @@ async function saveQuickMedecin() {
         showToast('Erreur lors du chargement des comptes rendus', 'error');
       }
     }
-    function updatePatientInfo() {
-      const select = document.getElementById('reportPatient');
-      const selectedOption = select.options[select.selectedIndex];
-     
-      if (selectedOption && selectedOption.value) {
-        document.getElementById('reportAge').value = selectedOption.dataset.age || '';
-        document.getElementById('reportSexe').value = selectedOption.dataset.sexe === 'M' ? 'Masculin' :
-                                                     selectedOption.dataset.sexe === 'F' ? 'Féminin' : '';
-      } else {
-        document.getElementById('reportAge').value = '';
-        document.getElementById('reportSexe').value = '';
-      }
-    }
+  function updatePatientInfo() {
+  const select = document.getElementById('reportPatient');
+  const selectedOption = select.options[select.selectedIndex];
+
+  const ageField = document.getElementById('reportAge');
+  const sexeField = document.getElementById('reportSexe');
+
+  if (selectedOption && selectedOption.value) {
+    if (ageField)    ageField.value    = selectedOption.dataset.age || '';
+    if (sexeField)   sexeField.value   = selectedOption.dataset.sexe === 'M' ? 'Masculin' :
+                                         selectedOption.dataset.sexe === 'F' ? 'Féminin' : '';
+  } else {
+    if (ageField)    ageField.value    = '';
+    if (sexeField)   sexeField.value   = '';
+  }
+}
     function openNewReport() {
       const selectedUser = updateSelectedUserDisplay();
      
@@ -2174,23 +2177,30 @@ async function saveQuickMedecin() {
       }
     }
    
-    function resetReportForm() {
-      document.getElementById('reportForm').reset();
-      document.getElementById('reportId').value = '';
-      document.getElementById('reportAge').value = '';
-      document.getElementById('reportSexe').value = '';
-     
-      // Réactiver tous les champs (au cas où ils étaient désactivés en mode vue)
-      const form = document.getElementById('reportForm');
-      const inputs = form.querySelectorAll('input, select, textarea');
-      inputs.forEach(input => input.disabled = false);
-     
-      // Restaurer le bouton d'enregistrement
-      const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
-      submitBtn.onclick = null;
-      submitBtn.type = 'submit';
-    }
+   function resetReportForm() {
+  document.getElementById('reportForm').reset();
+  document.getElementById('reportId').value = '';
+
+  // Vérifier existence avant d'écrire
+  const ageField = document.getElementById('reportAge');
+  if (ageField) ageField.value = '';
+
+  const sexeField = document.getElementById('reportSexe');
+  if (sexeField) sexeField.value = '';
+
+  // Réactiver les champs
+  const form = document.getElementById('reportForm');
+  const inputs = form.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => input.disabled = false);
+
+  // Bouton
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
+    submitBtn.onclick = null;
+    submitBtn.type = 'submit';
+  }
+}
     function closeReportModal() {
       document.getElementById('reportModal').classList.add('hidden');
       resetReportForm();
