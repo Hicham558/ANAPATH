@@ -2287,28 +2287,51 @@ function resetPatientForm() {
       try {
         let results = [];
         let isPatientSearch = false;
+        let isMedecinSearch = false;
        
         if (type === 'numero') {
           results = allReports.filter(r =>
             r.numero_enregistrement.toLowerCase().includes(term.toLowerCase())
           );
         } else if (type === 'patient') {
-          results = allReports.filter(r =>
+          // Rechercher dans les patients ET les comptes rendus
+          const patientResults = allPatients.filter(p =>
+            p.nom && p.nom.toLowerCase().includes(term.toLowerCase())
+          );
+          const reportResults = allReports.filter(r =>
             r.patient_nom && r.patient_nom.toLowerCase().includes(term.toLowerCase())
           );
+          
+          // Combiner les résultats
+          results = [
+            ...patientResults.map(p => ({ ...p, type: 'patient' })),
+            ...reportResults.map(r => ({ ...r, type: 'report' }))
+          ];
+          
         } else if (type === 'medecin') {
-          results = allReports.filter(r =>
+          // Rechercher dans les médecins ET les comptes rendus
+          const medecinResults = allMedecins.filter(m =>
+            m.nom && m.nom.toLowerCase().includes(term.toLowerCase())
+          );
+          const reportResults = allReports.filter(r =>
             r.medecin_nom && r.medecin_nom.toLowerCase().includes(term.toLowerCase())
           );
+          
+          // Combiner les résultats
+          results = [
+            ...medecinResults.map(m => ({ ...m, type: 'medecin' })),
+            ...reportResults.map(r => ({ ...r, type: 'report' }))
+          ];
+          
         } else if (type === 'utilisateur') {
           results = allReports.filter(r =>
             r.utilisateur_nom && r.utilisateur_nom.toLowerCase().includes(term.toLowerCase())
           );
         } else if (type === 'telephone') {
+          // Rechercher dans les patients
           results = allPatients.filter(p =>
             p.telephone && p.telephone.includes(term)
-          );
-          isPatientSearch = true;
+          ).map(p => ({ ...p, type: 'patient' }));
         }
        
         const container = document.getElementById('searchResults');
@@ -2324,44 +2347,75 @@ function resetPatientForm() {
                 </button>
               </div>
               <div id="searchResultsList" class="space-y-3 max-h-60 overflow-y-auto">
-                ${results.map(r => `
-                  <div class="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all search-result-item">
-                    <div class="flex justify-between items-start">
-                      <div class="flex-1">
-                        <div class="flex items-start gap-3">
-                          <div class="mt-1">
-                            <i class="fas ${isPatientSearch ? 'fa-user-injured text-blue-500' : 'fa-file-medical text-green-500'}"></i>
-                          </div>
-                          <div class="flex-1">
-                            <p class="font-medium text-gray-900">${r.numero_enregistrement || r.nom}</p>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                              ${r.patient_nom ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Patient: ${r.patient_nom}</span>` : ''}
-                              ${r.medecin_nom ? `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Médecin: ${r.medecin_nom}</span>` : ''}
-                              ${r.date_prelevement ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">${r.date_prelevement}</span>` : ''}
-                              ${r.statut ? `<span class="status-badge status-${r.statut}">${r.statut}</span>` : ''}
+                ${results.map(item => {
+                  // Déterminer l'icône et le type d'élément
+                  let icon = 'fa-file-medical';
+                  let textColor = 'text-gray-900';
+                  let itemId = item.id;
+                  let itemType = item.type || 'report';
+                  let itemName = item.nom || item.numero_enregistrement || item.patient_nom || item.medecin_nom || 'Sans nom';
+                  let badges = '';
+                  
+                  if (itemType === 'patient') {
+                    icon = 'fa-user-injured';
+                    textColor = 'text-blue-600';
+                    badges = `
+                      <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Patient</span>
+                      ${item.age ? `<span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">Âge: ${item.age}</span>` : ''}
+                      ${item.sexe ? `<span class="text-xs bg-pink-100 text-pink-800 px-2 py-1 rounded">${item.sexe === 'M' ? '♂' : '♀'}</span>` : ''}
+                    `;
+                  } else if (itemType === 'medecin') {
+                    icon = 'fa-user-md';
+                    textColor = 'text-green-600';
+                    badges = `
+                      <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Médecin</span>
+                      ${item.specialite ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">${item.specialite}</span>` : ''}
+                    `;
+                  } else if (itemType === 'report') {
+                    icon = 'fa-file-medical';
+                    textColor = 'text-gray-900';
+                    badges = `
+                      <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Patient: ${item.patient_nom || '-'}</span>
+                      ${item.medecin_nom ? `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Médecin: ${item.medecin_nom}</span>` : ''}
+                      ${item.date_prelevement ? `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">${item.date_prelevement}</span>` : ''}
+                      ${item.statut ? `<span class="status-badge status-${item.statut}">${item.statut}</span>` : ''}
+                    `;
+                  }
+                  
+                  return `
+                    <div class="bg-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all search-result-item">
+                      <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                          <div class="flex items-start gap-3">
+                            <div class="mt-1">
+                              <i class="fas ${icon} ${textColor}"></i>
+                            </div>
+                            <div class="flex-1">
+                              <p class="font-medium ${textColor}">${itemName}</p>
+                              <div class="flex flex-wrap gap-2 mt-1">
+                                ${badges}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      <div class="flex gap-2 ml-4">
-                        ${r.id ? `
-                          <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'view')"
+                        <div class="flex gap-2 ml-4">
+                          <button onclick="handleSearchResult(${itemId}, '${itemType}', 'view')"
                             class="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
                             title="Voir le détail">
                             <i class="fas fa-eye"></i>
                             <span class="text-xs">Voir</span>
                           </button>
-                          <button onclick="handleSearchResult(${r.id}, '${isPatientSearch ? 'patient' : 'report'}', 'edit')"
+                          <button onclick="handleSearchResult(${itemId}, '${itemType}', 'edit')"
                             class="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
                             title="Éditer">
                             <i class="fas fa-edit"></i>
                             <span class="text-xs">Éditer</span>
                           </button>
-                        ` : ''}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
             </div>
           `;
@@ -2371,8 +2425,14 @@ function resetPatientForm() {
         showToast('Erreur lors de la recherche', 'error');
       }
     }
-    // Fonction pour gérer les résultats de recherche
+
+    // Fonction pour gérer les résultats de recherche - CORRIGÉE
     function handleSearchResult(resultId, resultType, action) {
+      console.log('handleSearchResult:', { resultId, resultType, action });
+      
+      // Fermer le panneau de recherche
+      document.getElementById('searchSection').classList.add('hidden');
+      
       if (resultType === 'report') {
         const report = allReports.find(r => r.id == resultId);
         if (report) {
@@ -2381,28 +2441,194 @@ function resetPatientForm() {
           } else if (action === 'edit') {
             editReport(report);
           }
-          document.getElementById('searchSection').classList.add('hidden');
+        } else {
+          showToast('Compte rendu non trouvé', 'error');
         }
-      } else if (resultType === 'patient') {
+      } 
+      else if (resultType === 'patient') {
         const patient = allPatients.find(p => p.id == resultId);
         if (patient) {
           if (action === 'view') {
-            showToast(`Patient: ${patient.nom}`, 'success');
+            // Ouvrir la section patients et afficher le patient
+            if (document.getElementById('patientsContent').classList.contains('hidden')) {
+              toggleSection('patientsSection');
+            }
+            setTimeout(() => {
+              showToast(`Patient: ${patient.nom}`, 'success');
+              // Faire défiler jusqu'au patient dans la liste
+              const patientRow = document.querySelector(`[data-patient-id="${patient.id}"]`);
+              if (patientRow) {
+                patientRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                patientRow.classList.add('bg-yellow-100');
+                setTimeout(() => patientRow.classList.remove('bg-yellow-100'), 3000);
+              }
+            }, 300);
           } else if (action === 'edit') {
+            // Ouvrir la section patients et éditer
             if (document.getElementById('patientsContent').classList.contains('hidden')) {
               toggleSection('patientsSection');
             }
             setTimeout(() => editPatient(patient), 300);
           }
+        } else {
+          showToast('Patient non trouvé', 'error');
+        }
+      } 
+      else if (resultType === 'medecin') {
+        const medecin = allMedecins.find(m => m.id == resultId);
+        if (medecin) {
+          if (action === 'view') {
+            // Ouvrir la section médecins et afficher
+            if (document.getElementById('medecinsContent').classList.contains('hidden')) {
+              toggleSection('medecinsSection');
+            }
+            setTimeout(() => {
+              showToast(`Médecin: ${medecin.nom}`, 'success');
+              // Faire défiler jusqu'au médecin dans la liste
+              const medecinRow = document.querySelector(`[data-medecin-id="${medecin.id}"]`);
+              if (medecinRow) {
+                medecinRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                medecinRow.classList.add('bg-yellow-100');
+                setTimeout(() => medecinRow.classList.remove('bg-yellow-100'), 3000);
+              }
+            }, 300);
+          } else if (action === 'edit') {
+            // Ouvrir la section médecins et éditer
+            if (document.getElementById('medecinsContent').classList.contains('hidden')) {
+              toggleSection('medecinsSection');
+            }
+            setTimeout(() => editMedecin(medecin), 300);
+          }
+        } else {
+          showToast('Médecin non trouvé', 'error');
         }
       }
     }
+
     // Fonction pour effacer la recherche
     function clearSearch() {
       document.getElementById('searchTerm').value = '';
       document.getElementById('searchResults').innerHTML = '';
       showToast('Recherche effacée', 'success');
     }
+
+    // ────────────────────────────────────────────
+    // GESTION DES PATIENTS (améliorer l'affichage)
+    // ────────────────────────────────────────────
+    async function loadPatients() {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+       
+        const res = await fetch(`${API_BASE_URL}/patients`, {
+          headers: { 'X-User-ID': userId }
+        });
+       
+        if (!res.ok) throw new Error('Erreur lors du chargement des patients');
+       
+        const patients = await res.json();
+        allPatients = patients;
+       
+        const tbody = document.getElementById('patientsList');
+        const select = document.getElementById('reportPatient');
+       
+        if (patients.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">Aucun patient trouvé</td></tr>';
+          select.innerHTML = '<option value="">Sélectionner...</option>';
+        } else {
+          tbody.innerHTML = patients.map(p => `
+            <tr class="hover:bg-gray-50" data-patient-id="${p.id}">
+              <td class="px-6 py-4 text-sm font-medium">${p.nom || '-'}</td>
+              <td class="px-6 py-4 text-sm">${p.age || '-'}</td>
+              <td class="px-6 py-4 text-sm">${p.sexe === 'M' ? '♂ Masculin' : p.sexe === 'F' ? '♀ Féminin' : '-'}</td>
+              <td class="px-6 py-4 text-sm">${p.telephone || '-'}</td>
+              <td class="px-6 py-4 text-sm font-medium ${
+                p.solde > 0 ? 'text-green-600 font-semibold' :
+                p.solde < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'
+              }">
+                ${p.solde != null ? p.solde.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DA' : '—'}
+              </td>
+              <td class="px-6 py-4 text-sm">${p.adresse || '-'}</td>
+              <td class="px-6 py-4 text-sm whitespace-nowrap">
+                <button onclick='editPatient(${JSON.stringify(p)})' 
+                        class="text-indigo-600 hover:text-indigo-900 mr-4" 
+                        title="Modifier">
+                  <i class="fas fa-edit fa-lg"></i>
+                </button>
+                <button onclick="deletePatient(${p.id})" 
+                        class="text-red-600 hover:text-red-900" 
+                        title="Supprimer">
+                  <i class="fas fa-trash fa-lg"></i>
+                </button>
+              </td>
+            </tr>
+          `).join('');
+         
+          // Mettre à jour le select dans le modal des comptes rendus
+          select.innerHTML = '<option value="">Sélectionner...</option>' +
+            patients.map(p => `<option value="${p.id}" data-age="${p.age || ''}" data-sexe="${p.sexe || ''}">${p.nom}</option>`).join('');
+        }
+       
+        updateKPIs();
+      } catch (err) {
+        console.error(err);
+        showToast('Erreur lors du chargement des patients', 'error');
+      }
+    }
+
+    // ────────────────────────────────────────────
+    // GESTION DES MÉDECINS (améliorer l'affichage)
+    // ────────────────────────────────────────────
+    async function loadMedecins() {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+       
+        const res = await fetch(`${API_BASE_URL}/medecins`, {
+          headers: { 'X-User-ID': userId }
+        });
+       
+        if (!res.ok) throw new Error('Erreur lors du chargement des médecins');
+       
+        const medecins = await res.json();
+        allMedecins = medecins;
+       
+        const tbody = document.getElementById('medecinsList');
+        const select = document.getElementById('reportMedecin');
+       
+        if (medecins.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Aucun médecin trouvé</td></tr>';
+          select.innerHTML = '<option value="">Sélectionner...</option>';
+        } else {
+          tbody.innerHTML = medecins.map(m => `
+            <tr class="hover:bg-gray-50" data-medecin-id="${m.id}">
+              <td class="px-6 py-4 text-sm font-medium">${m.nom}</td>
+              <td class="px-6 py-4 text-sm">${m.specialite || '-'}</td>
+              <td class="px-6 py-4 text-sm">${m.service || '-'}</td>
+              <td class="px-6 py-4 text-sm">${m.telephone || '-'}</td>
+              <td class="px-6 py-4 text-sm">
+                <button onclick='editMedecin(${JSON.stringify(m)})' class="text-blue-600 hover:text-blue-800 mr-3" title="Modifier">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="deleteMedecin(${m.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `).join('');
+         
+          // Mettre à jour le select dans le modal des comptes rendus
+          select.innerHTML = '<option value="">Sélectionner...</option>' +
+            medecins.map(m => `<option value="${m.id}">${m.nom}${m.specialite ? ` - ${m.specialite}` : ''}</option>`).join('');
+        }
+       
+        updateKPIs();
+      } catch (err) {
+        console.error(err);
+        showToast('Erreur lors du chargement des médecins', 'error');
+      }
+    }
+
     // ────────────────────────────────────────────
     // INITIALISATION
     // ────────────────────────────────────────────
@@ -2424,7 +2650,7 @@ function resetPatientForm() {
         document.getElementById('loginModal').classList.remove('hidden');
       }
      
-           // Gestion du bouton de connexion/déconnexion
+      // Gestion du bouton de connexion/déconnexion
       document.getElementById('loginButton').addEventListener('click', () => {
         if (localStorage.getItem('userId')) {
           if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
