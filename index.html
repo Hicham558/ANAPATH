@@ -675,41 +675,25 @@
           </div>
         </div>
         <!-- Médecin et Patient -->
-  <!-- Médecin -->
-<div class="relative">
-  <label class="block text-sm font-medium mb-1">Médecin Demandeur*</label>
-  <div class="flex gap-2">
-    <select id="reportMedecin" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-      <option value="">Sélectionner...</option>
-    </select>
-    <button 
-      type="button"
-      onclick="openQuickMedecinForm()"
-      class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md transition flex items-center gap-1 text-sm whitespace-nowrap"
-      title="Ajouter un nouveau médecin"
-    >
-      <i class="fas fa-user-md"></i> + Médecin
-    </button>
-  </div>
-</div>
-
-<!-- Patient -->
-<div class="relative">
-  <label class="block text-sm font-medium mb-1">Patient*</label>
-  <div class="flex gap-2">
-    <select id="reportPatient" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePatientInfo()">
-      <option value="">Sélectionner...</option>
-    </select>
-    <button 
-      type="button"
-      onclick="openQuickPatientForm()"
-      class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md transition flex items-center gap-1 text-sm whitespace-nowrap"
-      title="Ajouter un nouveau patient"
-    >
-      <i class="fas fa-user-injured"></i> + Patient
-    </button>
-  </div>
-</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Médecin Demandeur*</label>
+            <select id="reportMedecin" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Service Hospitalier</label>
+            <input type="text" id="reportService" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Patient*</label>
+            <select id="reportPatient" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePatientInfo()">
+              <option value="">Sélectionner...</option>
+            </select>
+          </div>
           <div>
             <label class="block text-sm font-medium mb-1">Âge</label>
             <input type="number" id="reportAge" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
@@ -1229,26 +1213,6 @@
     function toggleMedecinForm() {
       document.getElementById('medecinForm').classList.toggle('open');
     }
-   function openQuickPatientForm() {
-  // On garde le modal compte-rendu ouvert (on ne le ferme pas)
-  togglePatientForm();           // ouvre le drawer patient
-  resetPatientForm();            // vide le formulaire
-  
-  // Optionnel : scroll vers le formulaire patient
-  document.getElementById('patientForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  
-  // On mémorise qu'on vient du modal CR pour rafraîchir après
-  window.returnAfterQuickAdd = 'patient';
-}
-
-function openQuickMedecinForm() {
-  toggleMedecinForm();
-  resetMedecinForm();
-  
-  document.getElementById('medecinForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  
-  window.returnAfterQuickAdd = 'medecin';
-}
     function toggleUtilisateurForm() {
       document.getElementById('utilisateurForm').classList.toggle('open');
     }
