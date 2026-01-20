@@ -194,15 +194,6 @@
     .status-en_cours { background-color: #fef3c7; color: #92400e; }
     .status-terminé  { background-color: #d1fae5; color: #065f46; }
     .status-validé   { background-color: #dbeafe; color: #1e40af; }
- /* Styles pour les boutons d'ajout rapide */
-.quick-add-btn {
-  min-width: 40px;
-  transition: all 0.2s ease;
-}
-
-.quick-add-btn:hover {
-  transform: scale(1.05);
-}
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -684,117 +675,117 @@
           </div>
         </div>
         <!-- Médecin et Patient -->
-       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-  <div>
-    <label class="block text-sm font-medium mb-1">Patient*</label>
-    <div class="flex gap-2">
-      <select id="reportPatient" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePatientInfo()">
-        <option value="">Sélectionner...</option>
-      </select>
-      <button type="button" onclick="openQuickAddPatient()" 
-              class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition flex items-center gap-1 whitespace-nowrap" 
-              title="Ajouter un nouveau patient">
-        <i class="fas fa-plus-circle"></i>
-      </button>
-    </div>
-  </div>
-  <div>
-    <label class="block text-sm font-medium mb-1">Âge</label>
-    <input type="number" id="reportAge" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
-  </div>
-  <div>
-    <label class="block text-sm font-medium mb-1">Sexe</label>
-    <input type="text" id="reportSexe" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
-  </div>
-</div>
-<div id="quickPatientModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110] hidden modal-overlay">
-  <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-    <div class="flex justify-between items-center mb-6 pb-4 border-b">
-      <h2 class="text-xl font-semibold text-blue-700">Ajouter un Patient</h2>
-      <button onclick="closeQuickPatientModal()" class="text-gray-600 hover:text-gray-800 transition">
-        <i class="fas fa-times text-2xl"></i>
-      </button>
-    </div>
-    
-    <form id="quickPatientForm" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Nom & Prénom*</label>
-        <input type="text" id="quickPatientNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-      </div>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-1">Âge</label>
-          <input type="number" id="quickPatientAge" class="w-full px-3 py-2 border rounded-md">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Sexe</label>
-          <select id="quickPatientSexe" class="w-full px-3 py-2 border rounded-md">
-            <option value="">Sélectionner</option>
-            <option value="M">Masculin</option>
-            <option value="F">Féminin</option>
-          </select>
-        </div>
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Téléphone</label>
-        <input type="tel" id="quickPatientTel" class="w-full px-3 py-2 border rounded-md">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Solde (DA)</label>
-        <input type="number" id="quickPatientSolde" step="0.01" class="w-full px-3 py-2 border rounded-md" placeholder="0.00">
-      </div>
-      
-      <div class="flex justify-end space-x-3 pt-4 border-t">
-        <button type="button" onclick="closeQuickPatientModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
-          Annuler
-        </button>
-        <button type="button" onclick="saveQuickPatient()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center gap-2">
-          <i class="fas fa-save"></i> Ajouter
-        </button>
-      </div>
-    </form>
+  <!-- Médecin -->
+<div class="relative">
+  <label class="block text-sm font-medium mb-1">Médecin Demandeur*</label>
+  <div class="flex gap-2">
+    <select id="reportMedecin" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+      <option value="">Sélectionner...</option>
+    </select>
+    <button 
+      type="button"
+      onclick="openQuickMedecinForm()"
+      class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md transition flex items-center gap-1 text-sm whitespace-nowrap"
+      title="Ajouter un nouveau médecin"
+    >
+      <i class="fas fa-user-md"></i> + Médecin
+    </button>
   </div>
 </div>
 
-<!-- Modal Ajout Rapide Médecin -->
-<div id="quickMedecinModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110] hidden modal-overlay">
-  <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-    <div class="flex justify-between items-center mb-6 pb-4 border-b">
-      <h2 class="text-xl font-semibold text-green-700">Ajouter un Médecin</h2>
-      <button onclick="closeQuickMedecinModal()" class="text-gray-600 hover:text-gray-800 transition">
-        <i class="fas fa-times text-2xl"></i>
-      </button>
-    </div>
-    
-    <form id="quickMedecinForm" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Nom & Prénom*</label>
-        <input type="text" id="quickMedecinNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Spécialité</label>
-        <input type="text" id="quickMedecinSpecialite" class="w-full px-3 py-2 border rounded-md">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Service/Hôpital</label>
-        <input type="text" id="quickMedecinService" class="w-full px-3 py-2 border rounded-md">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Téléphone</label>
-        <input type="tel" id="quickMedecinTel" class="w-full px-3 py-2 border rounded-md">
-      </div>
-      
-      <div class="flex justify-end space-x-3 pt-4 border-t">
-        <button type="button" onclick="closeQuickMedecinModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
-          Annuler
-        </button>
-        <button type="button" onclick="saveQuickMedecin()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center gap-2">
-          <i class="fas fa-save"></i> Ajouter
-        </button>
-      </div>
-    </form>
+<!-- Patient -->
+<div class="relative">
+  <label class="block text-sm font-medium mb-1">Patient*</label>
+  <div class="flex gap-2">
+    <select id="reportPatient" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePatientInfo()">
+      <option value="">Sélectionner...</option>
+    </select>
+    <button 
+      type="button"
+      onclick="openQuickPatientForm()"
+      class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md transition flex items-center gap-1 text-sm whitespace-nowrap"
+      title="Ajouter un nouveau patient"
+    >
+      <i class="fas fa-user-injured"></i> + Patient
+    </button>
   </div>
 </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Âge</label>
+            <input type="number" id="reportAge" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Sexe</label>
+            <input type="text" id="reportSexe" class="w-full px-3 py-2 border rounded-md bg-gray-50" readonly>
+          </div>
+        </div>
+        <!-- Prélèvement -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-1">Nature/Siège du Prélèvement*</label>
+            <div class="flex gap-2">
+              <input type="text" id="reportNature" class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Ex: Nodule thyroïdien, Biopsie hépatique..." required>
+              <!-- BOUTON TEMPLATE -->
+              <button type="button" onclick="openTemplateSelector()" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition flex items-center gap-1 whitespace-nowrap" title="Charger depuis un template">
+                <i class="fas fa-clone"></i> Template
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Date Prélèvement*</label>
+            <input type="date" id="reportDatePrelevement" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+          </div>
+        </div>
+        <!-- Renseignements Cliniques -->
+        <div>
+          <label class="block text-sm font-medium mb-1 flex items-center">
+            <i class="fas fa-clipboard-list mr-2 text-indigo-500"></i>Renseignements Cliniques Fournis
+          </label>
+          <textarea id="reportRenseignements" rows="3" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Antécédents, symptômes, traitement en cours..."></textarea>
+        </div>
+        <!-- MACROSCOPIE -->
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
+            <i class="fas fa-eye mr-2"></i>MACROSCOPIE
+          </h3>
+          <textarea id="reportMacro" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Description macroscopique : aspect, couleur, dimensions, poids..."></textarea>
+        </div>
+        <!-- MICROSCOPIE -->
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
+            <i class="fas fa-microscope mr-2"></i>MICROSCOPIE
+          </h3>
+          <textarea id="reportMicro" rows="6" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Étude cytologique, architecture, cellules, mitoses, nécrose, emboles..."></textarea>
+        </div>
+        <!-- CONCLUSION -->
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold mb-3 text-indigo-600 flex items-center">
+            <i class="fas fa-diagnoses mr-2"></i>CONCLUSION
+          </h3>
+          <textarea id="reportConclusion" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Diagnostic, classification, grade, recommandations..."></textarea>
+        </div>
+        <!-- Statut -->
+        <div>
+          <label class="block text-sm font-medium mb-1">Statut*</label>
+          <select id="reportStatut" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+            <option value="en_cours">En cours</option>
+            <option value="terminé">Terminé</option>
+            <option value="validé">Validé</option>
+            <option value="signé">Signé</option>
+          </select>
+        </div>
+        <!-- Boutons -->
+        <div class="flex justify-end space-x-3 pt-6 border-t">
+          <button type="button" onclick="closeReportModal()" class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600 transition">
+            Annuler
+          </button>
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition flex items-center gap-2">
+            <i class="fas fa-save"></i> Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   <!-- Modal Sélection Template -->
   <div id="templateSelectorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden modal-overlay">
     <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto modal-content">
@@ -1238,6 +1229,26 @@
     function toggleMedecinForm() {
       document.getElementById('medecinForm').classList.toggle('open');
     }
+   function openQuickPatientForm() {
+  // On garde le modal compte-rendu ouvert (on ne le ferme pas)
+  togglePatientForm();           // ouvre le drawer patient
+  resetPatientForm();            // vide le formulaire
+  
+  // Optionnel : scroll vers le formulaire patient
+  document.getElementById('patientForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  
+  // On mémorise qu'on vient du modal CR pour rafraîchir après
+  window.returnAfterQuickAdd = 'patient';
+}
+
+function openQuickMedecinForm() {
+  toggleMedecinForm();
+  resetMedecinForm();
+  
+  document.getElementById('medecinForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  
+  window.returnAfterQuickAdd = 'medecin';
+}
     function toggleUtilisateurForm() {
       document.getElementById('utilisateurForm').classList.toggle('open');
     }
@@ -2001,151 +2012,6 @@ function resetPatientForm() {
       document.getElementById('reportModal').classList.add('hidden');
       resetReportForm();
     }
-    // ────────────────────────────────────────────
-// FONCTIONS POUR L'AJOUT RAPIDE DE PATIENT/MÉDECIN
-// ────────────────────────────────────────────
-
-function openQuickAddPatient() {
-  document.getElementById('quickPatientModal').classList.remove('hidden');
-  resetQuickPatientForm();
-}
-
-function closeQuickPatientModal() {
-  document.getElementById('quickPatientModal').classList.add('hidden');
-}
-
-function openQuickAddMedecin() {
-  document.getElementById('quickMedecinModal').classList.remove('hidden');
-  resetQuickMedecinForm();
-}
-
-function closeQuickMedecinModal() {
-  document.getElementById('quickMedecinModal').classList.add('hidden');
-}
-
-function resetQuickPatientForm() {
-  document.getElementById('quickPatientForm').reset();
-}
-
-function resetQuickMedecinForm() {
-  document.getElementById('quickMedecinForm').reset();
-}
-
-async function saveQuickPatient() {
-  const nom = document.getElementById('quickPatientNom').value.trim();
-  const age = document.getElementById('quickPatientAge').value;
-  const sexe = document.getElementById('quickPatientSexe').value;
-  const telephone = document.getElementById('quickPatientTel').value.trim();
-  const solde = document.getElementById('quickPatientSolde').value;
-  
-  if (!nom) {
-    return showToast('Nom du patient requis', 'error');
-  }
-  
-  try {
-    const userId = localStorage.getItem('userId');
-    const data = {
-      nom,
-      age: age || null,
-      sexe: sexe || null,
-      telephone,
-      solde: solde !== '' ? parseFloat(solde) : null
-    };
-    
-    const res = await fetch(`${API_BASE_URL}/patients`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'X-User-ID': userId 
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (res.ok) {
-      const newPatient = await res.json();
-      showToast('Patient ajouté avec succès');
-      
-      // Fermer le modal
-      closeQuickPatientModal();
-      
-      // Recharger la liste des patients
-      await loadPatients();
-      
-      // Sélectionner automatiquement le nouveau patient dans le formulaire de CR
-      const patientSelect = document.getElementById('reportPatient');
-      const option = document.createElement('option');
-      option.value = newPatient.id;
-      option.textContent = newPatient.nom;
-      option.dataset.age = newPatient.age || '';
-      option.dataset.sexe = newPatient.sexe || '';
-      
-      // Ajouter et sélectionner l'option
-      patientSelect.appendChild(option);
-      patientSelect.value = newPatient.id;
-      
-      // Mettre à jour les infos patient
-      updatePatientInfo();
-      
-    } else {
-      const err = await res.json();
-      throw new Error(err.erreur || 'Erreur lors de l\'ajout');
-    }
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function saveQuickMedecin() {
-  const nom = document.getElementById('quickMedecinNom').value.trim();
-  const specialite = document.getElementById('quickMedecinSpecialite').value.trim();
-  const service = document.getElementById('quickMedecinService').value.trim();
-  const telephone = document.getElementById('quickMedecinTel').value.trim();
-  
-  if (!nom) {
-    return showToast('Nom du médecin requis', 'error');
-  }
-  
-  try {
-    const userId = localStorage.getItem('userId');
-    const data = { nom, specialite, service, telephone };
-    
-    const res = await fetch(`${API_BASE_URL}/medecins`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'X-User-ID': userId 
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (res.ok) {
-      const newMedecin = await res.json();
-      showToast('Médecin ajouté avec succès');
-      
-      // Fermer le modal
-      closeQuickMedecinModal();
-      
-      // Recharger la liste des médecins
-      await loadMedecins();
-      
-      // Sélectionner automatiquement le nouveau médecin dans le formulaire de CR
-      const medecinSelect = document.getElementById('reportMedecin');
-      const option = document.createElement('option');
-      option.value = newMedecin.id;
-      option.textContent = `${newMedecin.nom}${newMedecin.specialite ? ` - ${newMedecin.specialite}` : ''}`;
-      
-      // Ajouter et sélectionner l'option
-      medecinSelect.appendChild(option);
-      medecinSelect.value = newMedecin.id;
-      
-    } else {
-      const err = await res.json();
-      throw new Error(err.erreur || 'Erreur lors de l\'ajout');
-    }
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
      async function printReport(id) {
       try {
         showToast('Génération du PDF en cours...', 'success');
