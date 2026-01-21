@@ -338,41 +338,6 @@
           </div>
         </div>
       </div>
- <!-- Section Comptes Rendus -->
-      <div class="bg-white rounded-lg shadow-md mt-8 animate-fade-in">
-        <div class="p-6 border-b">
-          <h2 class="text-xl font-semibold flex items-center justify-between">
-            <span>
-              <i class="fas fa-file-medical-alt mr-2 text-indigo-500"></i> Comptes Rendus Récents
-            </span>
-            <button onclick="loadReports()" class="text-sm bg-indigo-100 text-indigo-800 px-3 py-1 rounded hover:bg-indigo-200 transition">
-              <i class="fas fa-sync-alt"></i> Actualiser
-            </button>
-          </h2>
-        </div>
-        <div class="p-0">
-          <div class="table-responsive-wrapper force-wide-on-mobile">
-            <table class="w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Enregistrement</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Médecin</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prélèvement</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="reportsList" class="bg-white divide-y divide-gray-200">
-                <tr><td colspan="7" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
       <!-- Panneau de Recherche -->
       <div id="searchSection" class="bg-white rounded-lg shadow-md mb-8 animate-fade-in hidden">
@@ -407,6 +372,41 @@
         </div>
       </div>
 
+ <!-- Section Comptes Rendus -->
+      <div class="bg-white rounded-lg shadow-md mt-8 animate-fade-in">
+        <div class="p-6 border-b">
+          <h2 class="text-xl font-semibold flex items-center justify-between">
+            <span>
+              <i class="fas fa-file-medical-alt mr-2 text-indigo-500"></i> Comptes Rendus Récents
+            </span>
+            <button onclick="loadReports()" class="text-sm bg-indigo-100 text-indigo-800 px-3 py-1 rounded hover:bg-indigo-200 transition">
+              <i class="fas fa-sync-alt"></i> Actualiser
+            </button>
+          </h2>
+        </div>
+        <div class="p-0">
+          <div class="table-responsive-wrapper force-wide-on-mobile">
+            <table class="w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Enregistrement</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Médecin</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prélèvement</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reportsList" class="bg-white divide-y divide-gray-200">
+                <tr><td colspan="7" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    
+  
       <!-- Section avec onglets -->
       <div class="tabs-container">
         <div class="tabs-header">
@@ -617,7 +617,7 @@
         </div>
       </div>
 
-     
+</div>     
   <!-- Footer -->
   <footer class="bg-gray-700 text-white text-center py-4">
     <p>ANAPATH ELYOUSR - Laboratoire d'Anatomie & Cytologie Pathologiques</p>
