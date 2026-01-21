@@ -3179,6 +3179,25 @@ async function deleteUtilisateur(numero) {
     showToast(err.message, 'error');
   }
 }
+ document.getElementById('fabToggle').addEventListener('click', () => {
+  const reportsSection = document.querySelector('.bg-white.rounded-lg.shadow-md.mt-8'); // la section CR
+  const tabsContainer  = document.querySelector('.tabs-container');
+
+  const reportsVisible = reportsSection.getBoundingClientRect().top < 150;
+
+  if (reportsVisible) {
+    // On est en bas → remonter vers les onglets
+    tabsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    // On est en haut → descendre vers les CR
+    reportsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
   </script>
+<button id="fabToggle" 
+        class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 flex items-center justify-center text-2xl transition transform hover:scale-110 active:scale-95"
+        title="Alterner Comptes Rendus ↔ Onglets">
+  <i class="fas fa-exchange-alt"></i>
+</button>
 </body>
 </html>
