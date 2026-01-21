@@ -1999,20 +1999,20 @@ async function saveQuickMedecin() {
         showToast('Erreur lors du chargement des comptes rendus', 'error');
       }
     }
-  function updatePatientInfo() {
+ function updatePatientInfo() {
   const select = document.getElementById('reportPatient');
   const selectedOption = select.options[select.selectedIndex];
 
-  const ageField = document.getElementById('reportAge');
+  const ageField  = document.getElementById('reportAge');
   const sexeField = document.getElementById('reportSexe');
 
   if (selectedOption && selectedOption.value) {
-    if (ageField)    ageField.value    = selectedOption.dataset.age || '';
-    if (sexeField)   sexeField.value   = selectedOption.dataset.sexe === 'M' ? 'Masculin' :
-                                         selectedOption.dataset.sexe === 'F' ? 'Féminin' : '';
+    if (ageField)  ageField.value  = selectedOption.dataset.age || '';
+    if (sexeField) sexeField.value = selectedOption.dataset.sexe === 'M' ? 'Masculin' :
+                                     selectedOption.dataset.sexe === 'F' ? 'Féminin' : '';
   } else {
-    if (ageField)    ageField.value    = '';
-    if (sexeField)   sexeField.value   = '';
+    if (ageField)  ageField.value  = '';
+    if (sexeField) sexeField.value = '';
   }
 }
     function openNewReport() {
@@ -2081,15 +2081,18 @@ async function saveQuickMedecin() {
       document.getElementById('reportStatut').value = report.statut;
      
       // Mettre à jour l'âge et le sexe
-      const patient = allPatients.find(p => p.id == report.patient_id);
-      if (patient) {
-        document.getElementById('reportAge').value = patient.age || '';
-        document.getElementById('reportSexe').value = patient.sexe === 'M' ? 'Masculin' :
-                                                     patient.sexe === 'F' ? 'Féminin' : '';
-      } else {
-        document.getElementById('reportAge').value = '';
-        document.getElementById('reportSexe').value = '';
-      }
+     const patient = allPatients.find(p => p.id == report.patient_id);
+const ageField   = document.getElementById('reportAge');
+const sexeField  = document.getElementById('reportSexe');
+
+if (patient) {
+  if (ageField)  ageField.value  = patient.age || '';
+  if (sexeField) sexeField.value = patient.sexe === 'M' ? 'Masculin' :
+                                  patient.sexe === 'F' ? 'Féminin' : '';
+} else {
+  if (ageField)  ageField.value  = '';
+  if (sexeField) sexeField.value = '';
+}
      
       document.getElementById('reportModal').classList.remove('hidden');
       document.getElementById('currentReportUser').textContent = selectedUser.nom || report.utilisateur_nom || 'Non spécifié';
