@@ -675,12 +675,11 @@
           </div>
         </div>
         <!-- Médecin et Patient -->
-        <!-- Médecin et Patient – structure propre et équilibrée -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-indigo-50 p-5 rounded-lg">
-  <!-- Médecin -->
+  <!-- Colonne Médecin -->
   <div>
     <label class="block text-sm font-medium mb-2 text-indigo-700">Médecin Demandeur *</label>
-    <div class="flex gap-2">
+    <div class="flex gap-2 items-start">
       <select 
         id="reportMedecin" 
         class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
@@ -691,7 +690,7 @@
       <button
         type="button"
         onclick="openQuickMedecinModal()"
-        class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm"
+        class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm h-[42px]"
         title="Ajouter un nouveau médecin"
       >
         <i class="fas fa-user-md"></i> + Médecin
@@ -699,35 +698,32 @@
     </div>
   </div>
 
-  <!-- Patient + âge + sexe (grille à 3 colonnes sur desktop) -->
-  <div class="md:col-span-1">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <!-- Patient -->
-      <div class="sm:col-span-1">
-        <label class="block text-sm font-medium mb-2 text-indigo-700">Patient *</label>
-        <div class="flex gap-2">
-          <select 
-            id="reportPatient" 
-            class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
-            required 
-            onchange="updatePatientInfo()"
-          >
-            <option value="">Sélectionner un patient...</option>
-          </select>
-          <button
-            type="button"
-            onclick="openQuickPatientModal()"
-            class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm"
-            title="Ajouter un nouveau patient"
-          >
-            <i class="fas fa-user-injured"></i> + Patient
-          </button>
-        </div>
-      </div>
+  <!-- Colonne Patient -->
+  <div>
+    <label class="block text-sm font-medium mb-2 text-indigo-700">Patient *</label>
+    <div class="flex gap-2 items-start">
+      <select 
+        id="reportPatient" 
+        class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+        required 
+        onchange="updatePatientInfo()"
+      >
+        <option value="">Sélectionner un patient...</option>
+      </select>
+      <button
+        type="button"
+        onclick="openQuickPatientModal()"
+        class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm h-[42px]"
+        title="Ajouter un nouveau patient"
+      >
+        <i class="fas fa-user-injured"></i> + Patient
+      </button>
+    </div>
 
-      <!-- Âge -->
-      <div class="sm:col-span-1">
-        <label class="block text-sm font-medium mb-2 text-indigo-700">Âge</label>
+    <!-- Deuxième ligne : Âge et Sexe (seulement pour le patient) -->
+    <div class="grid grid-cols-2 gap-4 mt-4">
+      <div>
+        <label class="block text-sm font-medium mb-1 text-indigo-700">Âge</label>
         <input 
           type="number" 
           id="reportAge" 
@@ -735,10 +731,8 @@
           readonly
         >
       </div>
-
-      <!-- Sexe -->
-      <div class="sm:col-span-1">
-        <label class="block text-sm font-medium mb-2 text-indigo-700">Sexe</label>
+      <div>
+        <label class="block text-sm font-medium mb-1 text-indigo-700">Sexe</label>
         <input 
           type="text" 
           id="reportSexe" 
