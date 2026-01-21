@@ -1071,18 +1071,34 @@
     }
 
     // Fonction pour ouvrir/fermer les formulaires
-    function togglePatientForm() {
-      document.getElementById('patientForm').classList.toggle('hidden');
-    }
-    
-    function toggleMedecinForm() {
-      document.getElementById('medecinForm').classList.toggle('hidden');
-    }
-    
-    function toggleUtilisateurForm() {
-      document.getElementById('utilisateurForm').classList.toggle('hidden');
-    }
+   // Fonction pour ouvrir/fermer les formulaires - CORRECTION
+function togglePatientForm() {
+  const form = document.getElementById('patientForm');
+  form.classList.toggle('open');
+  // Si on ouvre, on s'assure que ce n'est pas hidden
+  form.classList.remove('hidden');
+  if (!form.classList.contains('open')) {
+    resetPatientForm();
+  }
+}
 
+function toggleMedecinForm() {
+  const form = document.getElementById('medecinForm');
+  form.classList.toggle('open');
+  form.classList.remove('hidden');
+  if (!form.classList.contains('open')) {
+    resetMedecinForm();
+  }
+}
+
+function toggleUtilisateurForm() {
+  const form = document.getElementById('utilisateurForm');
+  form.classList.toggle('open');
+  form.classList.remove('hidden');
+  if (!form.classList.contains('open')) {
+    resetUtilisateurForm();
+  }
+}
     // Fonction pour basculer la modal de connexion
     function toggleLogin() {
       document.getElementById('loginModal').classList.toggle('hidden');
@@ -1265,9 +1281,11 @@
   document.getElementById('patientSolde').value   = patient.solde != null ? patient.solde : '';
   document.getElementById('patientAdresse').value = patient.adresse || '';
 
-  if (!document.getElementById('patientForm').classList.contains('open')) {
-    togglePatientForm();
-  }
+ const form = document.getElementById('patientForm');
+if (!form.classList.contains('open')) {
+  form.classList.add('open');
+  form.classList.remove('hidden');
+}
 }
 
 function resetPatientForm() {
@@ -1525,9 +1543,11 @@ async function saveQuickMedecin() {
       document.getElementById('medecinService').value = medecin.service || '';
       document.getElementById('medecinTel').value = medecin.telephone || '';
      
-      if (!document.getElementById('medecinForm').classList.contains('open')) {
-        toggleMedecinForm();
-      }
+     const form = document.getElementById('medecinForm');
+if (!form.classList.contains('open')) {
+  form.classList.add('open');
+  form.classList.remove('hidden');
+}
     }
     function resetMedecinForm() {
       document.getElementById('medecinId').value = '';
@@ -3120,9 +3140,11 @@ function editUtilisateur(user) {
   document.getElementById('utilisateurPassword').value = '';
   document.getElementById('utilisateurPassword').required = false;
  
-  if (!document.getElementById('utilisateurForm').classList.contains('open')) {
-    toggleUtilisateurForm();
-  }
+  const form = document.getElementById('utilisateurForm');
+if (!form.classList.contains('open')) {
+  form.classList.add('open');
+  form.classList.remove('hidden');
+}
 }
 
 function resetUtilisateurForm() {
