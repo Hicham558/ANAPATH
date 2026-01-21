@@ -2109,108 +2109,149 @@ async function saveQuickMedecin() {
       submitBtn.innerHTML = '<i class="fas fa-times"></i> Fermer';
       submitBtn.onclick = closeReportModal;
     }
-    async function saveReport() {
-      // 1. Récupérer et valider l'utilisateur de manière robuste
-      const selectedUserStr = localStorage.getItem('selectedUtilisateur');
-      let utilisateur_id = null;
-     
-      if (selectedUserStr) {
-        try {
-          const selectedUser = JSON.parse(selectedUserStr);
-         
-          // Vérifier que le numéro existe et est un nombre valide
-          if (selectedUser && selectedUser.numero !== undefined && selectedUser.numero !== null) {
-            utilisateur_id = parseInt(selectedUser.numero, 10);
-           
-            // Si ce n'est pas un nombre valide
-            if (isNaN(utilisateur_id)) {
-              showToast('ERREUR : ID utilisateur invalide. Veuillez re-sélectionner un utilisateur.', 'error');
-              localStorage.removeItem('selectedUtilisateur'); // Nettoyer le mauvais stockage
-              setTimeout(() => window.location.href = 'selection.html', 2000);
-              return;
-            }
-          }
-        } catch (e) {
-          console.error("Erreur de parsing de selectedUtilisateur :", e);
+  async function saveReport() {
+  // 1. Récupérer l'utilisateur sélectionné
+  const selectedUserStr = localStorage.getItem('selectedUtilisateur');
+  let utilisateur_id = null;
+
+  if (selectedUserStr) {
+    try {
+      const selectedUser = JSON.parse(selectedUserStr);
+      if (selectedUser && selectedUser.numero !== undefined && selectedUser.numero !== null) {
+        utilisateur_id = parseInt(selectedUser.numero, 10);
+        if (isNaN(utilisateur_id)) {
+          showToast('ERREUR : ID utilisateur invalide. Veuillez re-sélectionner un utilisateur.', 'error');
+          localStorage.removeItem('selectedUtilisateur');
+          setTimeout(() => window.location.href = 'selection.html', 2000);
+          return;
         }
       }
-     
-      // 2. Si aucun utilisateur n'est défini
-      if (utilisateur_id === null || utilisateur_id === undefined) {
-        showToast('Veuillez d\'abord sélectionner un utilisateur valide depuis la page de sélection.', 'error');
-        setTimeout(() => window.location.href = 'selection.html', 1500);
-        return;
-      }
-     
-      // 3. Construire les données avec l'ID utilisateur valide
-      // CORRECTION : Récupérer l'ID du compte rendu si on est en mode édition
-      const reportIdElement = document.getElementById('reportId');
-      const reportId = reportIdElement ? reportIdElement.value : '';
-     
-      const data = {
-        numero_enregistrement: document.getElementById('reportNumero').value.trim(),
-        date_compte_rendu: document.getElementById('reportDateCR').value,
-        utilisateur_id: utilisateur_id,
-        medecin_id: parseInt(document.getElementById('reportMedecin').value),
-        service_hospitalier: document.getElementById('reportService').value.trim(),
-        patient_id: parseInt(document.getElementById('reportPatient').value),
-        nature_prelevement: document.getElementById('reportNature').value.trim(),
-        date_prelevement: document.getElementById('reportDatePrelevement').value,
-        renseignements_cliniques: document.getElementById('reportRenseignements').value.trim(),
-        macroscopie: document.getElementById('reportMacro').value.trim(),
-        microscopie: document.getElementById('reportMicro').value.trim(),
-        conclusion: document.getElementById('reportConclusion').value.trim(),
-        statut: document.getElementById('reportStatut').value
-      };
-     
-      // Validation des champs obligatoires
-      if (!data.numero_enregistrement || !data.date_compte_rendu || !data.medecin_id ||
-          !data.patient_id || !data.nature_prelevement || !data.date_prelevement) {
-        return showToast('Veuillez remplir tous les champs obligatoires', 'error');
-      }
-     
-      try {
-        const userId = localStorage.getItem('userId');
-       
-        // CORRECTION : Déterminer l'URL et la méthode en fonction du mode
-        let url, method;
-        if (reportId && reportId !== '') {
-          // Mode édition
-          url = `${API_BASE_URL}/comptes-rendus/${reportId}`;
-          method = 'PUT';
-        } else {
-          // Mode création
-          url = `${API_BASE_URL}/comptes-rendus`;
-          method = 'POST';
-        }
-       
-        console.log('Envoi des données:', { url, method, data });
-       
-        const res = await fetch(url, {
-          method: method,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': userId
-          },
-          body: JSON.stringify(data)
-        });
-       
-        if (res.ok) {
-          const result = await res.json();
-          showToast(reportId ? 'Compte rendu modifié avec succès' : 'Compte rendu créé avec succès');
-          closeReportModal();
-          loadReports();
-        } else {
-          const err = await res.json();
-          console.error('Erreur serveur:', err);
-          throw new Error(err.erreur || 'Erreur lors de la sauvegarde');
-        }
-      } catch (err) {
-        console.error('Erreur sauvegarde:', err);
-        showToast(err.message, 'error');
-      }
+    } catch (e) {
+      console.error("Erreur parsing selectedUtilisateur :", e);
     }
-   
+  }
+
+  if (!utilisateur_id) {
+    showToast('Veuillez sélectionner un utilisateur valide avant de sauvegarder.', 'error');
+    return;
+  }
+
+  // 2. Récupérer tous les éléments du formulaire avec vérification
+  const reportIdEl       = document.getElementById('reportId');
+  const numeroEl         = document.getElementById('reportNumero');
+  const dateCREl         = document.getElementById('reportDateCR');
+  const medecinEl        = document.getElementById('reportMedecin');
+  const serviceEl        = document.getElementById('reportService');
+  const patientEl        = document.getElementById('reportPatient');
+  const natureEl         = document.getElementById('reportNature');
+  const datePrelevEl     = document.getElementById('reportDatePrelevement');
+  const renseignementsEl = document.getElementById('reportRenseignements');
+  const macroEl          = document.getElementById('reportMacro');
+  const microEl          = document.getElementById('reportMicro');
+  const conclusionEl     = document.getElementById('reportConclusion');
+  const statutEl         = document.getElementById('reportStatut');
+
+  // 3. Vérifications de base (champs obligatoires)
+  if (!numeroEl?.value?.trim()) {
+    showToast('Le numéro d\'enregistrement est obligatoire', 'error');
+    numeroEl?.focus();
+    return;
+  }
+
+  if (!dateCREl?.value) {
+    showToast('La date du compte rendu est obligatoire', 'error');
+    dateCREl?.focus();
+    return;
+  }
+
+  if (!datePrelevEl?.value) {
+    showToast('La date de prélèvement est obligatoire', 'error');
+    datePrelevEl?.focus();
+    return;
+  }
+
+  if (!patientEl?.value) {
+    showToast('Veuillez sélectionner un patient', 'error');
+    patientEl?.focus();
+    return;
+  }
+
+  if (!medecinEl?.value) {
+    showToast('Veuillez sélectionner un médecin', 'error');
+    medecinEl?.focus();
+    return;
+  }
+
+  if (!natureEl?.value?.trim()) {
+    showToast('La nature/siège du prélèvement est obligatoire', 'error');
+    natureEl?.focus();
+    return;
+  }
+
+  if (!statutEl?.value) {
+    showToast('Veuillez sélectionner un statut', 'error');
+    statutEl?.focus();
+    return;
+  }
+
+  // 4. Construction des données
+  const reportId = reportIdEl?.value || '';  // vide = création, sinon = édition
+
+  const data = {
+    numero_enregistrement: numeroEl.value.trim(),
+    date_compte_rendu: dateCREl.value,
+    utilisateur_id: utilisateur_id,
+    medecin_id: parseInt(medecinEl.value),
+    service_hospitalier: serviceEl?.value?.trim() || '',           // protégé si absent
+    patient_id: parseInt(patientEl.value),
+    nature_prelevement: natureEl.value.trim(),
+    date_prelevement: datePrelevEl.value,
+    renseignements_cliniques: renseignementsEl?.value?.trim() || '',
+    macroscopie: macroEl?.value?.trim() || '',
+    microscopie: microEl?.value?.trim() || '',
+    conclusion: conclusionEl?.value?.trim() || '',
+    statut: statutEl.value
+  };
+
+  // 5. Envoi vers l'API
+  try {
+    const userId = localStorage.getItem('userId');
+
+    let url = `${API_BASE_URL}/comptes-rendus`;
+    let method = 'POST';
+
+    if (reportId && reportId.trim() !== '') {
+      url = `${API_BASE_URL}/comptes-rendus/${reportId}`;
+      method = 'PUT';
+    }
+
+    console.log(`Sauvegarde ${method} vers : ${url}`);
+    console.log('Données envoyées :', data);
+
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-ID': userId
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      showToast(reportId ? 'Compte rendu modifié avec succès' : 'Compte rendu créé avec succès', 'success');
+      closeReportModal();
+      loadReports();
+    } else {
+      const err = await res.json();
+      console.error('Erreur API :', err);
+      showToast(err.erreur || 'Erreur lors de la sauvegarde', 'error');
+    }
+  } catch (err) {
+    console.error('Erreur lors de saveReport :', err);
+    showToast('Erreur réseau ou serveur : ' + err.message, 'error');
+  }
+}
    function resetReportForm() {
   document.getElementById('reportForm').reset();
   document.getElementById('reportId').value = '';
