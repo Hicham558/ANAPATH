@@ -674,12 +674,12 @@
             <input type="date" id="reportDateCR" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
           </div>
         </div>
-        <!-- Médecin et Patient -->
+      <!-- Médecin et Patient -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-indigo-50 p-5 rounded-lg">
   <!-- Colonne Médecin -->
   <div>
     <label class="block text-sm font-medium mb-2 text-indigo-700">Médecin Demandeur *</label>
-    <div class="flex gap-2 items-start">
+    <div class="flex gap-2 items-stretch">
       <select 
         id="reportMedecin" 
         class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
@@ -690,7 +690,7 @@
       <button
         type="button"
         onclick="openQuickMedecinModal()"
-        class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm h-[42px]"
+        class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm"
         title="Ajouter un nouveau médecin"
       >
         <i class="fas fa-user-md"></i> + Médecin
@@ -701,7 +701,7 @@
   <!-- Colonne Patient -->
   <div>
     <label class="block text-sm font-medium mb-2 text-indigo-700">Patient *</label>
-    <div class="flex gap-2 items-start">
+    <div class="flex gap-2 items-stretch">
       <select 
         id="reportPatient" 
         class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
@@ -713,7 +713,7 @@
       <button
         type="button"
         onclick="openQuickPatientModal()"
-        class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm h-[42px]"
+        class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2.5 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm"
         title="Ajouter un nouveau patient"
       >
         <i class="fas fa-user-injured"></i> + Patient
