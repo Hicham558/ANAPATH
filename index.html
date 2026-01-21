@@ -371,7 +371,40 @@
           <div id="searchResults" class="mt-4"></div>
         </div>
       </div>
-
+<!-- Section Comptes Rendus -->
+      <div class="bg-white rounded-lg shadow-md mt-8 animate-fade-in">
+        <div class="p-6 border-b">
+          <h2 class="text-xl font-semibold flex items-center justify-between">
+            <span>
+              <i class="fas fa-file-medical-alt mr-2 text-indigo-500"></i> Comptes Rendus Récents
+            </span>
+            <button onclick="loadReports()" class="text-sm bg-indigo-100 text-indigo-800 px-3 py-1 rounded hover:bg-indigo-200 transition">
+              <i class="fas fa-sync-alt"></i> Actualiser
+            </button>
+          </h2>
+        </div>
+        <div class="p-0">
+          <div class="table-responsive-wrapper force-wide-on-mobile">
+            <table class="w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Enregistrement</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Médecin</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prélèvement</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reportsList" class="bg-white divide-y divide-gray-200">
+                <tr><td colspan="7" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
       <!-- Section avec onglets -->
       <div class="tabs-container">
         <div class="tabs-header">
@@ -386,67 +419,7 @@
           </button>
         </div>
 
-        <!-- Onglet Utilisateurs -->
-        <div id="utilisateursTab" class="tab-content active">
-          <div class="mb-4 flex gap-2">
-            <input type="text" id="searchUtilisateur" placeholder="Rechercher un utilisateur..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            <button onclick="toggleUtilisateurForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
-              <i class="fas fa-plus"></i> Nouveau
-            </button>
-          </div>
-         
-          <div id="utilisateurForm" class="drawer-content mb-6 hidden">
-            <div class="p-4 bg-gray-50 rounded-lg border">
-              <h3 class="font-medium mb-3 text-lg">Nouvel Utilisateur</h3>
-              <input type="hidden" id="utilisateurId">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-1">Nom*</label>
-                  <input type="text" id="utilisateurNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-1">Mot de passe*</label>
-                  <input type="password" id="utilisateurPassword" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-1">Statut</label>
-                  <select id="utilisateurStatut" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                    <option value="utilisateur">Utilisateur</option>
-                    <option value="admin">Administrateur</option>
-                    <option value="medecin">Médecin</option>
-                    <option value="technicien">Technicien</option>
-                  </select>
-                </div>
-              </div>
-              <div class="flex justify-end space-x-3 mt-4">
-                <button onclick="toggleUtilisateurForm()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
-                  Annuler
-                </button>
-                <button onclick="saveUtilisateur()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center gap-1">
-                  <i class="fas fa-save"></i> Enregistrer
-                </button>
-              </div>
-            </div>
-          </div>
-         
-          <div class="table-responsive-wrapper force-wide-on-mobile border rounded-lg overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N°</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Création</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="utilisateursList" class="bg-white divide-y divide-gray-200">
-                <tr><td colspan="5" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
+      
         <!-- Onglet Patients -->
         <div id="patientsTab" class="tab-content">
           <div class="mb-4 flex gap-2">
@@ -520,6 +493,66 @@
             </table>
           </div>
         </div>
+  <!-- Onglet Utilisateurs -->
+        <div id="utilisateursTab" class="tab-content active">
+          <div class="mb-4 flex gap-2">
+            <input type="text" id="searchUtilisateur" placeholder="Rechercher un utilisateur..." class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <button onclick="toggleUtilisateurForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition flex items-center gap-1">
+              <i class="fas fa-plus"></i> Nouveau
+            </button>
+          </div>
+         
+          <div id="utilisateurForm" class="drawer-content mb-6 hidden">
+            <div class="p-4 bg-gray-50 rounded-lg border">
+              <h3 class="font-medium mb-3 text-lg">Nouvel Utilisateur</h3>
+              <input type="hidden" id="utilisateurId">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Nom*</label>
+                  <input type="text" id="utilisateurNom" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Mot de passe*</label>
+                  <input type="password" id="utilisateurPassword" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Statut</label>
+                  <select id="utilisateurStatut" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <option value="utilisateur">Utilisateur</option>
+                    <option value="admin">Administrateur</option>
+                    <option value="medecin">Médecin</option>
+                    <option value="technicien">Technicien</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex justify-end space-x-3 mt-4">
+                <button onclick="toggleUtilisateurForm()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">
+                  Annuler
+                </button>
+                <button onclick="saveUtilisateur()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center gap-1">
+                  <i class="fas fa-save"></i> Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+         
+          <div class="table-responsive-wrapper force-wide-on-mobile border rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N°</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Création</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="utilisateursList" class="bg-white divide-y divide-gray-200">
+                <tr><td colspan="5" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <!-- Onglet Médecins -->
         <div id="medecinsTab" class="tab-content">
@@ -582,40 +615,7 @@
         </div>
       </div>
 
-      <!-- Section Comptes Rendus -->
-      <div class="bg-white rounded-lg shadow-md mt-8 animate-fade-in">
-        <div class="p-6 border-b">
-          <h2 class="text-xl font-semibold flex items-center justify-between">
-            <span>
-              <i class="fas fa-file-medical-alt mr-2 text-indigo-500"></i> Comptes Rendus Récents
-            </span>
-            <button onclick="loadReports()" class="text-sm bg-indigo-100 text-indigo-800 px-3 py-1 rounded hover:bg-indigo-200 transition">
-              <i class="fas fa-sync-alt"></i> Actualiser
-            </button>
-          </h2>
-        </div>
-        <div class="p-0">
-          <div class="table-responsive-wrapper force-wide-on-mobile">
-            <table class="w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Enregistrement</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Médecin</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Prélèvement</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="reportsList" class="bg-white divide-y divide-gray-200">
-                <tr><td colspan="7" class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+      
   </div>
 
   <!-- Footer -->
