@@ -477,24 +477,36 @@ td .flex.flex-col {
                                     <option value="">Tous les patients</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Date début</label>
-                                <input type="date" id="filterDateDebut" class="w-full px-3 py-2 border rounded-md">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Date fin</label>
-                                <input type="date" id="filterDateFin" class="w-full px-3 py-2 border rounded-md">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Mode paiement</label>
-                                <select id="filterModePaiement" class="w-full px-3 py-2 border rounded-md">
-                                    <option value="">Tous</option>
-                                    <option value="espece">Comptant</option>
-                                    <option value="a_terme">À terme</option>
-                                    <option value="paiement_partiel">Partiel</option>
-                                </select>
-                            </div>
-                        </div>
+                             <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Type d'examen</label>
+        <select id="filterTypeExamen" class="w-full px-3 py-2 border rounded-md">
+            <option value="">Tous les types</option>
+            <option value="H">Histologie</option>
+            <option value="B">Biopsie</option>
+            <option value="C">Cytologie</option>
+            <option value="F">FCV</option>
+            <option value="I">Immuno-Histochimie</option>
+        </select>
+    </div>
+    
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Date début</label>
+        <input type="date" id="filterDateDebut" class="w-full px-3 py-2 border rounded-md">
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Date fin</label>
+        <input type="date" id="filterDateFin" class="w-full px-3 py-2 border rounded-md">
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Mode paiement</label>
+        <select id="filterModePaiement" class="w-full px-3 py-2 border rounded-md">
+            <option value="">Tous</option>
+            <option value="espece">Comptant</option>
+            <option value="a_terme">À terme</option>
+            <option value="paiement_partiel">Partiel</option>
+        </select>
+    </div>
+</div>
                         <div class="mt-4 flex justify-end space-x-2">
                             <button onclick="appliquerFiltres()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
                                 Appliquer
@@ -1540,24 +1552,24 @@ function getDescriptionNumero(numeroCR) {
             document.getElementById('filtresPanel').classList.toggle('open');
         }
 
-        function appliquerFiltres() {
-            filtresActifs = {};
-            
-            const patientId = document.getElementById('filterPatient').value;
-            const dateDebut = document.getElementById('filterDateDebut').value;
-            const dateFin = document.getElementById('filterDateFin').value;
-            const modePaiement = document.getElementById('filterModePaiement').value;
-            
-            if (patientId) filtresActifs.patient_id = patientId;
-            if (dateDebut) filtresActifs.date_debut = dateDebut;
-            if (dateFin) filtresActifs.date_fin = dateFin;
-            if (modePaiement) filtresActifs.mode_paiement = modePaiement;
-            
-            currentPage = 1;
-            loadPaiements();
-            showToast('Filtres appliqués', 'success');
-        }
-
+     function appliquerFiltres() {
+    const typeExamen = document.getElementById('filterTypeExamen').value;
+    
+    // Filtrer localement par type d'examen
+    let paiementsFiltres = allPaiements;
+    
+    if (typeExamen) {
+        paiementsFiltres = paiementsFiltres.filter(p => {
+            return p.numero_cr && p.numero_cr.charAt(3) === typeExamen;
+        });
+    }
+    
+    // Appliquer le filtre
+    allPaiements = paiementsFiltres;
+    renderPaiementsList();
+    
+    showToast('Filtres appliqués', 'success');
+}
         function reinitialiserFiltres() {
             document.getElementById('filterPatient').value = '';
             document.getElementById('filterDateDebut').value = '';
