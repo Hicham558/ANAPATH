@@ -47,6 +47,81 @@ def format_date(date_str):
     except:
         return str(date_str)
 
+def generer_numero_recu(user_id, type_examen):
+    """
+    Génère un numéro de reçu automatique selon le format:
+    XXXTYYMM où:
+    - XXX = numéro séquentiel sur 3 chiffres
+    - T = type d'examen (H=Histologie, B=Biopsie, C=Cytologie, F=FCV, I=Immuno-Histochimie)
+    - YY = année sur 2 chiffres (26 pour 2026)
+    - MM = mois en lettre (A=Jan, B=Fév, C=Mar, etc.)
+    """
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Date actuelle
+        maintenant = datetime.now()
+        annee = maintenant.year % 100  # 2026 -> 26
+        mois = maintenant.month
+        
+        # Correspondance type d'examen -> lettre
+        type_lettres = {
+            'histologie': 'H',
+            'biopsie': 'B',
+            'cytologie': 'C',
+            'fcv': 'F',
+            'immuno-histochimie': 'I',
+            'consultation': 'H',  # Par défaut
+            'examen': 'H',
+            'analyse': 'H',
+            'autre': 'H'
+        }
+        
+        # Correspondance mois -> lettre
+        mois_lettres = {
+            1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F',
+            7: 'G', 8: 'H', 9: 'I', 10: 'J', 11: 'K', 12: 'L'
+        }
+        
+        type_lettre = type_lettres.get(type_examen.lower(), 'H')
+        mois_lettre = mois_lettres[mois]
+        
+        # Récupérer ou créer le compteur
+        cur.execute('''
+            INSERT INTO compteurs_recus (user_id, type_examen, annee, mois, compteur)
+            VALUES (%s, %s, %s, %s, 1)
+            ON CONFLICT (user_id, type_examen, annee, mois)
+            DO UPDATE SET 
+                compteur = compteurs_recus.compteur + 1,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING compteur
+        ''', (user_id, type_examen.lower(), annee, mois))
+        
+        result = cur.fetchone()
+        compteur = result['compteur'] if result else 1
+        
+        # Formater le numéro: 001H26A
+        numero_recu = f"{compteur:03d}{type_lettre}{annee:02d}{mois_lettre}"
+        
+        conn.commit()
+        return numero_recu
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur génération numéro reçu: {str(e)}")
+        traceback.print_exc()
+        # En cas d'erreur, retourner un numéro temporaire
+        return f"TMP{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
 # Fonction pour formater le sexe
 def format_sexe(sexe_code):
     if sexe_code == 'M':
