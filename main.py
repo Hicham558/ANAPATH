@@ -1262,6 +1262,7 @@ def paiements():
             
             params = [user_id]
             
+            # Ajout des filtres conditionnels
             if patient_id:
                 query += ' AND p.patient_id = %s'
                 params.append(patient_id)
@@ -1289,16 +1290,46 @@ def paiements():
             per_page = request.args.get('per_page', 20, type=int)
             offset = (page - 1) * per_page
             
-            # Compter le total
-            count_query = query.replace('p.*, pat.nom as patient_nom', 'COUNT(*) as total')
-            cur.execute(count_query, params)
+            # ✅ CORRECTION : Requête COUNT séparée et simplifiée
+            count_query = '''
+                SELECT COUNT(*) as total
+                FROM paiements p
+                WHERE p.user_id = %s
+            '''
+            
+            count_params = [user_id]
+            
+            # Ajouter les mêmes filtres pour le count
+            if patient_id:
+                count_query += ' AND p.patient_id = %s'
+                count_params.append(patient_id)
+            
+            if date_debut:
+                count_query += ' AND DATE(p.date_paiement) >= %s'
+                count_params.append(date_debut)
+            
+            if date_fin:
+                count_query += ' AND DATE(p.date_paiement) <= %s'
+                count_params.append(date_fin)
+            
+            if mode_paiement:
+                count_query += ' AND p.mode_paiement = %s'
+                count_params.append(mode_paiement)
+            
+            if type_paiement:
+                count_query += ' AND p.type_paiement = %s'
+                count_params.append(type_paiement)
+            
+            # Exécuter le count
+            cur.execute(count_query, count_params)
             total_result = cur.fetchone()
             total_count = total_result['total'] if total_result else 0
             
-            # Ajouter la pagination
+            # Ajouter la pagination à la requête principale
             query += ' LIMIT %s OFFSET %s'
             params.extend([per_page, offset])
             
+            # Exécuter la requête principale
             cur.execute(query, params)
             payments = cur.fetchall()
             
@@ -1306,12 +1337,19 @@ def paiements():
             formatted_payments = []
             for p in payments:
                 payment_dict = dict(p)
+                
+                # Créer le nom complet du patient
                 payment_dict['patient_nom_complet'] = p['patient_nom'] or 'Patient inconnu'
+                
+                # Convertir les montants en float
                 payment_dict['montant'] = float(p['montant']) if p['montant'] else 0
                 if p['montant_total']:
                     payment_dict['montant_total'] = float(p['montant_total'])
+                
+                # Formater la date
                 if p['date_paiement']:
                     payment_dict['date_paiement_formatted'] = p['date_paiement'].strftime('%d/%m/%Y %H:%M')
+                
                 formatted_payments.append(payment_dict)
             
             return jsonify({
