@@ -456,16 +456,19 @@ td .flex.flex-col {
                         <i class="fas fa-history mr-2 text-indigo-600"></i>Historique des Paiements
                     </h3>
                     <div class="flex flex-wrap gap-2">
-                        <button onclick="toggleFiltres()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                            <i class="fas fa-filter mr-2"></i>Filtres
-                        </button>
-                        <button onclick="exporterExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                            <i class="fas fa-file-excel mr-2"></i>Excel
-                        </button>
-                        <button onclick="imprimerListe()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                            <i class="fas fa-print mr-2"></i>Imprimer
-                        </button>
-                    </div>
+    <button onclick="toggleFiltres()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+        <i class="fas fa-filter mr-2"></i>Filtres
+    </button>
+    <button onclick="scannerQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+        <i class="fas fa-qrcode mr-2"></i>Scanner QR
+    </button>
+    <button onclick="exporterExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+        <i class="fas fa-file-excel mr-2"></i>Excel
+    </button>
+    <button onclick="imprimerListe()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+        <i class="fas fa-print mr-2"></i>Imprimer
+    </button>
+</div>
                 </div>
 
                 <!-- Panneau de filtres -->
@@ -1026,53 +1029,64 @@ function renderTopPatients(topPatients) {
         </tr>
     `).join('');
 }
-       async function loadPatients() {
+      async function loadPaiements() {
     try {
-        const response = await fetch(`${API_BASE_URL}/patients`, {
+        // Construire l'URL avec les filtres
+        let url = `${API_BASE_URL}/paiements?page=${currentPage}&per_page=${perPage}`;
+        
+        const params = [];
+        
+        if (filtresActifs.patient_id) {
+            params.push(`patient_id=${filtresActifs.patient_id}`);
+        }
+        if (filtresActifs.date_debut) {
+            params.push(`date_debut=${filtresActifs.date_debut}`);
+        }
+        if (filtresActifs.date_fin) {
+            params.push(`date_fin=${filtresActifs.date_fin}`);
+        }
+        if (filtresActifs.mode_paiement) {
+            params.push(`mode_paiement=${filtresActifs.mode_paiement}`);
+        }
+        if (filtresActifs.type_examen) {
+            params.push(`type_examen=${filtresActifs.type_examen}`);
+        }
+        
+        if (params.length > 0) {
+            url += `&${params.join('&')}`;
+        }
+
+        const response = await fetch(url, {
             headers: { 'X-User-ID': currentUserId }
         });
 
         if (response.ok) {
-            allPatients = await response.json();
-            const select = document.getElementById('patientSelect');
+            const data = await response.json();
             
-            select.innerHTML = '<option value="">Sélectionner un patient...</option>' +
-                allPatients.map(p => {
-                    const solde = parseFloat(p.solde || 0);
-                    const soldeFormatted = Math.abs(solde).toFixed(2);
-                    
-                    // Déterminer le texte et la couleur en fonction du solde
-                    let soldeText = '';
-                    let soldeClass = '';
-                    
-                    if (solde < 0) {
-                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
-                        soldeClass = 'text-red-600 font-semibold';
-                    } else if (solde > 0) {
-                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
-                        soldeClass = 'text-green-600 font-semibold';
-                    } else {
-                        soldeText = ` (Solde: ${soldeFormatted} DA)`;
-                        soldeClass = 'text-gray-600';
-                    }
-                    
-                    // Retourner l'option avec le nom complet et le solde
-                    return `<option value="${p.id}" 
-                        data-age="${p.age || ''}" 
-                        data-sexe="${p.sexe || ''}" 
-                        data-tel="${p.telephone || ''}" 
-                        data-solde="${solde}"
-                        class="${soldeClass}">
-                        ${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}
-                    </option>`;
-                }).join('');
+            // Gérer les deux formats de réponse possibles
+            if (data.paiements) {
+                allPaiements = data.paiements;
+                totalPaiements = data.pagination ? data.pagination.total : allPaiements.length;
+            } else if (Array.isArray(data)) {
+                allPaiements = data;
+                totalPaiements = data.length;
+            } else {
+                allPaiements = [];
+                totalPaiements = 0;
+            }
+            
+            renderPaiementsList();
+            updatePagination();
+        } else {
+            const errorText = await response.text();
+            console.error('Erreur serveur:', errorText);
+            showToast('Erreur lors du chargement des paiements', 'error');
         }
     } catch (error) {
-        console.error('Erreur chargement patients:', error);
-        showToast('Erreur lors du chargement des patients', 'error');
+        console.error('Erreur chargement paiements:', error);
+        showToast('Erreur lors du chargement des paiements', 'error');
     }
 }
-
        async function chargerPatientsFiltre() {
     try {
         const response = await fetch(`${API_BASE_URL}/patients`, {
@@ -1567,21 +1581,25 @@ function getDescriptionNumero(numeroCR) {
             document.getElementById('filtresPanel').classList.toggle('open');
         }
 
-     function appliquerFiltres() {
+function appliquerFiltres() {
+    const patientId = document.getElementById('filterPatient').value;
     const typeExamen = document.getElementById('filterTypeExamen').value;
+    const dateDebut = document.getElementById('filterDateDebut').value;
+    const dateFin = document.getElementById('filterDateFin').value;
+    const modePaiement = document.getElementById('filterModePaiement').value;
     
-    // Filtrer localement par type d'examen
-    let paiementsFiltres = allPaiements;
+    // Mettre à jour les filtres actifs
+    filtresActifs = {};
     
-    if (typeExamen) {
-        paiementsFiltres = paiementsFiltres.filter(p => {
-            return p.numero_cr && p.numero_cr.charAt(3) === typeExamen;
-        });
-    }
+    if (patientId) filtresActifs.patient_id = patientId;
+    if (typeExamen) filtresActifs.type_examen = typeExamen;
+    if (dateDebut) filtresActifs.date_debut = dateDebut;
+    if (dateFin) filtresActifs.date_fin = dateFin;
+    if (modePaiement) filtresActifs.mode_paiement = modePaiement;
     
-    // Appliquer le filtre
-    allPaiements = paiementsFiltres;
-    renderPaiementsList();
+    // Recharger les paiements avec les filtres
+    currentPage = 1;
+    loadPaiements();
     
     showToast('Filtres appliqués', 'success');
 }
@@ -4216,6 +4234,104 @@ async function imprimerSynthesePatient() {
         console.error('Erreur impression synthèse:', error);
         showToast('Erreur lors de la génération de la synthèse patient', 'error');
     }
+}
+       function scannerQRCode() {
+    const modalHTML = `
+        <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl w-full max-w-md mx-4">
+                <div class="p-6 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-xl">
+                    <h3 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-qrcode mr-3 text-2xl"></i>
+                        Rechercher par Numéro de Reçu
+                    </h3>
+                    <p class="text-sm mt-1 opacity-90">Saisissez le numéro de reçu pour trouver le paiement</p>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Numéro de reçu
+                            </label>
+                            <input type="text" id="numeroRecuInput" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                   placeholder="Ex: 001H26A"
+                                   autofocus>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Vous pouvez scanner le QR code avec votre téléphone et coller le numéro ici
+                            </p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <button onclick="rechercherParNumeroRecu()" 
+                                    class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 rounded-lg transition hover:from-indigo-700 hover:to-purple-700 flex items-center justify-center">
+                                <i class="fas fa-search mr-2"></i>Rechercher
+                            </button>
+                            <button onclick="fermerModalQR()" 
+                                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg transition flex items-center justify-center">
+                                <i class="fas fa-times mr-2"></i>Annuler
+                            </button>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button onclick="ouvrirCameraScanner()" 
+                                    class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center justify-center mx-auto">
+                                <i class="fas fa-camera mr-2"></i>Utiliser la caméra du téléphone
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function ouvrirCameraScanner() {
+    // Instructions pour utiliser la caméra du téléphone
+    const instructions = `
+        <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl w-full max-w-md mx-4">
+                <div class="p-6 border-b bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-t-xl">
+                    <h3 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-camera mr-3 text-2xl"></i>
+                        Scanner avec votre téléphone
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        <div class="text-center">
+                            <i class="fas fa-mobile-alt text-4xl text-blue-500 mb-4"></i>
+                            <p class="font-medium">Instructions :</p>
+                        </div>
+                        
+                        <ol class="list-decimal pl-5 space-y-2 text-sm">
+                            <li>Ouvrez l'application caméra de votre téléphone</li>
+                            <li>Pointez la caméra vers le QR code du reçu</li>
+                            <li>Si un lien s'affiche, appuyez dessus</li>
+                            <li>Copiez le numéro de reçu qui s'affiche</li>
+                            <li>Revenez ici et collez-le dans le champ de recherche</li>
+                        </ol>
+                        
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <p class="text-sm text-blue-800">
+                                <i class="fas fa-lightbulb mr-2"></i>
+                                <strong>Astuce :</strong> Vous pouvez aussi prendre une photo du QR code et utiliser une application de scan QR
+                            </p>
+                        </div>
+                        
+                        <button onclick="fermerModalQR()" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition mt-4">
+                            <i class="fas fa-check mr-2"></i>Compris
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    fermerModalQR(); // Fermer le modal précédent
+    document.body.insertAdjacentHTML('beforeend', instructions);
 }
     </script>
 </body>
