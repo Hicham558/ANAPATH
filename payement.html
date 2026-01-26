@@ -6,7 +6,8 @@
     <title>Gestion des Paiements - ANAPATH</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>   
+   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -788,7 +789,7 @@ td .flex.flex-col {
             </div>
         </div>
     </div>
-    <!-- Modal Choix Impression -->
+   <!-- Modal Choix Impression -->
 <div id="modalChoixImpression" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
     <div class="bg-white rounded-xl w-full max-w-md mx-4">
         <div class="p-6 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-xl">
@@ -799,6 +800,7 @@ td .flex.flex-col {
             <p class="text-sm mt-1 opacity-90">Choisissez le format d'impression</p>
         </div>
         <div class="p-6 space-y-4">
+            <!-- Bouton A4 -->
             <button onclick="imprimerRecu('a4')" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-4 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-between group">
                 <div class="flex items-center">
                     <i class="fas fa-file-alt text-2xl mr-4"></i>
@@ -810,12 +812,25 @@ td .flex.flex-col {
                 <i class="fas fa-chevron-right group-hover:translate-x-1 transition-transform"></i>
             </button>
 
+            <!-- Bouton Ticket -->
             <button onclick="imprimerRecu('ticket')" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-4 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-between group">
                 <div class="flex items-center">
                     <i class="fas fa-receipt text-2xl mr-4"></i>
                     <div class="text-left">
                         <div class="font-semibold text-lg">Ticket 80mm</div>
                         <div class="text-xs opacity-90">Ticket de caisse thermique (8 cm)</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right group-hover:translate-x-1 transition-transform"></i>
+            </button>
+
+            <!-- NOUVEAU : Bouton Vignette 60×40 mm -->
+            <button onclick="imprimerRecu('vignette')" class="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white p-4 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-between group">
+                <div class="flex items-center">
+                    <i class="fas fa-tag text-2xl mr-4"></i>
+                    <div class="text-left">
+                        <div class="font-semibold text-lg">Vignette 60×40 mm</div>
+                        <div class="text-xs opacity-90">Étiquette avec QR code (6 x 4 cm)</div>
                     </div>
                 </div>
                 <i class="fas fa-chevron-right group-hover:translate-x-1 transition-transform"></i>
@@ -2815,6 +2830,8 @@ function imprimerRecu(format) {
         genererRecuA4(paiementEnCours);
     } else if (format === 'ticket') {
         genererRecuTicket(paiementEnCours);
+    } else if (format === 'vignette') {
+        genererRecuVignette(paiementEnCours); // Nouvelle fonction
     }
 
     // Fermer la modal après impression
@@ -3468,6 +3485,209 @@ function genererRecuTicket(paiement) {
             printWindow.focus();
         }, 250);
     };
+}
+
+function genererRecuVignette(paiement) {
+    const dateObj = new Date(paiement.date_paiement);
+    const date = dateObj.toLocaleDateString('fr-FR');
+    
+    // Créer le contenu pour le QR code
+    const qrContent = `ANAPATH\nReçu: ${paiement.numero_cr || 'N/A'}\nPatient: ${paiement.patient_nom}\nMontant: ${parseFloat(paiement.montant).toFixed(2)} DA\nDate: ${date}`;
+    
+    const printWindow = window.open('', '', 'height=400,width=600');
+    
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Vignette - ${paiement.numero_cr || 'N/A'}</title>
+            <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>
+            <style>
+                @media print {
+                    @page { 
+                        size: 60mm 40mm;
+                        margin: 2mm;
+                    }
+                    body { 
+                        margin: 0; 
+                        width: 60mm;
+                        height: 40mm;
+                        overflow: hidden;
+                    }
+                    .no-print { display: none !important; }
+                    * { 
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                }
+                
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    width: 60mm;
+                    height: 40mm;
+                    background: white;
+                    color: #000;
+                    padding: 3mm;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
+                
+                .header {
+                    text-align: center;
+                    border-bottom: 1px solid #000;
+                    padding-bottom: 2mm;
+                    margin-bottom: 2mm;
+                }
+                
+                .header h1 {
+                    font-size: 8pt;
+                    font-weight: bold;
+                    margin-bottom: 1mm;
+                }
+                
+                .header p {
+                    font-size: 6pt;
+                    margin: 0;
+                }
+                
+                .content {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    flex-grow: 1;
+                    justify-content: center;
+                }
+                
+                .qr-container {
+                    text-align: center;
+                    margin-bottom: 2mm;
+                }
+                
+                #qrcode {
+                    display: inline-block;
+                    margin-bottom: 2mm;
+                }
+                
+                .qr-container p {
+                    font-size: 6pt;
+                    margin: 0;
+                }
+                
+                .details {
+                    font-size: 7pt;
+                    text-align: center;
+                    line-height: 1.2;
+                }
+                
+                .numero-recu {
+                    font-size: 9pt;
+                    font-weight: bold;
+                    margin: 1mm 0;
+                }
+                
+                .patient-nom {
+                    font-size: 8pt;
+                    font-weight: bold;
+                    margin-bottom: 1mm;
+                }
+                
+                .montant {
+                    font-size: 10pt;
+                    font-weight: bold;
+                    color: #000;
+                    margin: 1mm 0;
+                }
+                
+                .date {
+                    font-size: 6pt;
+                    color: #666;
+                }
+                
+                .footer {
+                    font-size: 5pt;
+                    text-align: center;
+                    color: #666;
+                    border-top: 1px dashed #ccc;
+                    padding-top: 1mm;
+                    margin-top: 2mm;
+                }
+                
+                .btn-print {
+                    background: #4f46e5;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    margin: 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <button onclick="window.print()" class="btn-print no-print">
+                🖨️ IMPRIMER VIGNETTE
+            </button>
+            
+            <div class="header">
+                <h1>ANAPATH</h1>
+                <p>Centre d'Anatomie Pathologique</p>
+            </div>
+            
+            <div class="content">
+                <div class="qr-container">
+                    <div id="qrcode"></div>
+                    <p>Scanner pour vérifier</p>
+                </div>
+                
+                <div class="details">
+                    <div class="numero-recu">${paiement.numero_cr || 'N/A'}</div>
+                    <div class="patient-nom">${paiement.patient_nom.substring(0, 20)}${paiement.patient_nom.length > 20 ? '...' : ''}</div>
+                    <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
+                    <div class="date">${date}</div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                ${paiement.type_paiement} • ${paiement.mode_paiement === 'espece' ? 'Comptant' : 
+                                          paiement.mode_paiement === 'a_terme' ? 'À terme' : 'Partiel'}
+            </div>
+            
+            <script>
+                // Générer le QR code après le chargement
+                document.addEventListener('DOMContentLoaded', function() {
+                    QRCode.toCanvas(document.getElementById('qrcode'), '${qrContent.replace(/'/g, "\\'")}', {
+                        width: 80,
+                        height: 80,
+                        margin: 1,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        }
+                    }, function(error) {
+                        if (error) console.error(error);
+                    });
+                });
+            <\/script>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Attendre que le QR code soit généré
+    setTimeout(() => {
+        printWindow.focus();
+    }, 500);
 }
     // Fonction pour imprimer le rapport journalier
 async function imprimerRapportJournalier() {
