@@ -89,24 +89,39 @@ def generer_numero_recu(user_id, type_examen):
         type_lettre = type_lettres.get(type_examen.lower(), 'H')
         mois_lettre = mois_lettres[mois]
         
-        # Récupérer ou créer le compteur
+        print(f"🔍 Génération reçu pour: user={user_id}, type={type_examen}, année={annee}, mois={mois}")
+        
+        # ✅ Vérifier d'abord si le compteur existe
         cur.execute('''
-            INSERT INTO compteurs_recus (user_id, type_examen, annee, mois, compteur)
-            VALUES (%s, %s, %s, %s, 1)
-            ON CONFLICT (user_id, type_examen, annee, mois)
-            DO UPDATE SET 
-                compteur = compteurs_recus.compteur + 1,
-                updated_at = CURRENT_TIMESTAMP
-            RETURNING compteur
+            SELECT compteur FROM compteurs_recus
+            WHERE user_id = %s AND type_examen = %s AND annee = %s AND mois = %s
         ''', (user_id, type_examen.lower(), annee, mois))
         
-        result = cur.fetchone()
-        compteur = result['compteur'] if result else 1
+        existing = cur.fetchone()
+        
+        if existing:
+            # Incrémenter le compteur existant
+            compteur = existing['compteur'] + 1
+            cur.execute('''
+                UPDATE compteurs_recus 
+                SET compteur = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s AND type_examen = %s AND annee = %s AND mois = %s
+            ''', (compteur, user_id, type_examen.lower(), annee, mois))
+        else:
+            # Créer un nouveau compteur
+            compteur = 1
+            cur.execute('''
+                INSERT INTO compteurs_recus (user_id, type_examen, annee, mois, compteur)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (user_id, type_examen.lower(), annee, mois, compteur))
         
         # Formater le numéro: 001H26A
         numero_recu = f"{compteur:03d}{type_lettre}{annee:02d}{mois_lettre}"
         
         conn.commit()
+        
+        print(f"✅ Numéro généré: {numero_recu} (compteur={compteur})")
+        
         return numero_recu
         
     except Exception as e:
@@ -115,13 +130,14 @@ def generer_numero_recu(user_id, type_examen):
         print(f"❌ Erreur génération numéro reçu: {str(e)}")
         traceback.print_exc()
         # En cas d'erreur, retourner un numéro temporaire
-        return f"TMP{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        temp_num = f"TMP{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        print(f"⚠️ Utilisation numéro temporaire: {temp_num}")
+        return temp_num
     finally:
         if cur:
             cur.close()
         if conn:
             conn.close()
-
 @app.route('/compteurs-recus', methods=['GET'])
 def voir_compteurs():
     """Endpoint pour consulter les compteurs de numéros de reçu"""
