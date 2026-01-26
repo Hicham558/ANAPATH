@@ -46,57 +46,7 @@ def format_date(date_str):
         return date_obj.strftime('%d/%m/%Y')
     except:
         return str(date_str)
-@app.route('/debug/compteurs', methods=['GET'])
-def debug_compteurs():
-    """Route de debug pour voir tous les compteurs"""
-    user_id = request.headers.get('X-User-ID')
-    
-    conn = None
-    cur = None
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        
-        # Tous les compteurs
-        cur.execute('SELECT * FROM compteurs_recus ORDER BY updated_at DESC')
-        tous_compteurs = cur.fetchall()
-        
-        # Compteurs de l'utilisateur
-        if user_id:
-            cur.execute('''
-                SELECT * FROM compteurs_recus 
-                WHERE user_id = %s 
-                ORDER BY updated_at DESC
-            ''', (user_id,))
-            mes_compteurs = cur.fetchall()
-        else:
-            mes_compteurs = []
-        
-        # Derniers paiements
-        cur.execute('''
-            SELECT id, user_id, patient_id, type_paiement, numero_cr, date_paiement 
-            FROM paiements 
-            ORDER BY date_paiement DESC 
-            LIMIT 10
-        ''')
-        derniers_paiements = cur.fetchall()
-        
-        return jsonify({
-            'user_id_courant': user_id,
-            'total_compteurs_global': len(tous_compteurs),
-            'total_compteurs_user': len(mes_compteurs),
-            'tous_compteurs': [dict(c) for c in tous_compteurs],
-            'mes_compteurs': [dict(c) for c in mes_compteurs],
-            'derniers_paiements': [dict(p) for p in derniers_paiements]
-        })
-        
-    except Exception as e:
-        return jsonify({'erreur': str(e)}), 500
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+
 def generer_numero_recu(user_id, type_examen):
     """
     Génère un numéro de reçu automatique selon le format:
