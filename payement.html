@@ -1030,57 +1030,38 @@ function renderTopPatients(topPatients) {
         </tr>
     `).join('');
 }
-      async function loadPaiements() {
+     async function loadPaiements() {
     try {
-        // Construire l'URL avec les filtres
-        let url = `${API_BASE_URL}/paiements?page=${currentPage}&per_page=${perPage}`;
-        
-        const params = [];
-        
-        if (filtresActifs.patient_id) {
-            params.push(`patient_id=${filtresActifs.patient_id}`);
-        }
-        if (filtresActifs.date_debut) {
-            params.push(`date_debut=${filtresActifs.date_debut}`);
-        }
-        if (filtresActifs.date_fin) {
-            params.push(`date_fin=${filtresActifs.date_fin}`);
-        }
-        if (filtresActifs.mode_paiement) {
-            params.push(`mode_paiement=${filtresActifs.mode_paiement}`);
-        }
-        if (filtresActifs.type_examen) {
-            params.push(`type_examen=${filtresActifs.type_examen}`);
-        }
-        
-        if (params.length > 0) {
-            url += `&${params.join('&')}`;
-        }
-
-        const response = await fetch(url, {
+        // Charger tous les paiements initialement
+        const response = await fetch(`${API_BASE_URL}/paiements?page=1&per_page=1000`, {
             headers: { 'X-User-ID': currentUserId }
         });
 
         if (response.ok) {
             const data = await response.json();
             
-            // Gérer les deux formats de réponse possibles
-            if (data.paiements) {
-                allPaiements = data.paiements;
-                totalPaiements = data.pagination ? data.pagination.total : allPaiements.length;
-            } else if (Array.isArray(data)) {
+            // Normaliser les données selon la réponse API
+            if (Array.isArray(data)) {
                 allPaiements = data;
-                totalPaiements = data.length;
+            } else if (data.paiements && Array.isArray(data.paiements)) {
+                allPaiements = data.paiements;
+            } else if (data.data && Array.isArray(data.data)) {
+                allPaiements = data.data;
             } else {
                 allPaiements = [];
-                totalPaiements = 0;
             }
             
+            // Appliquer les filtres si présents
+            if (Object.keys(filtresActifs).length > 0) {
+                allPaiements = filtrerPaiements(allPaiements, filtresActifs);
+            }
+            
+            totalPaiements = allPaiements.length;
             renderPaiementsList();
             updatePagination();
+            
         } else {
-            const errorText = await response.text();
-            console.error('Erreur serveur:', errorText);
+            console.error('Erreur API:', await response.text());
             showToast('Erreur lors du chargement des paiements', 'error');
         }
     } catch (error) {
@@ -1088,7 +1069,63 @@ function renderTopPatients(topPatients) {
         showToast('Erreur lors du chargement des paiements', 'error');
     }
 }
-       async function chargerPatientsFiltre() {
+
+// Fonction helper pour filtrer les paiements localement
+function filtrerPaiements(paiements, filtres) {
+    return paiements.filter(p => {
+        let match = true;
+        
+        if (filtres.patient_id && p.patient_id != filtres.patient_id) {
+            match = false;
+        }
+        
+        if (filtres.date_debut && p.date_paiement) {
+            const datePaiement = new Date(p.date_paiement);
+            const dateDebut = new Date(filtres.date_debut);
+            if (datePaiement < dateDebut) {
+                match = false;
+            }
+        }
+        
+        if (filtres.date_fin && p.date_paiement) {
+            const datePaiement = new Date(p.date_paiement);
+            const dateFin = new Date(filtres.date_fin + 'T23:59:59');
+            if (datePaiement > dateFin) {
+                match = false;
+            }
+        }
+        
+        if (filtres.mode_paiement && p.mode_paiement !== filtres.mode_paiement) {
+            match = false;
+        }
+        
+        if (filtres.type_examen) {
+            // Vérifier d'abord dans type_paiement
+            if (p.type_paiement && p.type_paiement.toLowerCase().includes(filtres.type_examen.toLowerCase())) {
+                // OK
+            } 
+            // Vérifier ensuite dans le numéro CR
+            else if (p.numero_cr) {
+                const codeType = p.numero_cr.charAt(3);
+                const typesMap = {
+                    'H': 'histologie',
+                    'B': 'biopsie',
+                    'C': 'cytologie',
+                    'F': 'fcv',
+                    'I': 'immuno-histochimie'
+                };
+                if (typesMap[codeType] !== filtres.type_examen) {
+                    match = false;
+                }
+            } else {
+                match = false;
+            }
+        }
+        
+        return match;
+    });
+}
+      async function chargerPatientsFiltre() {
     try {
         const response = await fetch(`${API_BASE_URL}/patients`, {
             headers: { 'X-User-ID': currentUserId }
@@ -1096,48 +1133,117 @@ function renderTopPatients(topPatients) {
 
         if (response.ok) {
             const patients = await response.json();
+            
+            // S'assurer que patients est un tableau
+            const patientsArray = Array.isArray(patients) ? patients : 
+                                (patients.patients || patients.data || []);
+            
             const selectFiltre = document.getElementById('filterPatient');
             const selectRapport = document.getElementById('rapportPatient');
             
-            const options = '<option value="">Tous les patients</option>' +
-                patients.map(p => {
-                    const solde = parseFloat(p.solde || 0);
-                    const soldeFormatted = Math.abs(solde).toFixed(2);
-                    
-                    let soldeText = '';
-                    if (solde < 0) {
-                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
-                    } else if (solde > 0) {
-                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
-                    } else {
-                        soldeText = ` (Solde: ${soldeFormatted} DA)`;
-                    }
-                    
-                    return `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}</option>`;
-                }).join('');
+            // Options pour les filtres
+            let optionsFiltre = '<option value="">Tous les patients</option>';
+            let optionsRapport = '<option value="">Sélectionner un patient...</option>';
             
-            selectFiltre.innerHTML = options;
-            selectRapport.innerHTML = '<option value="">Sélectionner un patient...</option>' +
-                patients.map(p => {
-                    const solde = parseFloat(p.solde || 0);
-                    const soldeFormatted = Math.abs(solde).toFixed(2);
-                    
-                    let soldeText = '';
-                    if (solde < 0) {
-                        soldeText = ` (Dette: ${soldeFormatted} DA)`;
-                    } else if (solde > 0) {
-                        soldeText = ` (Crédit: ${soldeFormatted} DA)`;
-                    } else {
-                        soldeText = ` (Solde: ${soldeFormatted} DA)`;
-                    }
-                    
-                    return `<option value="${p.id}">${p.nom}${p.prenom ? ' ' + p.prenom : ''}${soldeText}</option>`;
-                }).join('');
+            patientsArray.forEach(p => {
+                const solde = parseFloat(p.solde || 0);
+                const soldeFormatted = Math.abs(solde).toFixed(2);
+                const nomComplet = `${p.nom}${p.prenom ? ' ' + p.prenom : ''}`;
+                
+                let soldeText = '';
+                if (solde < 0) {
+                    soldeText = ` (Dette: ${soldeFormatted} DA)`;
+                } else if (solde > 0) {
+                    soldeText = ` (Crédit: ${soldeFormatted} DA)`;
+                } else {
+                    soldeText = ` (Solde: ${soldeFormatted} DA)`;
+                }
+                
+                optionsFiltre += `<option value="${p.id}">${nomComplet}${soldeText}</option>`;
+                optionsRapport += `<option value="${p.id}">${nomComplet}${soldeText}</option>`;
+            });
+            
+            selectFiltre.innerHTML = optionsFiltre;
+            selectRapport.innerHTML = optionsRapport;
+            
+            // Charger aussi dans le select du formulaire de paiement
+            chargerPatientsDansSelect();
+            
+        } else {
+            console.error('Erreur chargement patients filtre:', await response.text());
         }
     } catch (error) {
         console.error('Erreur chargement patients filtre:', error);
+        showToast('Erreur lors du chargement des patients', 'error');
     }
 }
+
+// Fonction pour charger les patients dans le select du formulaire
+async function chargerPatientsDansSelect() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/patients`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const patients = await response.json();
+            const patientsArray = Array.isArray(patients) ? patients : 
+                                (patients.patients || patients.data || []);
+            
+            const select = document.getElementById('patientSelect');
+            let options = '<option value="">Sélectionner un patient...</option>';
+            
+            patientsArray.forEach(p => {
+                const solde = parseFloat(p.solde || 0);
+                const nomComplet = `${p.nom}${p.prenom ? ' ' + p.prenom : ''}`;
+                
+                options += `
+                    <option value="${p.id}" 
+                            data-age="${p.age || ''}" 
+                            data-sexe="${p.sexe || ''}" 
+                            data-tel="${p.telephone || ''}" 
+                            data-solde="${solde}">
+                        ${nomComplet} 
+                        (${p.telephone || 'N/A'}) 
+                        - Solde: ${solde.toFixed(2)} DA
+                    </option>
+                `;
+            });
+            
+            select.innerHTML = options;
+            
+        } else {
+            console.error('Erreur chargement patients:', await response.text());
+        }
+    } catch (error) {
+        console.error('Erreur chargement patients:', error);
+    }
+}
+
+// Dans DOMContentLoaded, remplacer loadPatients() par chargerPatientsDansSelect()
+document.addEventListener('DOMContentLoaded', function() {
+    if (!currentUserId) {
+        showToast('Veuillez vous connecter', 'error');
+        setTimeout(() => window.location.href = 'index.html', 2000);
+        return;
+    }
+
+    updateCurrentUserDisplay();
+    loadDashboardData();
+    chargerPatientsDansSelect(); // ← Modifié ici
+    chargerPatientsFiltre(); // ← Modifié ici
+    loadPaiements();
+    loadDettes();
+    
+    // Initialiser les dates par défaut
+    const aujourdhui = new Date().toISOString().split('T')[0];
+    document.getElementById('rapportDate').value = aujourdhui;
+    document.getElementById('filterDateDebut').value = aujourdhui;
+    document.getElementById('filterDateFin').value = aujourdhui;
+    
+    // Écouteurs d'événements
+    setupEventListeners();
+});
        function updatePatientInfo() {
     const select = document.getElementById('patientSelect');
     const selectedOption = select.options[select.selectedIndex];
@@ -1589,11 +1695,21 @@ function appliquerFiltres() {
     const dateFin = document.getElementById('filterDateFin').value;
     const modePaiement = document.getElementById('filterModePaiement').value;
     
-    // Mettre à jour les filtres actifs
+    // Réinitialiser les filtres
     filtresActifs = {};
     
     if (patientId) filtresActifs.patient_id = patientId;
-    if (typeExamen) filtresActifs.type_examen = typeExamen;
+    if (typeExamen) {
+        // Convertir le code en type d'examen complet
+        const typesExamen = {
+            'H': 'histologie',
+            'B': 'biopsie',
+            'C': 'cytologie',
+            'F': 'fcv',
+            'I': 'immuno-histochimie'
+        };
+        filtresActifs.type_examen = typesExamen[typeExamen] || typeExamen;
+    }
     if (dateDebut) filtresActifs.date_debut = dateDebut;
     if (dateFin) filtresActifs.date_fin = dateFin;
     if (modePaiement) filtresActifs.mode_paiement = modePaiement;
@@ -1604,17 +1720,20 @@ function appliquerFiltres() {
     
     showToast('Filtres appliqués', 'success');
 }
-        function reinitialiserFiltres() {
-            document.getElementById('filterPatient').value = '';
-            document.getElementById('filterDateDebut').value = '';
-            document.getElementById('filterDateFin').value = '';
-            document.getElementById('filterModePaiement').value = '';
-            
-            filtresActifs = {};
-            currentPage = 1;
-            loadPaiements();
-            showToast('Filtres réinitialisés', 'success');
-        }
+      function reinitialiserFiltres() {
+    document.getElementById('filterPatient').value = '';
+    document.getElementById('filterTypeExamen').value = '';
+    document.getElementById('filterDateDebut').value = '';
+    document.getElementById('filterDateFin').value = '';
+    document.getElementById('filterModePaiement').value = '';
+    
+    filtresActifs = {};
+    currentPage = 1;
+    
+    // Recharger tous les paiements sans filtres
+    loadPaiements();
+    showToast('Filtres réinitialisés', 'success');
+}
 
         function updatePagination() {
             const paginationDiv = document.getElementById('pagination');
