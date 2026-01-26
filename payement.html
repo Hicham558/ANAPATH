@@ -3524,6 +3524,9 @@ function genererRecuVignette(paiement) {
                     .no-print {
                         display: none !important;
                     }
+                    .btn-print {
+                        display: none !important;
+                    }
                 }
                 
                 /* Styles généraux */
@@ -3543,6 +3546,7 @@ function genererRecuVignette(paiement) {
                     justify-content: center;
                     align-items: center;
                     overflow: hidden;
+                    position: relative;
                 }
                 
                 .vignette {
@@ -3648,10 +3652,9 @@ function genererRecuVignette(paiement) {
                     color: #666;
                 }
                 
-                
                 .btn-print {
-                    position: fixed;
-                    top: 10px;
+                    position: absolute;
+                    top: -40px;
                     left: 10px;
                     background: #4f46e5;
                     color: white;
@@ -3700,8 +3703,6 @@ function genererRecuVignette(paiement) {
                         </div>
                     </div>
                 </div>
-                
-                
             </div>
             
             <script>
@@ -3709,8 +3710,6 @@ function genererRecuVignette(paiement) {
                 window.onload = function() {
                     setTimeout(function() {
                         window.focus();
-                        // Optionnel: imprimer automatiquement
-                        // window.print();
                     }, 500);
                 };
                 
