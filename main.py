@@ -46,7 +46,57 @@ def format_date(date_str):
         return date_obj.strftime('%d/%m/%Y')
     except:
         return str(date_str)
-
+@app.route('/debug/compteurs', methods=['GET'])
+def debug_compteurs():
+    """Route de debug pour voir tous les compteurs"""
+    user_id = request.headers.get('X-User-ID')
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Tous les compteurs
+        cur.execute('SELECT * FROM compteurs_recus ORDER BY updated_at DESC')
+        tous_compteurs = cur.fetchall()
+        
+        # Compteurs de l'utilisateur
+        if user_id:
+            cur.execute('''
+                SELECT * FROM compteurs_recus 
+                WHERE user_id = %s 
+                ORDER BY updated_at DESC
+            ''', (user_id,))
+            mes_compteurs = cur.fetchall()
+        else:
+            mes_compteurs = []
+        
+        # Derniers paiements
+        cur.execute('''
+            SELECT id, user_id, patient_id, type_paiement, numero_cr, date_paiement 
+            FROM paiements 
+            ORDER BY date_paiement DESC 
+            LIMIT 10
+        ''')
+        derniers_paiements = cur.fetchall()
+        
+        return jsonify({
+            'user_id_courant': user_id,
+            'total_compteurs_global': len(tous_compteurs),
+            'total_compteurs_user': len(mes_compteurs),
+            'tous_compteurs': [dict(c) for c in tous_compteurs],
+            'mes_compteurs': [dict(c) for c in mes_compteurs],
+            'derniers_paiements': [dict(p) for p in derniers_paiements]
+        })
+        
+    except Exception as e:
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 def generer_numero_recu(user_id, type_examen):
     """
     Génère un numéro de reçu automatique selon le format:
@@ -1190,8 +1240,90 @@ def paiements():
         cur = conn.cursor()
         
         if request.method == 'GET':
-            # ... (code GET existant) ...
+            # Récupérer les paramètres de filtrage
+            patient_id = request.args.get('patient_id')
+            date_debut = request.args.get('date_debut')
+            date_fin = request.args.get('date_fin')
+            mode_paiement = request.args.get('mode_paiement')
+            type_paiement = request.args.get('type_paiement')
             
+            # Construction de la requête SQL dynamique
+            query = '''
+                SELECT 
+                    p.*,
+                    pat.nom as patient_nom,
+                    pat.telephone as patient_telephone,
+                    u.nom as utilisateur_nom
+                FROM paiements p
+                LEFT JOIN patients pat ON p.patient_id = pat.id AND p.user_id = pat.user_id
+                LEFT JOIN utilisateurs u ON p.utilisateur_id = u.numero AND p.user_id = u.user_id
+                WHERE p.user_id = %s
+            '''
+            
+            params = [user_id]
+            
+            if patient_id:
+                query += ' AND p.patient_id = %s'
+                params.append(patient_id)
+            
+            if date_debut:
+                query += ' AND DATE(p.date_paiement) >= %s'
+                params.append(date_debut)
+            
+            if date_fin:
+                query += ' AND DATE(p.date_paiement) <= %s'
+                params.append(date_fin)
+            
+            if mode_paiement:
+                query += ' AND p.mode_paiement = %s'
+                params.append(mode_paiement)
+            
+            if type_paiement:
+                query += ' AND p.type_paiement = %s'
+                params.append(type_paiement)
+            
+            query += ' ORDER BY p.date_paiement DESC'
+            
+            # Pagination
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 20, type=int)
+            offset = (page - 1) * per_page
+            
+            # Compter le total
+            count_query = query.replace('p.*, pat.nom as patient_nom', 'COUNT(*) as total')
+            cur.execute(count_query, params)
+            total_result = cur.fetchone()
+            total_count = total_result['total'] if total_result else 0
+            
+            # Ajouter la pagination
+            query += ' LIMIT %s OFFSET %s'
+            params.extend([per_page, offset])
+            
+            cur.execute(query, params)
+            payments = cur.fetchall()
+            
+            # Formater les résultats
+            formatted_payments = []
+            for p in payments:
+                payment_dict = dict(p)
+                payment_dict['patient_nom_complet'] = p['patient_nom'] or 'Patient inconnu'
+                payment_dict['montant'] = float(p['montant']) if p['montant'] else 0
+                if p['montant_total']:
+                    payment_dict['montant_total'] = float(p['montant_total'])
+                if p['date_paiement']:
+                    payment_dict['date_paiement_formatted'] = p['date_paiement'].strftime('%d/%m/%Y %H:%M')
+                formatted_payments.append(payment_dict)
+            
+            return jsonify({
+                'paiements': formatted_payments,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total_count,
+                    'total_pages': (total_count + per_page - 1) // per_page if per_page > 0 else 1
+                }
+            })
+        
         elif request.method == 'POST':
             data = request.json
             required = ['patient_id', 'montant', 'type_paiement', 'mode_paiement']
@@ -1203,11 +1335,20 @@ def paiements():
             mode_paiement = data['mode_paiement']
             type_paiement = data.get('type_paiement', 'consultation')
             
+            print(f"📝 Début enregistrement paiement:")
+            print(f"   - User ID: {user_id}")
+            print(f"   - Type examen: {type_paiement}")
+            print(f"   - Mode: {mode_paiement}")
+            print(f"   - Montant: {montant_paye}")
+            
             # ✅ GÉNÉRATION AUTOMATIQUE DU NUMÉRO DE REÇU
             numero_cr = data.get('numero_cr', '').strip()
             if not numero_cr:
+                print(f"🔄 Génération automatique du numéro...")
                 numero_cr = generer_numero_recu(user_id, type_paiement)
                 print(f"✅ Numéro de reçu généré: {numero_cr}")
+            else:
+                print(f"📌 Numéro de reçu fourni: {numero_cr}")
             
             # Récupérer le patient
             cur.execute('''
@@ -1231,7 +1372,9 @@ def paiements():
             # Récupérer l'utilisateur connecté
             utilisateur_id = data.get('utilisateur_id')
             
-            # Insérer le paiement
+            print(f"💾 Insertion dans la base de données...")
+            
+            # ✅ INSERTION DU PAIEMENT AVEC LE NUMÉRO
             cur.execute('''
                 INSERT INTO paiements (
                     user_id, patient_id, utilisateur_id, montant, 
@@ -1247,11 +1390,16 @@ def paiements():
                 type_paiement,
                 mode_paiement,
                 montant_total,
-                numero_cr,  # ✅ Utiliser le numéro généré
+                numero_cr,
                 data.get('notes')
             ))
             
             new_payment = cur.fetchone()
+            
+            print(f"✅ Paiement inséré:")
+            print(f"   - ID: {new_payment['id']}")
+            print(f"   - Numéro CR: {new_payment['numero_cr']}")
+            print(f"   - Date: {new_payment['date_paiement']}")
             
             # Calculer le nouveau solde selon le mode de paiement
             if mode_paiement == 'a_terme':
@@ -1280,6 +1428,21 @@ def paiements():
                 message = f'Paiement comptant enregistré: {montant_paye:.2f} DA'
             
             conn.commit()
+            
+            print(f"✅ Transaction validée (commit)")
+            
+            # Vérifier que le compteur a bien été créé/mis à jour
+            cur.execute('''
+                SELECT * FROM compteurs_recus 
+                WHERE user_id = %s AND type_examen = %s
+                ORDER BY updated_at DESC LIMIT 1
+            ''', (user_id, type_paiement.lower()))
+            
+            compteur_info = cur.fetchone()
+            if compteur_info:
+                print(f"📊 Compteur actuel: {dict(compteur_info)}")
+            else:
+                print(f"⚠️ ATTENTION: Aucun compteur trouvé pour {type_paiement}!")
             
             result = dict(new_payment)
             result['nouveau_solde'] = nouveau_solde
