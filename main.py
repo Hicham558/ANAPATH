@@ -122,6 +122,59 @@ def generer_numero_recu(user_id, type_examen):
         if conn:
             conn.close()
 
+@app.route('/compteurs-recus', methods=['GET'])
+def voir_compteurs():
+    """Endpoint pour consulter les compteurs de numéros de reçu"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT 
+                type_examen,
+                annee,
+                mois,
+                compteur,
+                updated_at
+            FROM compteurs_recus
+            WHERE user_id = %s
+            ORDER BY annee DESC, mois DESC, type_examen
+        ''', (user_id,))
+        
+        compteurs = cur.fetchall()
+        
+        # Formater les résultats
+        result = []
+        mois_noms = {
+            1: 'Janvier', 2: 'Février', 3: 'Mars', 4: 'Avril',
+            5: 'Mai', 6: 'Juin', 7: 'Juillet', 8: 'Août',
+            9: 'Septembre', 10: 'Octobre', 11: 'Novembre', 12: 'Décembre'
+        }
+        
+        for c in compteurs:
+            result.append({
+                'type_examen': c['type_examen'],
+                'periode': f"{mois_noms[c['mois']]} 20{c['annee']}",
+                'compteur': c['compteur'],
+                'derniere_utilisation': c['updated_at'].strftime('%d/%m/%Y %H:%M') if c['updated_at'] else None
+            })
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Erreur compteurs: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 # Fonction pour formater le sexe
 def format_sexe(sexe_code):
     if sexe_code == 'M':
