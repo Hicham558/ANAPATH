@@ -1858,75 +1858,77 @@ function appliquerFiltres() {
         console.error('Erreur chargement statistiques dettes:', error);
     }
 }
-        function renderDettesList() {
-            const tbody = document.getElementById('listeDettes');
-            
-            if (allDettes.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                            <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
-                            <p class="mt-2">Aucune dette active</p>
-                            <p class="text-sm mt-1">Tous les patients sont à jour dans leurs paiements</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
+      function renderDettesList() {
+    const tbody = document.getElementById('listeDettes');
+    
+    if (allDettes.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-check-circle text-4xl mb-4 text-green-300"></i>
+                    <p class="mt-2">Aucune dette active</p>
+                    <p class="text-sm mt-1">Tous les patients sont à jour dans leurs paiements</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-            tbody.innerHTML = allDettes.map(patient => {
-                const dette = patient.montant_dette || Math.abs(parseFloat(patient.solde || 0));
-                const nomComplet = `${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}`;
-                const dernierPaiement = patient.dernier_paiement ? 
-                    new Date(patient.dernier_paiement).toLocaleDateString('fr-FR') : 'Aucun';
-                
-                return `
-                    <tr class="hover:bg-red-50 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-user text-red-600"></i>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">${nomComplet}</div>
-                                    ${patient.age ? `<div class="text-xs text-gray-500">${patient.age} ans</div>` : ''}
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center">
-                                <i class="fas fa-money-bill-wave text-red-500 mr-2"></i>
-                                <div>
-                                    <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
-                                    ${patient.nombre_paiements ? 
-                                        `<div class="text-xs text-gray-500">${patient.nombre_paiements} paiement(s)</div>` : 
-                                        ''}
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm text-gray-500">${dernierPaiement}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex space-x-2">
-                                <button onclick="payerDette(${patient.id})" 
-                                        class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md hover:shadow-lg">
-                                    <i class="fas fa-money-bill-wave mr-2"></i>Régler
-                                </button>
-                                <button onclick="voirHistoriquePatient(${patient.id})" 
-                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
-                                    <i class="fas fa-history mr-2"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
+    tbody.innerHTML = allDettes.map(patient => {
+        const dette = patient.montant_dette || Math.abs(parseFloat(patient.solde || 0));
+        const nomComplet = `${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}`;
+        const dernierPaiement = patient.dernier_paiement ? 
+            new Date(patient.dernier_paiement).toLocaleDateString('fr-FR') : 'Aucun';
+        
+        // CORRIGER L'APPEL DE FONCTION - utiliser patient.id
+        return `
+            <tr class="hover:bg-red-50 transition-colors">
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-red-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${nomComplet}</div>
+                            ${patient.age ? `<div class="text-xs text-gray-500">${patient.age} ans</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${patient.telephone || '-'}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-money-bill-wave text-red-500 mr-2"></i>
+                        <div>
+                            <div class="text-lg font-bold text-red-600">${dette.toFixed(2)} DA</div>
+                            ${patient.nombre_paiements ? 
+                                `<div class="text-xs text-gray-500">${patient.nombre_paiements} paiement(s)</div>` : 
+                                ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-500">${dernierPaiement}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex space-x-2">
+                        <!-- CORRECTION : Passer patient.id au lieu de pId -->
+                        <button onclick="payerDette(${patient.id})" 
+                                class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center shadow-md hover:shadow-lg">
+                            <i class="fas fa-money-bill-wave mr-2"></i>Régler
+                        </button>
+                        <!-- CORRECTION : Passer patient.id et nomComplet -->
+                        <button onclick="voirHistoriquePatient(${patient.id}, '${nomComplet.replace(/'/g, "\\'")}')" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                            <i class="fas fa-history mr-2"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
         async function updateStatistiques() {
             try {
                 // Récupérer les paramètres de période
@@ -2622,23 +2624,77 @@ async function prepareAndShowPrintModal(paymentId) {
             document.getElementById('modalDetail').classList.add('hidden');
         }
 
-        function payerDette(patientId) {
-            const patient = allPatients.find(p => p.id == patientId);
-            if (patient) {
-                document.getElementById('patientSelect').value = patientId;
-                document.querySelector('input[value="paiement_partiel"]').checked = true;
-                toggleMontantTotal();
-                updatePatientInfo();
-                showTab('nouveau');
-                
-                const dette = Math.abs(parseFloat(patient.solde || 0));
-                document.getElementById('montantPaye').value = dette;
-                updateRecap();
-                
-                showToast(`Dette sélectionnée pour ${patient.nom}: ${dette.toFixed(2)} DA`, 'success');
+      async function payerDette(patientId) {
+    try {
+        // 1. Chercher d'abord dans les dettes chargées
+        const patientDette = allDettes.find(p => p.id == patientId);
+        
+        if (!patientDette) {
+            // 2. Si non trouvé, charger le patient depuis l'API
+            const response = await fetch(`${API_BASE_URL}/patients/${patientId}`, {
+                headers: { 'X-User-ID': currentUserId }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Patient non trouvé');
             }
+            
+            const patient = await response.json();
+            
+            // Sélectionner le patient dans le formulaire
+            document.getElementById('patientSelect').value = patientId;
+            
+            // Calculer la dette (solde négatif)
+            const dette = Math.abs(parseFloat(patient.solde || 0));
+            
+            // Configurer le formulaire pour paiement partiel
+            document.querySelector('input[value="paiement_partiel"]').checked = true;
+            toggleMontantTotal();
+            
+            // Mettre à jour les infos patient
+            setTimeout(() => {
+                updatePatientInfo();
+                document.getElementById('montantPaye').value = dette;
+                document.getElementById('montantPaye').focus();
+                updateRecap();
+            }, 100);
+            
+            // Passer à l'onglet nouveau paiement
+            showTab('nouveau');
+            
+            showToast(`Dette de ${patient.nom}${patient.prenom ? ' ' + patient.prenom : ''}: ${dette.toFixed(2)} DA`, 'success');
+            return;
         }
-
+        
+        // Si trouvé dans allDettes
+        const dette = patientDette.montant_dette || Math.abs(parseFloat(patientDette.solde || 0));
+        const nomComplet = `${patientDette.nom}${patientDette.prenom ? ' ' + patientDette.prenom : ''}`;
+        
+        // Sélectionner le patient
+        document.getElementById('patientSelect').value = patientId;
+        
+        // Configurer pour paiement partiel
+        document.querySelector('input[value="paiement_partiel"]').checked = true;
+        toggleMontantTotal();
+        
+        // Mettre à jour les infos patient
+        setTimeout(() => {
+            updatePatientInfo();
+            document.getElementById('montantPaye').value = dette;
+            document.getElementById('montantPaye').focus();
+            updateRecap();
+        }, 100);
+        
+        // Passer à l'onglet nouveau paiement
+        showTab('nouveau');
+        
+        showToast(`Dette de ${nomComplet}: ${dette.toFixed(2)} DA`, 'success');
+        
+    } catch (error) {
+        console.error('Erreur préparation règlement dette:', error);
+        showToast('Impossible de charger les informations du patient', 'error');
+    }
+}
         async function deletePayment(paymentId) {
             if (!confirm('Êtes-vous sûr de vouloir supprimer ce paiement ? Cette action est irréversible.')) {
                 return;
