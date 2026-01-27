@@ -4625,19 +4625,43 @@ async function saveQuickPatient() {
 
     const result = await response.json();
     const newPatientId = result.id || result.numero;
+    const newPatientNom = nom; // Garder le nom pour l'affichage
 
     showToast('Patient créé avec succès', 'success');
     closeQuickPatientModal();
 
     // Recharger la liste des patients
     await chargerPatientsDansSelect();
-    await chargerPatientsFiltre();
+    
+    // Attendre un peu que le DOM se mette à jour
+    setTimeout(() => {
+      // Sélectionner automatiquement le nouveau patient dans la liste déroulante
+      const patientSelect = document.getElementById('patientSelect');
+      
+      if (patientSelect) {
+        // Chercher l'option correspondant au nouvel ID
+        for (let i = 0; i < patientSelect.options.length; i++) {
+          if (patientSelect.options[i].value === newPatientId.toString()) {
+            patientSelect.selectedIndex = i;
+            break;
+          }
+        }
+        
+        // Déclencher l'événement change pour mettre à jour les informations
+        updatePatientInfo();
+        
+        // Remettre le focus sur la liste déroulante
+        patientSelect.focus();
+        
+        // Optionnel : scroll vers l'option sélectionnée
+        patientSelect.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        showToast(`Patient "${newPatientNom}" sélectionné`, 'success');
+      }
+    }, 300);
 
-    // Sélectionner automatiquement le nouveau patient
-    if (newPatientId) {
-      document.getElementById('patientSelect').value = newPatientId;
-      updatePatientInfo();
-    }
+    // Recharger aussi les filtres
+    await chargerPatientsFiltre();
 
   } catch (err) {
     console.error('Erreur création patient:', err);
