@@ -45,6 +45,8 @@
         .badge-immuno { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
         .badge-autre { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; }
         
+        .badge-system { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; }
+        
         .table-container {
             max-height: 600px;
             overflow-y: auto;
@@ -86,6 +88,14 @@
         .price-input:focus {
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+        
+        .system-row {
+            background-color: #fef3c7;
+        }
+        
+        .system-row:hover {
+            background-color: #fde68a !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -111,6 +121,22 @@
         <div class="mb-8 animate-fade-in">
             <h2 class="text-3xl font-bold text-gray-800 mb-2">Gestion des Sous-Familles d'Examens</h2>
             <p class="text-gray-600">Configurez les prix et les détails des examens ANAPATH</p>
+        </div>
+
+        <!-- Filtre Affichage -->
+        <div class="mb-4 bg-white rounded-lg p-4 shadow-md flex items-center gap-4">
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="showSystemOnly" onchange="filterExamens()" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                <span class="text-sm font-medium text-gray-700">Afficher uniquement les examens système</span>
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="showUserOnly" onchange="filterExamens()" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                <span class="text-sm font-medium text-gray-700">Afficher uniquement mes examens</span>
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="showInactive" onchange="filterExamens()" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                <span class="text-sm font-medium text-gray-700">Afficher les examens inactifs</span>
+            </label>
         </div>
 
         <!-- KPI Cards -->
@@ -223,6 +249,7 @@
                         </div>
                         
                         <input type="hidden" id="editId" value="">
+                        <input type="hidden" id="editUserType" value="">
                         
                         <div class="flex gap-2 pt-4">
                             <button type="submit" id="btnSubmit" class="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-md hover:shadow-lg">
@@ -265,8 +292,9 @@
                     
                     <div class="table-container">
                         <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-gray-50 sticky top-0">
                                 <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Famille</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Désignation</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix</th>
@@ -276,7 +304,7 @@
                             </thead>
                             <tbody id="listeExamens" class="bg-white divide-y divide-gray-200">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                                         <i class="fas fa-spinner fa-spin mr-2"></i>Chargement des examens...
                                     </td>
                                 </tr>
@@ -286,7 +314,7 @@
                     
                     <!-- Statistiques -->
                     <div class="mt-6 pt-6 border-t border-gray-200">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div class="bg-blue-50 p-4 rounded-lg">
                                 <p class="text-sm text-blue-700">Examens actifs</p>
                                 <p id="totalActifs" class="text-2xl font-bold text-blue-800">0</p>
@@ -298,6 +326,10 @@
                             <div class="bg-purple-50 p-4 rounded-lg">
                                 <p class="text-sm text-purple-700">Total examens</p>
                                 <p id="totalExamens" class="text-2xl font-bold text-purple-800">0</p>
+                            </div>
+                            <div class="bg-pink-50 p-4 rounded-lg">
+                                <p class="text-sm text-pink-700">Examens système</p>
+                                <p id="totalSystem" class="text-2xl font-bold text-pink-800">0</p>
                             </div>
                         </div>
                     </div>
@@ -313,6 +345,7 @@
                         <li>• Ces examens seront disponibles dans le module de paiements</li>
                         <li>• Les examens "Autre" permettent de saisir un prix personnalisé</li>
                         <li>• Les examens désactivés n'apparaîtront pas dans les nouveaux paiements</li>
+                        <li>• <strong class="text-yellow-900">Les examens système (fond jaune) peuvent maintenant être modifiés, activés/désactivés ou supprimés</strong></li>
                     </ul>
                 </div>
             </div>
@@ -392,10 +425,11 @@
             });
         }
 
-        // Charger toutes les sous-familles
+        // Charger toutes les sous-familles (y compris inactives)
         async function loadSousFamilles() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens`, {
+                // Charger TOUTES les sous-familles (actives ET inactives)
+                const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens?actif=false`, {
                     headers: { 'X-User-ID': currentUserId }
                 });
 
@@ -417,9 +451,25 @@
         function filterExamens() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const familleFilter = document.getElementById('filterFamille').value;
+            const showSystemOnly = document.getElementById('showSystemOnly').checked;
+            const showUserOnly = document.getElementById('showUserOnly').checked;
+            const showInactive = document.getElementById('showInactive').checked;
 
             let filtered = allExamens;
 
+            // Filtre système/utilisateur
+            if (showSystemOnly) {
+                filtered = filtered.filter(e => e.user_id === 'system');
+            } else if (showUserOnly) {
+                filtered = filtered.filter(e => e.user_id !== 'system');
+            }
+
+            // Filtre actif/inactif
+            if (!showInactive) {
+                filtered = filtered.filter(e => e.actif);
+            }
+
+            // Filtre recherche
             if (searchTerm) {
                 filtered = filtered.filter(e => 
                     e.designation.toLowerCase().includes(searchTerm) ||
@@ -428,6 +478,7 @@
                 );
             }
 
+            // Filtre famille
             if (familleFilter) {
                 filtered = filtered.filter(e => e.famille === familleFilter);
             }
@@ -442,10 +493,10 @@
             if (examens.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                             <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
                             <p class="mt-2">Aucun examen trouvé</p>
-                            <p class="text-sm mt-1">Créez votre premier examen</p>
+                            <p class="text-sm mt-1">Créez votre premier examen ou modifiez les filtres</p>
                         </td>
                     </tr>
                 `;
@@ -456,9 +507,17 @@
                 const badgeClass = getBadgeClass(examen.famille);
                 const familleText = getFamilleText(examen.famille);
                 const prixFormatted = parseFloat(examen.prix).toFixed(2);
+                const isSystem = examen.user_id === 'system';
+                const rowClass = isSystem ? 'system-row' : 'hover:bg-gray-50';
                 
                 return `
-                    <tr class="hover:bg-gray-50 transition-colors fade-in">
+                    <tr class="${rowClass} transition-colors fade-in">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            ${isSystem ? 
+                                '<span class="badge-system px-3 py-1 rounded-full text-xs font-bold">SYSTÈME</span>' : 
+                                '<span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">Utilisateur</span>'
+                            }
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="${badgeClass} px-3 py-1 rounded-full text-xs font-medium">
                                 ${familleText}
@@ -474,29 +533,27 @@
                         </td>
                         <td class="px-6 py-4">
                             ${examen.actif ? 
-                                '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Actif</span>' : 
-                                '<span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">Inactif</span>'
+                                '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">✓ Actif</span>' : 
+                                '<span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">✗ Inactif</span>'
                             }
                         </td>
                         <td class="px-6 py-4 text-sm font-medium">
                             <div class="flex space-x-2">
                                 <button onclick="editExamen(${examen.id})" 
                                         class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition" 
-                                        title="Modifier">
+                                        title="Modifier${isSystem ? ' (Système)' : ''}">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button onclick="toggleActif(${examen.id}, ${examen.actif})" 
                                         class="${examen.actif ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900'} p-2 rounded-lg ${examen.actif ? 'hover:bg-orange-50' : 'hover:bg-green-50'} transition" 
-                                        title="${examen.actif ? 'Désactiver' : 'Activer'}">
+                                        title="${examen.actif ? 'Désactiver' : 'Activer'}${isSystem ? ' (Système)' : ''}">
                                     <i class="fas ${examen.actif ? 'fa-eye-slash' : 'fa-eye'}"></i>
                                 </button>
-                                ${examen.user_id !== 'system' ? `
-                                    <button onclick="showDeleteConfirm(${examen.id}, '${examen.designation}')" 
-                                            class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition" 
-                                            title="Supprimer">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                ` : ''}
+                                <button onclick="showDeleteConfirm(${examen.id}, '${examen.designation.replace(/'/g, "\\'")}', ${isSystem})" 
+                                        class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition" 
+                                        title="Supprimer${isSystem ? ' (Système)' : ''}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -534,6 +591,7 @@
         function updateStats() {
             const actifs = allExamens.filter(e => e.actif).length;
             const total = allExamens.length;
+            const systemExams = allExamens.filter(e => e.user_id === 'system').length;
             
             // Prix moyen des examens actifs
             const prixActifs = allExamens.filter(e => e.actif).map(e => parseFloat(e.prix));
@@ -543,6 +601,7 @@
             document.getElementById('totalActifs').textContent = actifs;
             document.getElementById('totalExamens').textContent = total;
             document.getElementById('prixMoyen').textContent = `${prixMoyen} DA`;
+            document.getElementById('totalSystem').textContent = systemExams;
         }
 
         // Mettre à jour les KPI
@@ -572,7 +631,7 @@
                 case 'AUTRE': suggestedPrice = 0; break;
             }
             
-            if (suggestedPrice > 0) {
+            if (suggestedPrice > 0 && !document.getElementById('editId').value) {
                 document.getElementById('prix').value = suggestedPrice;
                 document.getElementById('prix').classList.add('shake');
                 setTimeout(() => {
@@ -605,7 +664,7 @@
                 let response;
                 
                 if (isEdit) {
-                    // Mise à jour
+                    // Mise à jour (fonctionne maintenant pour système aussi)
                     response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${editId}`, {
                         method: 'PUT',
                         headers: {
@@ -645,7 +704,7 @@
             }
         }
 
-        // Éditer un examen
+        // Éditer un examen (système ou utilisateur)
         async function editExamen(id) {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${id}`, {
@@ -657,6 +716,7 @@
                     
                     // Remplir le formulaire
                     document.getElementById('editId').value = examen.id;
+                    document.getElementById('editUserType').value = examen.user_id;
                     document.getElementById('famille').value = examen.famille;
                     document.getElementById('code').value = examen.code;
                     document.getElementById('designation').value = examen.designation;
@@ -665,7 +725,8 @@
                     document.getElementById('actif').checked = examen.actif;
                     
                     // Changer le bouton
-                    document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-edit mr-2"></i>Modifier';
+                    const isSystem = examen.user_id === 'system';
+                    document.getElementById('btnSubmit').innerHTML = `<i class="fas fa-edit mr-2"></i>Modifier${isSystem ? ' (Système)' : ''}`;
                     document.getElementById('btnSubmit').classList.remove('from-green-600', 'to-emerald-600');
                     document.getElementById('btnSubmit').classList.add('from-blue-600', 'to-blue-700');
                     
@@ -675,7 +736,7 @@
                     // Faire défiler vers le formulaire
                     document.getElementById('formSousFamille').scrollIntoView({ behavior: 'smooth' });
                     
-                    showToast('Examen chargé pour modification', 'success');
+                    showToast(`Examen ${isSystem ? 'système' : ''} chargé pour modification`, 'success');
                 }
             } catch (error) {
                 console.error('Erreur chargement examen:', error);
@@ -683,7 +744,7 @@
             }
         }
 
-        // Basculer l'état actif/inactif
+        // Basculer l'état actif/inactif (fonctionne pour système aussi)
         async function toggleActif(id, currentState) {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${id}`, {
@@ -698,6 +759,9 @@
                 if (response.ok) {
                     showToast(`Examen ${!currentState ? 'activé' : 'désactivé'}`, 'success');
                     await loadSousFamilles();
+                } else {
+                    const error = await response.json();
+                    showToast(error.erreur || 'Erreur lors de la modification', 'error');
                 }
             } catch (error) {
                 console.error('Erreur toggle actif:', error);
@@ -705,12 +769,15 @@
             }
         }
 
-        // Afficher la confirmation de suppression
-        function showDeleteConfirm(id, designation) {
-            pendingAction = { type: 'delete', id: id };
+        // Afficher la confirmation de suppression (système ou utilisateur)
+        function showDeleteConfirm(id, designation, isSystem) {
+            pendingAction = { type: 'delete', id: id, isSystem: isSystem };
             
             document.getElementById('modalTitle').textContent = 'Confirmer la suppression';
-            document.getElementById('modalMessage').textContent = `Êtes-vous sûr de vouloir supprimer l'examen "${designation}" ?`;
+            document.getElementById('modalMessage').innerHTML = `
+                Êtes-vous sûr de vouloir supprimer l'examen <strong>"${designation}"</strong> ?
+                ${isSystem ? '<br><br><span class="text-red-600 font-bold">⚠️ ATTENTION : Ceci est un examen SYSTÈME</span>' : ''}
+            `;
             document.getElementById('modalConfirmBtn').className = 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition';
             document.getElementById('modalConfirmBtn').textContent = 'Supprimer';
             
@@ -729,8 +796,11 @@
                     });
 
                     if (response.ok) {
-                        showToast('Examen supprimé avec succès', 'success');
+                        showToast(`Examen ${pendingAction.isSystem ? 'système' : ''} supprimé avec succès`, 'success');
                         await loadSousFamilles();
+                    } else {
+                        const error = await response.json();
+                        showToast(error.erreur || 'Erreur lors de la suppression', 'error');
                     }
                 }
             } catch (error) {
@@ -752,6 +822,7 @@
         function resetForm() {
             document.getElementById('formSousFamille').reset();
             document.getElementById('editId').value = '';
+            document.getElementById('editUserType').value = '';
             
             // Réinitialiser le bouton
             document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-save mr-2"></i>Enregistrer';
@@ -777,115 +848,6 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
-        }
-
-        // Exporter les données (optionnel)
-        function exporterDonnees() {
-            if (allExamens.length === 0) {
-                showToast('Aucune donnée à exporter', 'warning');
-                return;
-            }
-
-            const csvContent = [
-                ['Famille', 'Code', 'Désignation', 'Description', 'Prix (DA)', 'Statut'],
-                ...allExamens.map(e => [
-                    getFamilleText(e.famille),
-                    e.code,
-                    e.designation,
-                    e.description || '',
-                    parseFloat(e.prix).toFixed(2),
-                    e.actif ? 'Actif' : 'Inactif'
-                ])
-            ].map(row => row.join(';')).join('\n');
-
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            const dateExport = new Date().toISOString().split('T')[0];
-            link.setAttribute('href', url);
-            link.setAttribute('download', `examens_anapath_${dateExport}.csv`);
-            link.style.visibility = 'hidden';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showToast(`${allExamens.length} examens exportés`, 'success');
-        }
-
-        // Imprimer la liste
-        function imprimerListe() {
-            const printWindow = window.open('', '', 'height=800,width=1000');
-            
-            const htmlContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Liste des Examens - ANAPATH</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; }
-                        .header { text-align: center; margin-bottom: 30px; }
-                        .header h1 { color: #4f46e5; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th { background: #4f46e5; color: white; padding: 12px; text-align: left; }
-                        td { padding: 10px; border-bottom: 1px solid #ddd; }
-                        .badge { padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; }
-                        .badge-histo { background: #3b82f6; }
-                        .badge-biopsie { background: #ef4444; }
-                        .badge-cytologie { background: #10b981; }
-                        .badge-fcv { background: #8b5cf6; }
-                        .badge-immuno { background: #f59e0b; }
-                        .badge-autre { background: #6b7280; }
-                        .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h1>📋 LISTE DES EXAMENS ANAPATH</h1>
-                        <p><strong>Centre d'Anatomie Pathologique</strong></p>
-                        <p>Date d'édition: ${new Date().toLocaleDateString('fr-FR')}</p>
-                    </div>
-                    
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Famille</th>
-                                <th>Code</th>
-                                <th>Désignation</th>
-                                <th>Prix (DA)</th>
-                                <th>Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${allExamens.map(e => `
-                                <tr>
-                                    <td><span class="badge badge-${e.famille.toLowerCase()}">${getFamilleText(e.famille)}</span></td>
-                                    <td>${e.code}</td>
-                                    <td>${e.designation}</td>
-                                    <td><strong>${parseFloat(e.prix).toFixed(2)} DA</strong></td>
-                                    <td>${e.actif ? '✅ Actif' : '❌ Inactif'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    
-                    <div class="footer">
-                        <p>Document généré par ANAPATH - Système de Gestion des Examens</p>
-                        <p>Total: ${allExamens.length} examens | Actifs: ${allExamens.filter(e => e.actif).length}</p>
-                    </div>
-                </body>
-                </html>
-            `;
-            
-            printWindow.document.write(htmlContent);
-            printWindow.document.close();
-            printWindow.focus();
-            
-            setTimeout(() => {
-                printWindow.print();
-            }, 500);
         }
     </script>
 </body>
