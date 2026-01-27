@@ -328,7 +328,508 @@ def test_db():
             'status': 'error',
             'message': str(e)
         }), 500
+# ================================================
+# SOUS-FAMILLES EXAMENS - CRUD COMPLET
+# ================================================
 
+# 1. GET - Lister toutes les sous-familles
+@app.route('/api/sous-familles-examens', methods=['GET'])
+def get_all_sous_familles():
+    """Retourne toutes les sous-familles d'examens"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    famille = request.args.get('famille')  # HISTO, BIOPS, CYTO, FCV, IMMUN, AUTRE
+    actif = request.args.get('actif', 'true').lower() == 'true'
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        query = '''
+            SELECT * FROM sous_familles_examens 
+            WHERE (user_id = %s OR user_id = 'system')
+        '''
+        params = [user_id]
+        
+        if actif:
+            query += ' AND actif = TRUE'
+        
+        if famille:
+            query += ' AND famille = %s'
+            params.append(famille)
+        
+        query += ' ORDER BY famille, designation'
+        
+        cur.execute(query, params)
+        sous_familles = cur.fetchall()
+        
+        # Formater les résultats
+        result = []
+        for sf in sous_familles:
+            item = dict(sf)
+            # Ajouter un libellé pour l'affichage
+            item['libelle'] = f"{item['designation']} ({float(item['prix']):.0f} DA)"
+            result.append(item)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Erreur get_all_sous_familles: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 2. GET - Récupérer une sous-famille par ID
+@app.route('/api/sous-familles-examens/<int:id>', methods=['GET'])
+def get_sous_famille(id):
+    """Retourne une sous-famille par ID"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT * FROM sous_familles_examens 
+            WHERE id = %s AND (user_id = %s OR user_id = 'system')
+        ''', (id, user_id))
+        
+        sous_famille = cur.fetchone()
+        
+        if not sous_famille:
+            return jsonify({'erreur': 'Sous-famille non trouvée'}), 404
+        
+        result = dict(sous_famille)
+        result['libelle'] = f"{result['designation']} ({float(result['prix']):.0f} DA)"
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Erreur get_sous_famille: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 3. POST - Créer une nouvelle sous-famille
+@app.route('/api/sous-familles-examens', methods=['POST'])
+def create_sous_famille():
+    """Crée une nouvelle sous-famille d'examen"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    data = request.json
+    required = ['famille', 'code', 'designation', 'prix']
+    
+    if not data or any(k not in data for k in required):
+        return jsonify({'erreur': 'Champs obligatoires: famille, code, designation, prix'}), 400
+    
+    # Valider que la famille est valide (optionnel)
+    familles_valides = ['HISTO', 'BIOPS', 'CYTO', 'FCV', 'IMMUN', 'AUTRE']
+    if data['famille'] not in familles_valides:
+        return jsonify({'erreur': f'Famille invalide. Valeurs acceptées: {", ".join(familles_valides)}'}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier si le code existe déjà
+        cur.execute('SELECT id FROM sous_familles_examens WHERE user_id = %s AND code = %s', 
+                   (user_id, data['code']))
+        if cur.fetchone():
+            return jsonify({'erreur': 'Ce code existe déjà'}), 400
+        
+        # Insérer la nouvelle sous-famille
+        cur.execute('''
+            INSERT INTO sous_familles_examens (
+                user_id, famille, code, designation, 
+                description, prix, actif
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, code, designation, famille, prix
+        ''', (
+            user_id,
+            data['famille'],
+            data['code'],
+            data['designation'],
+            data.get('description'),
+            float(data['prix']),
+            data.get('actif', True)
+        ))
+        
+        new_sf = cur.fetchone()
+        conn.commit()
+        
+        result = dict(new_sf)
+        result['message'] = 'Sous-famille créée avec succès'
+        
+        return jsonify(result), 201
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur create_sous_famille: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 4. PUT - Mettre à jour une sous-famille
+@app.route('/api/sous-familles-examens/<int:id>', methods=['PUT'])
+def update_sous_famille(id):
+    """Met à jour une sous-famille existante"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    data = request.json
+    if not data:
+        return jsonify({'erreur': 'Données manquantes'}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier que la sous-famille existe et appartient à l'utilisateur
+        cur.execute('SELECT id FROM sous_familles_examens WHERE id = %s AND user_id = %s', 
+                   (id, user_id))
+        
+        if not cur.fetchone():
+            return jsonify({'erreur': 'Sous-famille non trouvée ou non autorisée'}), 404
+        
+        # Mise à jour
+        update_fields = []
+        params = []
+        
+        # Champs modifiables
+        champs_modifiables = ['code', 'designation', 'description', 'prix', 'actif', 'famille']
+        
+        for champ in champs_modifiables:
+            if champ in data:
+                update_fields.append(f"{champ} = %s")
+                params.append(data[champ])
+        
+        if not update_fields:
+            return jsonify({'erreur': 'Aucun champ à modifier'}), 400
+        
+        # Ajouter updated_at et les conditions WHERE
+        update_fields.append('updated_at = CURRENT_TIMESTAMP')
+        params.extend([id, user_id])
+        
+        query = f'''
+            UPDATE sous_familles_examens 
+            SET {', '.join(update_fields)}
+            WHERE id = %s AND user_id = %s
+            RETURNING id, code, designation, famille, prix, actif
+        '''
+        
+        cur.execute(query, params)
+        updated = cur.fetchone()
+        conn.commit()
+        
+        if not updated:
+            return jsonify({'erreur': 'Échec de la mise à jour'}), 500
+        
+        result = dict(updated)
+        result['message'] = 'Sous-famille mise à jour avec succès'
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur update_sous_famille: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 5. DELETE - Supprimer (désactiver) une sous-famille
+@app.route('/api/sous-familles-examens/<int:id>', methods=['DELETE'])
+def delete_sous_famille(id):
+    """Désactive une sous-famille"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier que la sous-famille existe
+        cur.execute('''
+            SELECT id, designation FROM sous_familles_examens 
+            WHERE id = %s AND user_id = %s
+        ''', (id, user_id))
+        
+        sous_famille = cur.fetchone()
+        if not sous_famille:
+            return jsonify({'erreur': 'Sous-famille non trouvée ou non autorisée'}), 404
+        
+        # Désactiver la sous-famille
+        cur.execute('''
+            UPDATE sous_familles_examens 
+            SET actif = FALSE, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s AND user_id = %s
+        ''', (id, user_id))
+        
+        conn.commit()
+        
+        return jsonify({
+            'message': f'Sous-famille "{sous_famille["designation"]}" désactivée',
+            'id': id,
+            'actif': False
+        })
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur delete_sous_famille: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 6. GET - Sous-familles par famille
+@app.route('/api/sous-familles-examens/famille/<string:famille>', methods=['GET'])
+def get_sous_familles_par_famille(famille):
+    """Retourne les sous-familles d'une famille spécifique"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT * FROM sous_familles_examens
+            WHERE famille = %s 
+            AND (user_id = %s OR user_id = 'system')
+            AND actif = TRUE
+            ORDER BY designation
+        ''', (famille, user_id))
+        
+        sous_familles = cur.fetchall()
+        
+        formatted = []
+        for sf in sous_familles:
+            sf_dict = dict(sf)
+            sf_dict['libelle'] = f"{sf_dict['designation']} ({float(sf_dict['prix']):.0f} DA)"
+            formatted.append(sf_dict)
+        
+        return jsonify({
+            'famille': famille,
+            'sous_familles': formatted,
+            'count': len(formatted)
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur get_sous_familles_par_famille: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 7. GET - Toutes les sous-familles groupées par famille
+@app.route('/api/sous-familles-examens/grouped', methods=['GET'])
+def get_sous_familles_grouped():
+    """Retourne toutes les sous-familles groupées par famille"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Récupérer toutes les sous-familles actives
+        cur.execute('''
+            SELECT * FROM sous_familles_examens
+            WHERE (user_id = %s OR user_id = 'system')
+            AND actif = TRUE
+            ORDER BY famille, designation
+        ''', (user_id,))
+        
+        sous_familles = cur.fetchall()
+        
+        # Grouper par famille
+        result = {}
+        familles = ['HISTO', 'BIOPS', 'CYTO', 'FCV', 'IMMUN', 'AUTRE']
+        for famille in familles:
+            result[famille] = []
+        
+        for sf in sous_familles:
+            sf_dict = dict(sf)
+            sf_dict['libelle'] = f"{sf_dict['designation']} ({float(sf_dict['prix']):.0f} DA)"
+            result[sf_dict['famille']].append(sf_dict)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Erreur get_sous_familles_grouped: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 8. GET - Rechercher des sous-familles
+@app.route('/api/sous-familles-examens/search', methods=['GET'])
+def search_sous_familles():
+    """Recherche des sous-familles par terme"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    search_term = request.args.get('q', '')
+    if not search_term or len(search_term) < 2:
+        return jsonify({'sous_familles': [], 'count': 0})
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT * FROM sous_familles_examens
+            WHERE (user_id = %s OR user_id = 'system')
+            AND actif = TRUE
+            AND (designation ILIKE %s OR code ILIKE %s OR description ILIKE %s)
+            ORDER BY famille, designation
+            LIMIT 20
+        ''', (user_id, f'%{search_term}%', f'%{search_term}%', f'%{search_term}%'))
+        
+        sous_familles = cur.fetchall()
+        
+        formatted = []
+        for sf in sous_familles:
+            sf_dict = dict(sf)
+            sf_dict['libelle'] = f"{sf_dict['designation']} ({float(sf_dict['prix']):.0f} DA)"
+            formatted.append(sf_dict)
+        
+        return jsonify({
+            'sous_familles': formatted,
+            'count': len(formatted)
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur search_sous_familles: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 9. POST - Dupliquer une sous-famille
+@app.route('/api/sous-familles-examens/<int:id>/duplicate', methods=['POST'])
+def duplicate_sous_famille(id):
+    """Duplique une sous-famille existante"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Récupérer la sous-famille à dupliquer
+        cur.execute('''
+            SELECT * FROM sous_familles_examens 
+            WHERE id = %s AND (user_id = %s OR user_id = 'system')
+        ''', (id, user_id))
+        
+        original = cur.fetchone()
+        if not original:
+            return jsonify({'erreur': 'Sous-famille non trouvée'}), 404
+        
+        original_dict = dict(original)
+        
+        # Générer un nouveau code
+        base_code = original_dict['code']
+        counter = 1
+        new_code = f"{base_code}_COPY{counter}"
+        
+        # Chercher un code disponible
+        while True:
+            cur.execute('SELECT id FROM sous_familles_examens WHERE user_id = %s AND code = %s', 
+                       (user_id, new_code))
+            if not cur.fetchone():
+                break
+            counter += 1
+            new_code = f"{base_code}_COPY{counter}"
+        
+        # Insérer la copie
+        cur.execute('''
+            INSERT INTO sous_familles_examens (
+                user_id, famille, code, designation, 
+                description, prix, actif
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, code, designation, famille, prix
+        ''', (
+            user_id,
+            original_dict['famille'],
+            new_code,
+            f"{original_dict['designation']} (Copie)",
+            original_dict['description'],
+            original_dict['prix'],
+            original_dict['actif']
+        ))
+        
+        new_sf = cur.fetchone()
+        conn.commit()
+        
+        result = dict(new_sf)
+        result['message'] = 'Sous-famille dupliquée avec succès'
+        
+        return jsonify(result), 201
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur duplicate_sous_famille: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 # ================================================
 # UTILISATEURS
 # ================================================
