@@ -3183,6 +3183,323 @@ async function deleteUtilisateur(numero) {
     showToast(err.message, 'error');
   }
 }
+
+    // ═══════════════════════════════════════════════════════════════
+// SCRIPT D'ENREGISTREMENT PWA - ANAPATH ELYOUSR
+// À ajouter dans index.html juste avant la balise </body>
+// ═══════════════════════════════════════════════════════════════
+
+// Enregistrement du Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/service-worker.js', {
+        scope: '/'
+      });
+      
+      console.log('✅ Service Worker enregistré avec succès:', registration.scope);
+      
+      // Vérifier les mises à jour toutes les heures
+      setInterval(() => {
+        registration.update();
+      }, 60 * 60 * 1000);
+
+      // Gérer les mises à jour du Service Worker
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        console.log('🔄 Nouvelle version du Service Worker détectée');
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Une nouvelle version est disponible
+            showUpdateNotification();
+          }
+        });
+      });
+
+      // Écouter les messages du Service Worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+          showUpdateNotification();
+        }
+        
+        if (event.data && event.data.type === 'CACHE_CLEARED') {
+          showToast('Cache vidé avec succès', 'success');
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'enregistrement du Service Worker:', error);
+    }
+  });
+}
+
+// Fonction pour afficher la notification de mise à jour
+function showUpdateNotification() {
+  const updateBanner = document.createElement('div');
+  updateBanner.id = 'pwa-update-banner';
+  updateBanner.innerHTML = `
+    <div style="position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 9999; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; padding: 16px 24px; border-radius: 12px; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-width: 500px; width: 90%;
+                animation: slideDown 0.5s ease-out;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+        <div style="flex: 1;">
+          <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">
+            <i class="fas fa-sync-alt" style="margin-right: 8px;"></i>
+            Mise à jour disponible
+          </div>
+          <div style="font-size: 14px; opacity: 0.9;">
+            Une nouvelle version de l'application est prête
+          </div>
+        </div>
+        <button onclick="reloadPage()" 
+                style="background: white; color: #667eea; border: none; padding: 10px 20px; 
+                       border-radius: 8px; font-weight: 600; cursor: pointer; 
+                       font-size: 14px; white-space: nowrap; transition: all 0.3s;">
+          Actualiser
+        </button>
+        <button onclick="dismissUpdateBanner()" 
+                style="background: rgba(255,255,255,0.2); color: white; border: none; 
+                       width: 32px; height: 32px; border-radius: 50%; cursor: pointer; 
+                       display: flex; align-items: center; justify-content: center; 
+                       transition: all 0.3s;">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <style>
+      @keyframes slideDown {
+        from { transform: translate(-50%, -120%); opacity: 0; }
+        to { transform: translate(-50%, 0); opacity: 1; }
+      }
+      #pwa-update-banner button:hover {
+        transform: scale(1.05);
+      }
+    </style>
+  `;
+  
+  document.body.appendChild(updateBanner);
+}
+
+// Fonction pour recharger la page après mise à jour
+function reloadPage() {
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+  }
+  window.location.reload();
+}
+
+// Fonction pour fermer la bannière de mise à jour
+function dismissUpdateBanner() {
+  const banner = document.getElementById('pwa-update-banner');
+  if (banner) {
+    banner.style.animation = 'slideUp 0.3s ease-out';
+    setTimeout(() => banner.remove(), 300);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GESTION DE L'INSTALLATION PWA (Bouton "Installer l'application")
+// ═══════════════════════════════════════════════════════════════
+
+let deferredInstallPrompt = null;
+
+// Capturer l'événement beforeinstallprompt
+window.addEventListener('beforeinstallprompt', (e) => {
+  console.log('📱 PWA installable détectée');
+  
+  // Empêcher le mini-infobar automatique de Chrome
+  e.preventDefault();
+  
+  // Stocker l'événement pour l'utiliser plus tard
+  deferredInstallPrompt = e;
+  
+  // Afficher le bouton d'installation personnalisé
+  showInstallButton();
+});
+
+// Fonction pour afficher le bouton d'installation
+function showInstallButton() {
+  const installBanner = document.createElement('div');
+  installBanner.id = 'pwa-install-banner';
+  installBanner.innerHTML = `
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 9998; 
+                background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); 
+                color: white; padding: 16px 20px; border-radius: 12px; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-width: 350px;
+                animation: slideInFromRight 0.5s ease-out;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="flex: 1;">
+          <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">
+            <i class="fas fa-download" style="margin-right: 8px;"></i>
+            Installer ANAPATH
+          </div>
+          <div style="font-size: 13px; opacity: 0.9;">
+            Accès rapide depuis votre écran d'accueil
+          </div>
+        </div>
+        <button onclick="installPWA()" 
+                style="background: white; color: #4f46e5; border: none; 
+                       padding: 8px 16px; border-radius: 8px; font-weight: 600; 
+                       cursor: pointer; font-size: 13px; transition: all 0.3s;">
+          Installer
+        </button>
+        <button onclick="dismissInstallBanner()" 
+                style="background: rgba(255,255,255,0.2); color: white; border: none; 
+                       width: 28px; height: 28px; border-radius: 50%; cursor: pointer; 
+                       display: flex; align-items: center; justify-content: center;">
+          <i class="fas fa-times" style="font-size: 12px;"></i>
+        </button>
+      </div>
+    </div>
+    <style>
+      @keyframes slideInFromRight {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { transform: translate(-50%, 0); opacity: 1; }
+        to { transform: translate(-50%, -120%); opacity: 0; }
+      }
+    </style>
+  `;
+  
+  document.body.appendChild(installBanner);
+}
+
+// Fonction pour installer la PWA
+async function installPWA() {
+  if (!deferredInstallPrompt) {
+    showToast('Installation déjà effectuée ou non disponible', 'info');
+    return;
+  }
+
+  // Afficher le prompt d'installation natif
+  deferredInstallPrompt.prompt();
+
+  // Attendre la réponse de l'utilisateur
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  
+  if (outcome === 'accepted') {
+    console.log('✅ PWA installée avec succès');
+    showToast('Application installée avec succès !', 'success');
+  } else {
+    console.log('❌ Installation PWA refusée');
+  }
+
+  // Réinitialiser la variable
+  deferredInstallPrompt = null;
+  
+  // Masquer le bouton d'installation
+  dismissInstallBanner();
+}
+
+// Fonction pour fermer la bannière d'installation
+function dismissInstallBanner() {
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) {
+    banner.style.animation = 'slideInFromRight 0.3s ease-out reverse';
+    setTimeout(() => banner.remove(), 300);
+  }
+}
+
+// Détecter quand l'application est installée
+window.addEventListener('appinstalled', () => {
+  console.log('✅ PWA installée avec succès');
+  showToast('ANAPATH installée sur votre appareil !', 'success');
+  
+  // Masquer le bouton d'installation si présent
+  dismissInstallBanner();
+  
+  // Réinitialiser la variable
+  deferredInstallPrompt = null;
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GESTION DU MODE HORS LIGNE
+// ═══════════════════════════════════════════════════════════════
+
+// Détecter les changements de connectivité
+window.addEventListener('online', () => {
+  console.log('🌐 Connexion rétablie');
+  showToast('Connexion internet rétablie', 'success');
+  updateOnlineStatus(true);
+});
+
+window.addEventListener('offline', () => {
+  console.log('📡 Connexion perdue');
+  showToast('Mode hors ligne activé', 'warning');
+  updateOnlineStatus(false);
+});
+
+// Fonction pour mettre à jour le statut de connexion dans l'UI
+function updateOnlineStatus(isOnline) {
+  const statusElement = document.getElementById('apiStatus');
+  if (statusElement) {
+    if (isOnline) {
+      statusElement.innerHTML = '<i class="fas fa-database mr-1"></i> PostgreSQL';
+      statusElement.classList.remove('bg-red-700');
+      statusElement.classList.add('bg-indigo-700');
+    } else {
+      statusElement.innerHTML = '<i class="fas fa-wifi-slash mr-1"></i> Hors ligne';
+      statusElement.classList.remove('bg-indigo-700');
+      statusElement.classList.add('bg-red-700');
+    }
+  }
+}
+
+// Vérifier le statut initial
+if (!navigator.onLine) {
+  updateOnlineStatus(false);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FONCTIONS UTILITAIRES PWA
+// ═══════════════════════════════════════════════════════════════
+
+// Fonction pour vider le cache manuellement
+async function clearAppCache() {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+  }
+  
+  if ('caches' in window) {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
+  }
+  
+  console.log('🗑️ Cache de l\'application vidé');
+  showToast('Cache vidé. Rechargement...', 'success');
+  
+  setTimeout(() => window.location.reload(), 1500);
+}
+
+// Fonction pour obtenir la taille du cache
+async function getCacheSize() {
+  if ('storage' in navigator && 'estimate' in navigator.storage) {
+    const estimate = await navigator.storage.estimate();
+    const usage = estimate.usage || 0;
+    const quota = estimate.quota || 0;
+    
+    return {
+      usage: (usage / 1024 / 1024).toFixed(2) + ' MB',
+      quota: (quota / 1024 / 1024).toFixed(2) + ' MB',
+      percentage: ((usage / quota) * 100).toFixed(1) + '%'
+    };
+  }
+  return null;
+}
+
+// Ajouter un bouton de gestion PWA dans les paramètres
+document.addEventListener('DOMContentLoaded', () => {
+  // Cette fonction sera appelée quand la page params.html est chargée
+  // pour ajouter les options PWA dans les paramètres
+});
+
+console.log('🚀 PWA ANAPATH ELYOUSR chargée avec succès');
+  
   </script>
 </body>
 </html>
