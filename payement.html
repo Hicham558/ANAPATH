@@ -358,20 +358,27 @@ td .flex.flex-col {
 
                         <!-- Montants -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div id="montantTotalGroup" class="hidden">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Montant Total (DA)*
-                                </label>
-                                <input type="number" id="montantTotal" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" oninput="updateRecap()">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Montant Payé (DA)*
-                                </label>
-                                <input type="number" id="montantPaye" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" required oninput="updateRecap()">
-                            </div>
-                        </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+            <i class="fas fa-money-bill-wave mr-2 text-green-600"></i>Prix suggéré (DA)
+        </label>
+        <input type="number" id="prixSuggere" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" value="0.00">
+    </div>
+    
+    <div id="montantTotalGroup" class="hidden">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+            Montant Total (DA)*
+        </label>
+        <input type="number" id="montantTotal" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" oninput="updateRecap()">
+    </div>
+    
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+            <i class="fas fa-coins mr-2 text-yellow-600"></i>Montant Payé (DA)*
+        </label>
+        <input type="number" id="montantPaye" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" required oninput="updateRecap()">
+    </div>
+</div>
 
                         <!-- Détails supplémentaires -->
                         <div class="space-y-4">
@@ -379,7 +386,8 @@ td .flex.flex-col {
     <label class="block text-sm font-medium text-gray-700 mb-2">
         <i class="fas fa-stethoscope mr-2 text-purple-600"></i>Type d'Examen*
     </label>
-    <select id="typePaiement" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+     <select id="typePaiement" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePrixFromSousFamille()">
+        <option value="">Sélectionner un examen</option>
         <option value="histologie">Histologie</option>
         <option value="biopsie">Biopsie</option>
         <option value="cytologie">Cytologie</option>
@@ -388,7 +396,18 @@ td .flex.flex-col {
         <option value="autre">Autre</option>
     </select>
 </div>
-
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">
+        <i class="fas fa-file-invoice mr-2 text-gray-600"></i>Code Examen
+    </label>
+    <input type="text" id="codeExamen" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" placeholder="Code auto-généré">
+</div>
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">
+        <i class="fas fa-tag mr-2 text-blue-600"></i>Désignation
+    </label>
+    <input type="text" id="designationExamen" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" placeholder="Désignation de l'examen">
+</div>                            
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-2">
         <i class="fas fa-file-invoice mr-2 text-gray-600"></i>Numéro de Reçu
@@ -937,6 +956,7 @@ td .flex.flex-col {
             loadPaiements();
             loadDettes();
             chargerPatientsFiltre();
+             chargerSousFamillesExamens();
             
             // Initialiser les dates par défaut
             const aujourdhui = new Date().toISOString().split('T')[0];
@@ -1346,12 +1366,14 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
         }
 
         function updateRecap() {
-            const patientSelect = document.getElementById('patientSelect');
-            const mode = document.querySelector('input[name="modePaiement"]:checked').value;
-            const montantPaye = parseFloat(document.getElementById('montantPaye').value) || 0;
-            const montantTotal = parseFloat(document.getElementById('montantTotal').value) || 0;
-            const soldeActuel = parseFloat(patientSelect.options[patientSelect.selectedIndex]?.dataset.solde || 0);
-
+    const patientSelect = document.getElementById('patientSelect');
+    const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+    const montantPaye = parseFloat(document.getElementById('montantPaye').value) || 0;
+    const montantTotal = parseFloat(document.getElementById('montantTotal').value) || 0;
+    const soldeActuel = parseFloat(patientSelect.options[patientSelect.selectedIndex]?.dataset.solde || 0);
+    const designationExamen = document.getElementById('designationExamen').value || 'Non spécifié';
+    const prixSuggere = parseFloat(document.getElementById('prixSuggere').value) || 0;
+            
             let reste = 0;
             let nouveauSolde = soldeActuel;
 
@@ -1368,32 +1390,40 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
 
             // Mettre à jour les éléments du récapitulatif
             const recapContent = document.getElementById('recapContent');
-            recapContent.innerHTML = `
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center p-4 bg-indigo-50 rounded-lg">
-                        <span class="font-medium text-indigo-700">Mode de paiement:</span>
-                        <span class="px-3 py-1 rounded-full text-sm ${mode === 'espece' ? 'badge-espece' : mode === 'a_terme' ? 'badge-a_terme' : 'badge-partiel'}">
-                            ${mode === 'espece' ? 'Comptant' : mode === 'a_terme' ? 'À terme' : 'Paiement partiel'}
-                        </span>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <p class="text-sm text-gray-600">Solde actuel</p>
-                            <p class="text-xl font-bold ${soldeActuel < 0 ? 'text-red-600' : 'text-gray-800'}">
-                                ${soldeActuel.toFixed(2)} DA
-                            </p>
-                        </div>
-                        
-                        <div class="p-4 bg-green-50 rounded-lg">
-                            <p class="text-sm text-green-600">Montant payé</p>
-                            <p class="text-xl font-bold text-green-700">
-                                ${montantPaye.toFixed(2)} DA
-                            </p>
-                        </div>
-                    </div>
+    recapContent.innerHTML = `
+        <div class="space-y-4">
+            <div class="p-4 bg-indigo-50 rounded-lg">
+                <h4 class="font-medium text-indigo-800 mb-2">Examen sélectionné</h4>
+                <p class="text-lg font-semibold">${designationExamen}</p>
+                <p class="text-sm text-indigo-600 mt-1">
+                    Prix suggéré: <span class="font-bold">${prixSuggere.toFixed(2)} DA</span>
+                </p>
+            </div>
+            
+            <div class="flex justify-between items-center p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg">
+                <span class="font-medium">Mode de paiement:</span>
+                <span class="px-3 py-1 rounded-full text-sm bg-white/30">
+                    ${mode === 'espece' ? 'Comptant' : mode === 'a_terme' ? 'À terme' : 'Paiement partiel'}
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-600">Solde actuel</p>
+                    <p class="text-xl font-bold ${soldeActuel < 0 ? 'text-red-600' : 'text-gray-800'}">
+                        ${soldeActuel.toFixed(2)} DA
+                    </p>
                 </div>
-            `;
+                
+                <div class="p-4 bg-green-50 rounded-lg">
+                    <p class="text-sm text-green-600">Montant payé</p>
+                    <p class="text-xl font-bold text-green-700">
+                        ${montantPaye.toFixed(2)} DA
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
 
             // Mettre à jour les détails
             if (mode === 'a_terme') {
@@ -1413,13 +1443,21 @@ async function enregistrerPaiement() {
     const mode = document.querySelector('input[name="modePaiement"]:checked').value;
     const montantPaye = parseFloat(document.getElementById('montantPaye').value);
     const montantTotal = parseFloat(document.getElementById('montantTotal').value);
-    const typePaiement = document.getElementById('typePaiement').value;
-    const numeroCR = document.getElementById('numeroCR').value.trim();  // Peut être vide
+    const typePaiementSelect = document.getElementById('typePaiement');
+    const sousFamilleId = typePaiementSelect.value;
+    const codeExamen = document.getElementById('codeExamen').value;
+    const designationExamen = document.getElementById('designationExamen').value;
+    const numeroCR = document.getElementById('numeroCR').value.trim();
     const notes = document.getElementById('notes').value;
 
     // Validation
     if (!patientId) {
         showToast('Veuillez sélectionner un patient', 'error');
+        return;
+    }
+
+    if (!sousFamilleId || sousFamilleId === "") {
+        showToast('Veuillez sélectionner un type d\'examen', 'error');
         return;
     }
 
@@ -1437,9 +1475,11 @@ async function enregistrerPaiement() {
         const data = {
             patient_id: patientId,
             montant: montantPaye,
-            type_paiement: typePaiement,
+            sous_famille_examen_id: sousFamilleId === "autre_personnalise" ? null : sousFamilleId,
+            code_examen: codeExamen,
+            designation_examen: designationExamen,
             mode_paiement: mode,
-            numero_cr: numeroCR,  // Vide ou rempli
+            numero_cr: numeroCR,
             notes: notes
         };
 
@@ -1447,6 +1487,13 @@ async function enregistrerPaiement() {
             data.montant_total = montantTotal;
         }
 
+        if (sousFamilleId === "autre_personnalise") {
+            data.type_paiement = "Autre (personnalisé)";
+        } else {
+            const selectedOption = typePaiementSelect.options[typePaiementSelect.selectedIndex];
+            data.type_paiement = selectedOption.dataset.famille ? 
+                getFamilleText(selectedOption.dataset.famille) : "Examen";
+        }
         let endpoint = `${API_BASE_URL}/paiements`;
         if (mode === 'paiement_partiel') {
             endpoint = `${API_BASE_URL}/paiements/paiement-partiel`;
@@ -2012,7 +2059,216 @@ function appliquerFiltres() {
             }
         }
 
-       function renderChartPaiements(data) {
+      let sousFamillesExamens = [];
+
+// Charger les sous-familles d'examens
+async function chargerSousFamillesExamens() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/actifs`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            sousFamillesExamens = await response.json();
+            populateSousFamillesSelect();
+        } else {
+            console.error('Erreur chargement sous-familles:', await response.text());
+        }
+    } catch (error) {
+        console.error('Erreur chargement sous-familles:', error);
+        showToast('Erreur lors du chargement des examens', 'error');
+    }
+}
+
+// Remplir le select avec les sous-familles
+function populateSousFamillesSelect() {
+    const select = document.getElementById('typePaiement');
+    
+    // Sauvegarder la sélection actuelle
+    const currentValue = select.value;
+    
+    // Vider et ajouter l'option par défaut
+    select.innerHTML = '<option value="">Sélectionner un examen</option>';
+    
+    // Grouper par famille
+    const grouped = {};
+    
+    sousFamillesExamens.forEach(examen => {
+        if (examen.actif) {
+            const famille = examen.famille;
+            if (!grouped[famille]) {
+                grouped[famille] = [];
+            }
+            grouped[famille].push(examen);
+        }
+    });
+    
+    // Ajouter les options groupées
+    const famillesOrder = ['HISTO', 'BIOPS', 'CYTO', 'FCV', 'IMMUN', 'AUTRE'];
+    
+    famillesOrder.forEach(familleCode => {
+        if (grouped[familleCode]) {
+            // Créer un optgroup
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = getFamilleText(familleCode);
+            
+            // Ajouter les options de cette famille
+            grouped[familleCode].forEach(examen => {
+                const option = document.createElement('option');
+                option.value = examen.id;
+                option.dataset.code = examen.code;
+                option.dataset.designation = examen.designation;
+                option.dataset.prix = examen.prix;
+                option.dataset.famille = examen.famille;
+                option.dataset.description = examen.description || '';
+                
+                option.textContent = `${examen.designation} - ${parseFloat(examen.prix).toFixed(2)} DA`;
+                
+                // Appliquer des styles selon la famille
+                switch(examen.famille) {
+                    case 'HISTO':
+                        option.classList.add('text-blue-600', 'font-medium');
+                        break;
+                    case 'BIOPS':
+                        option.classList.add('text-red-600', 'font-medium');
+                        break;
+                    case 'CYTO':
+                    case 'FCV':
+                        option.classList.add('text-green-600', 'font-medium');
+                        break;
+                    case 'IMMUN':
+                        option.classList.add('text-orange-600', 'font-medium');
+                        break;
+                    case 'AUTRE':
+                        option.classList.add('text-gray-600', 'font-medium');
+                        break;
+                }
+                
+                optgroup.appendChild(option);
+            });
+            
+            select.appendChild(optgroup);
+        }
+    });
+    
+    // Ajouter une option "Autre (personnalisé)"
+    const autreOption = document.createElement('option');
+    autreOption.value = "autre_personnalise";
+    autreOption.textContent = "Autre (prix personnalisé)";
+    autreOption.classList.add('text-purple-600', 'font-medium');
+    select.appendChild(autreOption);
+    
+    // Restaurer la sélection si elle existe toujours
+    if (currentValue) {
+        select.value = currentValue;
+        updatePrixFromSousFamille();
+    }
+}
+
+// Mettre à jour les informations basées sur la sous-famille sélectionnée
+function updatePrixFromSousFamille() {
+    const select = document.getElementById('typePaiement');
+    const codeInput = document.getElementById('codeExamen');
+    const designationInput = document.getElementById('designationExamen');
+    const prixInput = document.getElementById('prixSuggere');
+    const montantTotal = document.getElementById('montantTotal');
+    
+    if (select.value === "autre_personnalise") {
+        // Mode personnalisé
+        codeInput.value = "AUTRE_PERSO";
+        designationInput.value = "Examen personnalisé";
+        prixInput.value = "0.00";
+        montantTotal.disabled = false;
+        montantTotal.placeholder = "Saisir le montant";
+        
+        // Afficher le groupe montant total pour les paiements à terme
+        const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+        if (mode === 'a_terme') {
+            document.getElementById('montantTotalGroup').classList.remove('hidden');
+        }
+        
+        showToast('Mode personnalisé activé - Saisissez le montant manuellement', 'warning');
+        return;
+    }
+    
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (selectedOption.value) {
+        // Récupérer les données de l'examen
+        const code = selectedOption.dataset.code || '';
+        const designation = selectedOption.dataset.designation || '';
+        const prix = parseFloat(selectedOption.dataset.prix || 0);
+        const famille = selectedOption.dataset.famille || '';
+        
+        // Mettre à jour les champs
+        codeInput.value = code;
+        designationInput.value = designation;
+        prixInput.value = prix.toFixed(2);
+        
+        // Si mode "à terme", mettre le prix suggéré dans montant total
+        const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+        if (mode === 'a_terme') {
+            montantTotal.value = prix;
+            document.getElementById('montantTotalGroup').classList.remove('hidden');
+        } else {
+            // Pour les autres modes, suggérer le même montant
+            document.getElementById('montantPaye').value = prix;
+        }
+        
+        // Mettre à jour le récapitulatif
+        updateRecap();
+        
+        // Afficher un toast informatif
+        const familleText = getFamilleText(famille);
+        showToast(`${familleText}: ${designation} - ${prix.toFixed(2)} DA`, 'success');
+    } else {
+        // Réinitialiser si aucune sélection
+        codeInput.value = '';
+        designationInput.value = '';
+        prixInput.value = '0.00';
+        montantTotal.value = '';
+    }
+}
+
+// Fonction helper pour obtenir le texte de la famille
+function getFamilleText(famille) {
+    const familles = {
+        'HISTO': 'Histologie',
+        'BIOPS': 'Biopsie',
+        'CYTO': 'Cytologie',
+        'FCV': 'FCV',
+        'IMMUN': 'Immuno-Histo',
+        'AUTRE': 'Autre'
+    };
+    return familles[famille] || famille;
+}
+
+// Modifier toggleMontantTotal pour gérer le mode personnalisé
+function toggleMontantTotal() {
+    const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+    const montantTotalGroup = document.getElementById('montantTotalGroup');
+    const recapDetails = document.getElementById('recapDetails');
+    const select = document.getElementById('typePaiement');
+    
+    if (mode === 'a_terme') {
+        montantTotalGroup.classList.remove('hidden');
+        
+        // Si un examen est sélectionné, mettre son prix comme montant total
+        if (select.value && select.value !== "autre_personnalise") {
+            const selectedOption = select.options[select.selectedIndex];
+            const prix = parseFloat(selectedOption.dataset.prix || 0);
+            document.getElementById('montantTotal').value = prix;
+        }
+        recapDetails.classList.remove('hidden');
+    } else {
+        montantTotalGroup.classList.add('hidden');
+        if (mode === 'espece' || mode === 'paiement_partiel') {
+            recapDetails.classList.remove('hidden');
+        }
+    }
+    updateRecap();
+}
+        function renderChartPaiements(data) {
     const ctx = document.getElementById('chartPaiements');
     if (!ctx) return;
     
