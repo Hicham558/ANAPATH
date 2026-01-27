@@ -933,7 +933,7 @@ td .flex.flex-col {
 
             updateCurrentUserDisplay();
             loadDashboardData();
-            chargerPatientsDansSelect();
+            chargerPatientsDansSelect(true);
             loadPaiements();
             loadDettes();
             chargerPatientsFiltre();
@@ -1223,7 +1223,7 @@ function filtrerPaiements(paiements, filtres) {
             selectRapport.innerHTML = optionsRapport;
             
             // Charger aussi dans le select du formulaire de paiement
-            chargerPatientsDansSelect();
+            chargerPatientsDansSelect(true);
             
         } else {
             console.error('Erreur chargement patients filtre:', await response.text());
