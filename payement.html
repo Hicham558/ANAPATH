@@ -307,7 +307,7 @@ td .flex.flex-col {
         <button type="button" onclick="openQuickPatientModal()" class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-3 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm" title="Ajouter un nouveau patient">
             <i class="fas fa-user-plus"></i> + Patient
         </button>
-        <button onclick="loadPatients()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition" title="Actualiser">
+        <button type="button" onclick="chargerPatientsDansSelect()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition" title="Actualiser">
             <i class="fas fa-sync-alt"></i>
         </button>
     </div>
@@ -852,7 +852,60 @@ td .flex.flex-col {
         </div>
     </div>
 </div>
-    <!-- Toast Notification -->
+   <!-- Modal Ajout rapide PATIENT depuis Paiement -->
+<div id="quickPatientModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay">
+  <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl">
+    <div class="flex justify-between items-center mb-5 pb-3 border-b">
+      <h3 class="text-xl font-semibold text-blue-700">
+        <i class="fas fa-user-plus mr-2"></i>Nouveau Patient
+      </h3>
+      <button type="button" onclick="closeQuickPatientModal()" class="text-gray-500 hover:text-gray-800 text-2xl">
+        ×
+      </button>
+    </div>
+
+    <form id="quickPatientForm" class="space-y-4" onsubmit="event.preventDefault(); saveQuickPatient();">
+      <input type="hidden" id="quickPatientId">
+
+      <div>
+        <label class="block text-sm font-medium mb-1 text-gray-700">
+          Nom & Prénom <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="quickPatientNom" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1 text-gray-700">Âge</label>
+          <input type="number" id="quickPatientAge" min="0" max="120" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1 text-gray-700">Sexe</label>
+          <select id="quickPatientSexe" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">—</option>
+            <option value="M">Masculin</option>
+            <option value="F">Féminin</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1 text-gray-700">Téléphone</label>
+        <input type="tel" id="quickPatientTel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t mt-2">
+        <button type="button" onclick="closeQuickPatientModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
+          Annuler
+        </button>
+        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+          <i class="fas fa-save"></i> Enregistrer
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+        <!-- Toast Notification -->
     <div id="toast" class="toast">
         <i id="toastIcon" class="mr-2"></i>
         <span id="toastMessage"></span>
@@ -880,7 +933,7 @@ td .flex.flex-col {
 
             updateCurrentUserDisplay();
             loadDashboardData();
-            loadPatients();
+            chargerPatientsDansSelect();
             loadPaiements();
             loadDettes();
             chargerPatientsFiltre();
@@ -2912,55 +2965,7 @@ function imprimerListe() {
                 <p>Document généré automatiquement par ANAPATH - Système de Gestion des Paiements</p>
                 <p>Ce document est confidentiel et ne peut être reproduit sans autorisation</p>
             </div>
-            <!-- Modal Ajout rapide PATIENT depuis Paiement -->
-<div id="quickPatientModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay">
-  <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl">
-    <div class="flex justify-between items-center mb-5 pb-3 border-b">
-      <h3 class="text-xl font-semibold text-blue-700">Nouveau Patient</h3>
-      <button onclick="closeQuickPatientModal()" class="text-gray-500 hover:text-gray-800 text-2xl">
-        ×
-      </button>
-    </div>
-
-    <form id="quickPatientForm" class="space-y-4" onsubmit="event.preventDefault(); saveQuickPatient();">
-      <input type="hidden" id="quickPatientId">
-
-      <div>
-        <label class="block text-sm font-medium mb-1 text-gray-700">Nom & Prénom <span class="text-red-500">*</span></label>
-        <input type="text" id="quickPatientNom" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">Âge</label>
-          <input type="number" id="quickPatientAge" min="0" max="120" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">Sexe</label>
-          <select id="quickPatientSexe" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="">—</option>
-            <option value="M">Masculin</option>
-            <option value="F">Féminin</option>
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1 text-gray-700">Téléphone</label>
-        <input type="tel" id="quickPatientTel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-      </div>
-
-      <div class="flex justify-end gap-3 pt-4 border-t mt-2">
-        <button type="button" onclick="closeQuickPatientModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
-          Annuler
-        </button>
-        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
-          <i class="fas fa-save"></i> Enregistrer
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
+      
         </body>
         </html>
     `;
@@ -4640,5 +4645,6 @@ async function saveQuickPatient() {
   }
 }
     </script>
+ 
 </body>
 </html>
