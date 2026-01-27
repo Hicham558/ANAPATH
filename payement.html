@@ -1276,7 +1276,7 @@ async function chargerPatientsDansSelect() {
     }
 }
 
-// Dans DOMContentLoaded, remplacer loadPatients() par chargerPatientsDansSelect()
+
 document.addEventListener('DOMContentLoaded', function() {
     if (!currentUserId) {
         showToast('Veuillez vous connecter', 'error');
@@ -1507,7 +1507,7 @@ async function enregistrerPaiement() {
             
             // Recharger toutes les données
             await Promise.all([
-                loadPatients(),
+               chargerPatientsDansSelect(),
                 chargerPatientsFiltre(),
                 loadDashboardData(),
                 loadPaiements(),
