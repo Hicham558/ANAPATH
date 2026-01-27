@@ -179,7 +179,37 @@ td .flex.flex-col {
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
     transition: all 0.2s ease;
-}        
+}   
+ /* Style pour l'affichage du prix */
+#prixExamenContainer {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Style pour les options avec prix */
+#typePaiement option {
+    padding: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+#typePaiement option:hover {
+    background-color: #f8fafc;
+}
+
+/* Badge de prix dans les options */
+.option-prix {
+    float: right;
+    background: #3b82f6;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}       
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -358,56 +388,59 @@ td .flex.flex-col {
 
                         <!-- Montants -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
-            <i class="fas fa-money-bill-wave mr-2 text-green-600"></i>Prix suggéré (DA)
-        </label>
-        <input type="number" id="prixSuggere" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" value="0.00">
-    </div>
-    
-    <div id="montantTotalGroup" class="hidden">
-        <label class="block text-sm font-medium text-gray-700 mb-2">
-            Montant Total (DA)*
-        </label>
-        <input type="number" id="montantTotal" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" oninput="updateRecap()">
-    </div>
-    
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
-            <i class="fas fa-coins mr-2 text-yellow-600"></i>Montant Payé (DA)*
-        </label>
-        <input type="number" id="montantPaye" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" required oninput="updateRecap()">
-    </div>
-</div>
+                            <div id="montantTotalGroup" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Montant Total (DA)*
+                                </label>
+                                <input type="number" id="montantTotal" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" oninput="updateRecap()">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Montant Payé (DA)*
+                                </label>
+                                <input type="number" id="montantPaye" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" min="0" step="0.01" placeholder="0.00" required oninput="updateRecap()">
+                            </div>
+                        </div>
 
                         <!-- Détails supplémentaires -->
                         <div class="space-y-4">
-                        <div>
+                       <div>
     <label class="block text-sm font-medium text-gray-700 mb-2">
         <i class="fas fa-stethoscope mr-2 text-purple-600"></i>Type d'Examen*
     </label>
-     <select id="typePaiement" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="updatePrixFromSousFamille()">
-        <option value="">Sélectionner un examen</option>
-        <option value="histologie">Histologie</option>
-        <option value="biopsie">Biopsie</option>
-        <option value="cytologie">Cytologie</option>
-        <option value="fcv">FCV</option>
-        <option value="immuno-histochimie">Immuno-Histochimie</option>
-        <option value="autre">Autre</option>
+    <select id="typePaiement" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required onchange="afficherPrixExamen()">
+        <option value="">Sélectionnez un type d'examen</option>
+        <option value="histologie" data-prix="5000">Histologie (5,000 DA)</option>
+        <option value="biopsie" data-prix="3000">Biopsie (3,000 DA)</option>
+        <option value="cytologie" data-prix="2500">Cytologie (2,500 DA)</option>
+        <option value="fcv" data-prix="1500">FCV (1,500 DA)</option>
+        <option value="immuno-histochimie" data-prix="8000">Immuno-Histochimie (8,000 DA)</option>
+        <option value="autre" data-prix="0">Autre (Prix à définir)</option>
     </select>
 </div>
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-2">
-        <i class="fas fa-file-invoice mr-2 text-gray-600"></i>Code Examen
-    </label>
-    <input type="text" id="codeExamen" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" placeholder="Code auto-généré">
+
+<!-- NOUVEAU : Affichage du prix -->
+<div id="prixExamenContainer" class="hidden mt-4">
+    <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-blue-700 font-medium">💰 Prix standard de l'examen</p>
+                <p id="prixExamenValeur" class="text-2xl font-bold text-blue-900 mt-1">0 DA</p>
+                <p class="text-xs text-blue-600 mt-2">
+                    Ce prix sera utilisé comme référence pour le montant total
+                </p>
+            </div>
+            <div class="text-center">
+                <i class="fas fa-money-bill-wave text-3xl text-blue-500"></i>
+                <button type="button" onclick="utiliserPrixStandard()" 
+                        class="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition">
+                    Utiliser ce prix
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-2">
-        <i class="fas fa-tag mr-2 text-blue-600"></i>Désignation
-    </label>
-    <input type="text" id="designationExamen" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50" placeholder="Désignation de l'examen">
-</div>                            
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-2">
         <i class="fas fa-file-invoice mr-2 text-gray-600"></i>Numéro de Reçu
@@ -956,7 +989,6 @@ td .flex.flex-col {
             loadPaiements();
             loadDettes();
             chargerPatientsFiltre();
-             chargerSousFamillesExamens();
             
             // Initialiser les dates par défaut
             const aujourdhui = new Date().toISOString().split('T')[0];
@@ -1348,64 +1380,103 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
     }
 }
 
-        function toggleMontantTotal() {
-            const mode = document.querySelector('input[name="modePaiement"]:checked').value;
-            const montantTotalGroup = document.getElementById('montantTotalGroup');
-            const recapDetails = document.getElementById('recapDetails');
+      function toggleMontantTotal() {
+    const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+    const montantTotalGroup = document.getElementById('montantTotalGroup');
+    const recapDetails = document.getElementById('recapDetails');
 
-            if (mode === 'a_terme') {
-                montantTotalGroup.classList.remove('hidden');
-                recapDetails.classList.remove('hidden');
-            } else {
-                montantTotalGroup.classList.add('hidden');
-                if (mode === 'espece' || mode === 'paiement_partiel') {
-                    recapDetails.classList.remove('hidden');
-                }
+    if (mode === 'a_terme') {
+        montantTotalGroup.classList.remove('hidden');
+        recapDetails.classList.remove('hidden');
+        
+        // Si un type d'examen est sélectionné, proposer d'utiliser le prix standard
+        const selectType = document.getElementById('typePaiement');
+        if (selectType.value && selectType.options[selectType.selectedIndex].dataset.prix) {
+            const prix = parseInt(selectType.options[selectType.selectedIndex].dataset.prix);
+            if (!document.getElementById('montantTotal').value) {
+                showToast(`Pour un paiement à terme, vous pouvez utiliser le prix standard de ${prix.toLocaleString('fr-FR')} DA`, 'info');
             }
-            updateRecap();
         }
+    } else {
+        montantTotalGroup.classList.add('hidden');
+        if (mode === 'espece' || mode === 'paiement_partiel') {
+            recapDetails.classList.remove('hidden');
+        }
+    }
+    updateRecap();
+}
 
-        function updateRecap() {
+      function updateRecap() {
     const patientSelect = document.getElementById('patientSelect');
     const mode = document.querySelector('input[name="modePaiement"]:checked').value;
     const montantPaye = parseFloat(document.getElementById('montantPaye').value) || 0;
     const montantTotal = parseFloat(document.getElementById('montantTotal').value) || 0;
     const soldeActuel = parseFloat(patientSelect.options[patientSelect.selectedIndex]?.dataset.solde || 0);
-    const designationExamen = document.getElementById('designationExamen').value || 'Non spécifié';
-    const prixSuggere = parseFloat(document.getElementById('prixSuggere').value) || 0;
-            
-            let reste = 0;
-            let nouveauSolde = soldeActuel;
 
-            if (mode === 'a_terme') {
-                reste = montantTotal - montantPaye;
-                nouveauSolde = -reste;
-            } else if (mode === 'paiement_partiel') {
-                nouveauSolde = soldeActuel + montantPaye;
-                reste = Math.abs(nouveauSolde) < 0.01 ? 0 : Math.abs(nouveauSolde);
-            } else if (mode === 'espece') {
-                nouveauSolde = soldeActuel;
-                reste = 0;
-            }
+    let reste = 0;
+    let nouveauSolde = soldeActuel;
 
-            // Mettre à jour les éléments du récapitulatif
-            const recapContent = document.getElementById('recapContent');
+    if (mode === 'a_terme') {
+        reste = montantTotal - montantPaye;
+        nouveauSolde = -reste;
+    } else if (mode === 'paiement_partiel') {
+        nouveauSolde = soldeActuel + montantPaye;
+        reste = Math.abs(nouveauSolde) < 0.01 ? 0 : Math.abs(nouveauSolde);
+    } else if (mode === 'espece') {
+        nouveauSolde = soldeActuel;
+        reste = 0;
+    }
+
+    // Récupérer l'info du type d'examen sélectionné
+    const selectType = document.getElementById('typePaiement');
+    const selectedOption = selectType.options[selectType.selectedIndex];
+    let infoPrixHTML = '';
+    
+    if (selectedOption && selectedOption.value && selectedOption.dataset.prix) {
+        const prix = parseInt(selectedOption.dataset.prix);
+        const typeTexte = selectedOption.text.split(' (')[0];
+        
+        infoPrixHTML = `
+            <div class="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-blue-700 font-medium">
+                            <i class="fas fa-microscope mr-1"></i>Type d'examen
+                        </p>
+                        <p class="font-medium text-blue-900">${typeTexte}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-blue-700 font-medium">💰 Prix standard</p>
+                        <p class="text-lg font-bold text-blue-800">${prix.toLocaleString('fr-FR')} DA</p>
+                    </div>
+                </div>
+                ${mode === 'a_terme' && montantTotal !== prix ? `
+                    <div class="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Le montant total saisi (${montantTotal.toLocaleString('fr-FR')} DA) diffère du prix standard
+                    </div>
+                ` : ''}
+                <button onclick="utiliserPrixStandard()" 
+                        class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition flex items-center justify-center">
+                    <i class="fas fa-hand-point-up mr-2"></i>
+                    Utiliser ce prix comme montant total
+                </button>
+            </div>
+        `;
+    }
+
+    // Mettre à jour le contenu du récapitulatif
+    const recapContent = document.getElementById('recapContent');
     recapContent.innerHTML = `
         <div class="space-y-4">
-            <div class="p-4 bg-indigo-50 rounded-lg">
-                <h4 class="font-medium text-indigo-800 mb-2">Examen sélectionné</h4>
-                <p class="text-lg font-semibold">${designationExamen}</p>
-                <p class="text-sm text-indigo-600 mt-1">
-                    Prix suggéré: <span class="font-bold">${prixSuggere.toFixed(2)} DA</span>
-                </p>
-            </div>
-            
-            <div class="flex justify-between items-center p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg">
-                <span class="font-medium">Mode de paiement:</span>
-                <span class="px-3 py-1 rounded-full text-sm bg-white/30">
+            <div class="flex justify-between items-center p-4 bg-indigo-50 rounded-lg">
+                <span class="font-medium text-indigo-700">Mode de paiement:</span>
+                <span class="px-3 py-1 rounded-full text-sm ${mode === 'espece' ? 'badge-espece' : mode === 'a_terme' ? 'badge-a_terme' : 'badge-partiel'}">
                     ${mode === 'espece' ? 'Comptant' : mode === 'a_terme' ? 'À terme' : 'Paiement partiel'}
                 </span>
             </div>
+            
+            ${infoPrixHTML}
             
             <div class="grid grid-cols-2 gap-4">
                 <div class="p-4 bg-gray-50 rounded-lg">
@@ -1425,39 +1496,33 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
         </div>
     `;
 
-            // Mettre à jour les détails
-            if (mode === 'a_terme') {
-                document.getElementById('recapTotal').textContent = `${montantTotal.toFixed(2)} DA`;
-            } else {
-                document.getElementById('recapTotal').textContent = `${montantPaye.toFixed(2)} DA`;
-            }
-            
-            document.getElementById('recapPaye').textContent = `${montantPaye.toFixed(2)} DA`;
-            document.getElementById('recapReste').textContent = `${reste.toFixed(2)} DA`;
-            document.getElementById('recapNouveauSolde').textContent = `${nouveauSolde.toFixed(2)} DA`;
-            document.getElementById('recapNouveauSolde').className = `font-bold text-lg ${nouveauSolde < 0 ? 'text-red-600' : nouveauSolde > 0 ? 'text-green-600' : 'text-gray-600'}`;
-        }
-
+    // Mettre à jour les détails
+    if (mode === 'a_terme') {
+        document.getElementById('recapTotal').textContent = `${montantTotal.toFixed(2)} DA`;
+    } else {
+        document.getElementById('recapTotal').textContent = `${montantPaye.toFixed(2)} DA`;
+    }
+    
+    document.getElementById('recapPaye').textContent = `${montantPaye.toFixed(2)} DA`;
+    document.getElementById('recapReste').textContent = `${reste.toFixed(2)} DA`;
+    document.getElementById('recapNouveauSolde').textContent = `${nouveauSolde.toFixed(2)} DA`;
+    document.getElementById('recapNouveauSolde').className = `font-bold text-lg ${nouveauSolde < 0 ? 'text-red-600' : nouveauSolde > 0 ? 'text-green-600' : 'text-gray-600'}`;
+    
+    // Toujours montrer les détails quand il y a des infos
+    document.getElementById('recapDetails').classList.remove('hidden');
+}
 async function enregistrerPaiement() {
     const patientId = document.getElementById('patientSelect').value;
     const mode = document.querySelector('input[name="modePaiement"]:checked').value;
     const montantPaye = parseFloat(document.getElementById('montantPaye').value);
     const montantTotal = parseFloat(document.getElementById('montantTotal').value);
-    const typePaiementSelect = document.getElementById('typePaiement');
-    const sousFamilleId = typePaiementSelect.value;
-    const codeExamen = document.getElementById('codeExamen').value;
-    const designationExamen = document.getElementById('designationExamen').value;
-    const numeroCR = document.getElementById('numeroCR').value.trim();
+    const typePaiement = document.getElementById('typePaiement').value;
+    const numeroCR = document.getElementById('numeroCR').value.trim();  // Peut être vide
     const notes = document.getElementById('notes').value;
 
     // Validation
     if (!patientId) {
         showToast('Veuillez sélectionner un patient', 'error');
-        return;
-    }
-
-    if (!sousFamilleId || sousFamilleId === "") {
-        showToast('Veuillez sélectionner un type d\'examen', 'error');
         return;
     }
 
@@ -1475,11 +1540,9 @@ async function enregistrerPaiement() {
         const data = {
             patient_id: patientId,
             montant: montantPaye,
-            sous_famille_examen_id: sousFamilleId === "autre_personnalise" ? null : sousFamilleId,
-            code_examen: codeExamen,
-            designation_examen: designationExamen,
+            type_paiement: typePaiement,
             mode_paiement: mode,
-            numero_cr: numeroCR,
+            numero_cr: numeroCR,  // Vide ou rempli
             notes: notes
         };
 
@@ -1487,13 +1550,6 @@ async function enregistrerPaiement() {
             data.montant_total = montantTotal;
         }
 
-        if (sousFamilleId === "autre_personnalise") {
-            data.type_paiement = "Autre (personnalisé)";
-        } else {
-            const selectedOption = typePaiementSelect.options[typePaiementSelect.selectedIndex];
-            data.type_paiement = selectedOption.dataset.famille ? 
-                getFamilleText(selectedOption.dataset.famille) : "Examen";
-        }
         let endpoint = `${API_BASE_URL}/paiements`;
         if (mode === 'paiement_partiel') {
             endpoint = `${API_BASE_URL}/paiements/paiement-partiel`;
@@ -1536,12 +1592,7 @@ async function enregistrerPaiement() {
             afficherModalChoixImpression(paiementInfo);
             
             // Réinitialiser le formulaire
-            document.getElementById('montantPaye').value = '';
-            document.getElementById('montantTotal').value = '';
-            document.getElementById('numeroCR').value = '';
-            document.getElementById('notes').value = '';
-            document.getElementById('patientSelect').value = '';
-            document.getElementById('patientInfo').classList.add('hidden');
+            reinitialiserFormulaire();
             
             // Recharger toutes les données
             await Promise.all([
@@ -2059,216 +2110,7 @@ function appliquerFiltres() {
             }
         }
 
-      let sousFamillesExamens = [];
-
-// Charger les sous-familles d'examens
-async function chargerSousFamillesExamens() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/actifs`, {
-            headers: { 'X-User-ID': currentUserId }
-        });
-
-        if (response.ok) {
-            sousFamillesExamens = await response.json();
-            populateSousFamillesSelect();
-        } else {
-            console.error('Erreur chargement sous-familles:', await response.text());
-        }
-    } catch (error) {
-        console.error('Erreur chargement sous-familles:', error);
-        showToast('Erreur lors du chargement des examens', 'error');
-    }
-}
-
-// Remplir le select avec les sous-familles
-function populateSousFamillesSelect() {
-    const select = document.getElementById('typePaiement');
-    
-    // Sauvegarder la sélection actuelle
-    const currentValue = select.value;
-    
-    // Vider et ajouter l'option par défaut
-    select.innerHTML = '<option value="">Sélectionner un examen</option>';
-    
-    // Grouper par famille
-    const grouped = {};
-    
-    sousFamillesExamens.forEach(examen => {
-        if (examen.actif) {
-            const famille = examen.famille;
-            if (!grouped[famille]) {
-                grouped[famille] = [];
-            }
-            grouped[famille].push(examen);
-        }
-    });
-    
-    // Ajouter les options groupées
-    const famillesOrder = ['HISTO', 'BIOPS', 'CYTO', 'FCV', 'IMMUN', 'AUTRE'];
-    
-    famillesOrder.forEach(familleCode => {
-        if (grouped[familleCode]) {
-            // Créer un optgroup
-            const optgroup = document.createElement('optgroup');
-            optgroup.label = getFamilleText(familleCode);
-            
-            // Ajouter les options de cette famille
-            grouped[familleCode].forEach(examen => {
-                const option = document.createElement('option');
-                option.value = examen.id;
-                option.dataset.code = examen.code;
-                option.dataset.designation = examen.designation;
-                option.dataset.prix = examen.prix;
-                option.dataset.famille = examen.famille;
-                option.dataset.description = examen.description || '';
-                
-                option.textContent = `${examen.designation} - ${parseFloat(examen.prix).toFixed(2)} DA`;
-                
-                // Appliquer des styles selon la famille
-                switch(examen.famille) {
-                    case 'HISTO':
-                        option.classList.add('text-blue-600', 'font-medium');
-                        break;
-                    case 'BIOPS':
-                        option.classList.add('text-red-600', 'font-medium');
-                        break;
-                    case 'CYTO':
-                    case 'FCV':
-                        option.classList.add('text-green-600', 'font-medium');
-                        break;
-                    case 'IMMUN':
-                        option.classList.add('text-orange-600', 'font-medium');
-                        break;
-                    case 'AUTRE':
-                        option.classList.add('text-gray-600', 'font-medium');
-                        break;
-                }
-                
-                optgroup.appendChild(option);
-            });
-            
-            select.appendChild(optgroup);
-        }
-    });
-    
-    // Ajouter une option "Autre (personnalisé)"
-    const autreOption = document.createElement('option');
-    autreOption.value = "autre_personnalise";
-    autreOption.textContent = "Autre (prix personnalisé)";
-    autreOption.classList.add('text-purple-600', 'font-medium');
-    select.appendChild(autreOption);
-    
-    // Restaurer la sélection si elle existe toujours
-    if (currentValue) {
-        select.value = currentValue;
-        updatePrixFromSousFamille();
-    }
-}
-
-// Mettre à jour les informations basées sur la sous-famille sélectionnée
-function updatePrixFromSousFamille() {
-    const select = document.getElementById('typePaiement');
-    const codeInput = document.getElementById('codeExamen');
-    const designationInput = document.getElementById('designationExamen');
-    const prixInput = document.getElementById('prixSuggere');
-    const montantTotal = document.getElementById('montantTotal');
-    
-    if (select.value === "autre_personnalise") {
-        // Mode personnalisé
-        codeInput.value = "AUTRE_PERSO";
-        designationInput.value = "Examen personnalisé";
-        prixInput.value = "0.00";
-        montantTotal.disabled = false;
-        montantTotal.placeholder = "Saisir le montant";
-        
-        // Afficher le groupe montant total pour les paiements à terme
-        const mode = document.querySelector('input[name="modePaiement"]:checked').value;
-        if (mode === 'a_terme') {
-            document.getElementById('montantTotalGroup').classList.remove('hidden');
-        }
-        
-        showToast('Mode personnalisé activé - Saisissez le montant manuellement', 'warning');
-        return;
-    }
-    
-    const selectedOption = select.options[select.selectedIndex];
-    
-    if (selectedOption.value) {
-        // Récupérer les données de l'examen
-        const code = selectedOption.dataset.code || '';
-        const designation = selectedOption.dataset.designation || '';
-        const prix = parseFloat(selectedOption.dataset.prix || 0);
-        const famille = selectedOption.dataset.famille || '';
-        
-        // Mettre à jour les champs
-        codeInput.value = code;
-        designationInput.value = designation;
-        prixInput.value = prix.toFixed(2);
-        
-        // Si mode "à terme", mettre le prix suggéré dans montant total
-        const mode = document.querySelector('input[name="modePaiement"]:checked').value;
-        if (mode === 'a_terme') {
-            montantTotal.value = prix;
-            document.getElementById('montantTotalGroup').classList.remove('hidden');
-        } else {
-            // Pour les autres modes, suggérer le même montant
-            document.getElementById('montantPaye').value = prix;
-        }
-        
-        // Mettre à jour le récapitulatif
-        updateRecap();
-        
-        // Afficher un toast informatif
-        const familleText = getFamilleText(famille);
-        showToast(`${familleText}: ${designation} - ${prix.toFixed(2)} DA`, 'success');
-    } else {
-        // Réinitialiser si aucune sélection
-        codeInput.value = '';
-        designationInput.value = '';
-        prixInput.value = '0.00';
-        montantTotal.value = '';
-    }
-}
-
-// Fonction helper pour obtenir le texte de la famille
-function getFamilleText(famille) {
-    const familles = {
-        'HISTO': 'Histologie',
-        'BIOPS': 'Biopsie',
-        'CYTO': 'Cytologie',
-        'FCV': 'FCV',
-        'IMMUN': 'Immuno-Histo',
-        'AUTRE': 'Autre'
-    };
-    return familles[famille] || famille;
-}
-
-// Modifier toggleMontantTotal pour gérer le mode personnalisé
-function toggleMontantTotal() {
-    const mode = document.querySelector('input[name="modePaiement"]:checked').value;
-    const montantTotalGroup = document.getElementById('montantTotalGroup');
-    const recapDetails = document.getElementById('recapDetails');
-    const select = document.getElementById('typePaiement');
-    
-    if (mode === 'a_terme') {
-        montantTotalGroup.classList.remove('hidden');
-        
-        // Si un examen est sélectionné, mettre son prix comme montant total
-        if (select.value && select.value !== "autre_personnalise") {
-            const selectedOption = select.options[select.selectedIndex];
-            const prix = parseFloat(selectedOption.dataset.prix || 0);
-            document.getElementById('montantTotal').value = prix;
-        }
-        recapDetails.classList.remove('hidden');
-    } else {
-        montantTotalGroup.classList.add('hidden');
-        if (mode === 'espece' || mode === 'paiement_partiel') {
-            recapDetails.classList.remove('hidden');
-        }
-    }
-    updateRecap();
-}
-        function renderChartPaiements(data) {
+       function renderChartPaiements(data) {
     const ctx = document.getElementById('chartPaiements');
     if (!ctx) return;
     
@@ -5010,6 +4852,99 @@ async function saveQuickPatient() {
     console.error('Erreur création patient:', err);
     showToast(err.message || 'Erreur lors de la création', 'error');
   }
+}
+   // Fonction pour afficher le prix quand on change le type d'examen
+function afficherPrixExamen() {
+    const select = document.getElementById('typePaiement');
+    const selectedOption = select.options[select.selectedIndex];
+    const prixContainer = document.getElementById('prixExamenContainer');
+    const prixValeur = document.getElementById('prixExamenValeur');
+    const notesTextarea = document.getElementById('notes');
+
+    if (selectedOption.value && selectedOption.dataset.prix) {
+        const prix = parseInt(selectedOption.dataset.prix);
+        
+        // Afficher le prix
+        prixContainer.classList.remove('hidden');
+        prixValeur.textContent = `${prix.toLocaleString('fr-FR')} DA`;
+        
+        // Ajouter automatiquement le type et prix dans les notes
+        const typeTexte = selectedOption.text.split(' (')[0];
+        const infoExamen = `Examen: ${typeTexte}\nPrix standard: ${prix.toLocaleString('fr-FR')} DA`;
+        
+        // Vérifier si les notes existantes contiennent déjà "Examen:"
+        const notesExistantes = notesTextarea.value.trim();
+        if (!notesExistantes.includes('Examen:')) {
+            if (notesExistantes) {
+                notesTextarea.value = `${infoExamen}\n\n${notesExistantes}`;
+            } else {
+                notesTextarea.value = infoExamen;
+            }
+        }
+        
+    } else {
+        prixContainer.classList.add('hidden');
+    }
+}
+
+// Fonction pour utiliser le prix standard dans le montant total
+function utiliserPrixStandard() {
+    const select = document.getElementById('typePaiement');
+    const selectedOption = select.options[select.selectedIndex];
+    const modePaiement = document.querySelector('input[name="modePaiement"]:checked').value;
+    
+    if (!selectedOption.value || selectedOption.value === 'autre') {
+        showToast('Sélectionnez d\'abord un type d\'examen', 'warning');
+        return;
+    }
+    
+    const prix = parseInt(selectedOption.dataset.prix);
+    
+    // Si c'est un paiement à terme, remplir automatiquement le montant total
+    if (modePaiement === 'a_terme') {
+        document.getElementById('montantTotal').value = prix;
+        showToast(`Montant total défini à ${prix.toLocaleString('fr-FR')} DA`, 'success');
+    } else {
+        // Pour les autres modes, juste informer
+        showToast(`Prix de référence: ${prix.toLocaleString('fr-FR')} DA`, 'info');
+    }
+    
+    // Mettre à jour le récapitulatif
+    updateRecap();
+}
+        function reinitialiserFormulaire() {
+    // Réinitialiser tous les champs du formulaire
+    document.getElementById('montantPaye').value = '';
+    document.getElementById('montantTotal').value = '';
+    document.getElementById('numeroCR').value = '';
+    document.getElementById('notes').value = '';
+    document.getElementById('patientSelect').value = '';
+    
+    // Réinitialiser le type d'examen et cacher le prix
+    document.getElementById('typePaiement').value = '';
+    document.getElementById('prixExamenContainer').classList.add('hidden');
+    
+    // Cacher les infos patient
+    document.getElementById('patientInfo').classList.add('hidden');
+    
+    // Réinitialiser les radios à "espece"
+    document.querySelector('input[value="espece"]').checked = true;
+    document.getElementById('montantTotalGroup').classList.add('hidden');
+    
+    // Réinitialiser le récapitulatif
+    document.getElementById('recapContent').innerHTML = `
+        <div class="text-center py-12 text-gray-400">
+            <i class="fas fa-file-invoice-dollar text-4xl mb-4"></i>
+            <p>Les détails du paiement apparaîtront ici</p>
+        </div>
+    `;
+    document.getElementById('recapDetails').classList.add('hidden');
+    
+    // Focus sur le select patient
+    document.getElementById('patientSelect').focus();
+    
+    // Afficher un message
+    showToast('Formulaire réinitialisé', 'info');
 }
     </script>
  
