@@ -643,6 +643,7 @@
         // Sauvegarder une sous-famille (création ou modification)
         async function saveSousFamille() {
             const editId = document.getElementById('editId').value;
+            const editUserType = document.getElementById('editUserType').value;
             const isEdit = editId !== '';
             
             const data = {
@@ -664,17 +665,19 @@
                 let response;
                 
                 if (isEdit) {
-                    // Mise à jour (fonctionne maintenant pour système aussi)
+                    // Mise à jour - utiliser 'system' si c'est un examen système
+                    const userIdToUse = (editUserType === 'system') ? 'system' : currentUserId;
+                    
                     response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${editId}`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-User-ID': currentUserId
+                            'X-User-ID': userIdToUse
                         },
                         body: JSON.stringify(data)
                     });
                 } else {
-                    // Création
+                    // Création (toujours avec l'utilisateur actuel)
                     response = await fetch(`${API_BASE_URL}/api/sous-familles-examens`, {
                         method: 'POST',
                         headers: {
@@ -687,7 +690,8 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    showToast(result.message || 'Examen enregistré avec succès', 'success');
+                    const isSystem = editUserType === 'system';
+                    showToast(result.message || `Examen ${isSystem ? 'système' : ''} enregistré avec succès`, 'success');
                     
                     // Réinitialiser le formulaire
                     resetForm();
@@ -707,25 +711,29 @@
         // Éditer un examen (système ou utilisateur)
         async function editExamen(id) {
             try {
+                // Trouver l'examen dans la liste pour connaître son user_id
+                const examen = allExamens.find(e => e.id === id);
+                const userIdToUse = (examen && examen.user_id === 'system') ? 'system' : currentUserId;
+                
                 const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${id}`, {
-                    headers: { 'X-User-ID': currentUserId }
+                    headers: { 'X-User-ID': userIdToUse }
                 });
 
                 if (response.ok) {
-                    const examen = await response.json();
+                    const examenData = await response.json();
                     
                     // Remplir le formulaire
-                    document.getElementById('editId').value = examen.id;
-                    document.getElementById('editUserType').value = examen.user_id;
-                    document.getElementById('famille').value = examen.famille;
-                    document.getElementById('code').value = examen.code;
-                    document.getElementById('designation').value = examen.designation;
-                    document.getElementById('description').value = examen.description || '';
-                    document.getElementById('prix').value = parseFloat(examen.prix);
-                    document.getElementById('actif').checked = examen.actif;
+                    document.getElementById('editId').value = examenData.id;
+                    document.getElementById('editUserType').value = examenData.user_id;
+                    document.getElementById('famille').value = examenData.famille;
+                    document.getElementById('code').value = examenData.code;
+                    document.getElementById('designation').value = examenData.designation;
+                    document.getElementById('description').value = examenData.description || '';
+                    document.getElementById('prix').value = parseFloat(examenData.prix);
+                    document.getElementById('actif').checked = examenData.actif;
                     
                     // Changer le bouton
-                    const isSystem = examen.user_id === 'system';
+                    const isSystem = examenData.user_id === 'system';
                     document.getElementById('btnSubmit').innerHTML = `<i class="fas fa-edit mr-2"></i>Modifier${isSystem ? ' (Système)' : ''}`;
                     document.getElementById('btnSubmit').classList.remove('from-green-600', 'to-emerald-600');
                     document.getElementById('btnSubmit').classList.add('from-blue-600', 'to-blue-700');
@@ -747,11 +755,15 @@
         // Basculer l'état actif/inactif (fonctionne pour système aussi)
         async function toggleActif(id, currentState) {
             try {
+                // Trouver l'examen pour savoir si c'est un examen système
+                const examen = allExamens.find(e => e.id === id);
+                const userIdToUse = (examen && examen.user_id === 'system') ? 'system' : currentUserId;
+                
                 const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-User-ID': currentUserId
+                        'X-User-ID': userIdToUse
                     },
                     body: JSON.stringify({ actif: !currentState })
                 });
@@ -790,9 +802,12 @@
 
             try {
                 if (pendingAction.type === 'delete') {
+                    // Utiliser 'system' comme user_id si c'est un examen système
+                    const userIdToUse = pendingAction.isSystem ? 'system' : currentUserId;
+                    
                     const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${pendingAction.id}`, {
                         method: 'DELETE',
-                        headers: { 'X-User-ID': currentUserId }
+                        headers: { 'X-User-ID': userIdToUse }
                     });
 
                     if (response.ok) {
