@@ -1235,7 +1235,7 @@ function filtrerPaiements(paiements, filtres) {
 }
 
 // Fonction pour charger les patients dans le select du formulaire
-async function chargerPatientsDansSelect() {
+async function chargerPatientsDansSelect(preserveSelection = false) {
     try {
         const response = await fetch(`${API_BASE_URL}/patients`, {
             headers: { 'X-User-ID': currentUserId }
@@ -1247,6 +1247,10 @@ async function chargerPatientsDansSelect() {
                                 (patients.patients || patients.data || []);
             
             const select = document.getElementById('patientSelect');
+            
+            // Si on doit préserver la sélection, la sauvegarder
+            const currentValue = preserveSelection ? select.value : null;
+            
             let options = '<option value="">Sélectionner un patient...</option>';
             
             patientsArray.forEach(p => {
@@ -1267,7 +1271,16 @@ async function chargerPatientsDansSelect() {
             });
             
             select.innerHTML = options;
-            return patientsArray; // Retourner les patients pour une utilisation ultérieure
+            
+            // Restaurer la sélection si nécessaire
+            if (currentValue && currentValue !== "") {
+                select.value = currentValue;
+                if (select.value === currentValue) {
+                    updatePatientInfo();
+                }
+            }
+            
+            return patientsArray;
             
         } else {
             console.error('Erreur chargement patients:', await response.text());
@@ -4608,10 +4621,16 @@ async function saveQuickPatient() {
     showToast('Patient créé avec succès', 'success');
     closeQuickPatientModal();
 
-    // AJOUTER DIRECTEMENT À LA LISTE SANS ATTENDRE
+    // Mettre un flag pour indiquer qu'on vient d'ajouter un patient
+    window.justAddedPatient = {
+      id: newPatientId,
+      nom: nom
+    };
+
+    // Ajouter directement à la liste SANS appeler chargerPatientsDansSelect()
     const patientSelect = document.getElementById('patientSelect');
     
-    // Créer une nouvelle option
+    // Créer et ajouter la nouvelle option
     const newOption = document.createElement('option');
     newOption.value = newPatientId.toString();
     newOption.textContent = `${nom} (${tel || 'N/A'}) - Solde: 0.00 DA`;
@@ -4620,29 +4639,60 @@ async function saveQuickPatient() {
     newOption.setAttribute('data-tel', tel || '');
     newOption.setAttribute('data-solde', '0');
     
-    // Ajouter à la liste
-    patientSelect.appendChild(newOption);
+    // Insérer au bon endroit (tri alphabétique)
+    let inserted = false;
+    const searchText = nom.toLowerCase();
+    
+    for (let i = 1; i < patientSelect.options.length; i++) { // Commencer à 1 pour sauter l'option vide
+      const optionText = patientSelect.options[i].text.toLowerCase();
+      if (optionText > searchText) {
+        patientSelect.insertBefore(newOption, patientSelect.options[i]);
+        inserted = true;
+        break;
+      }
+    }
+    
+    // Si pas inséré, ajouter à la fin
+    if (!inserted) {
+      patientSelect.appendChild(newOption);
+    }
     
     // Sélectionner cette nouvelle option
-    patientSelect.selectedIndex = patientSelect.options.length - 1;
+    for (let i = 0; i < patientSelect.options.length; i++) {
+      if (patientSelect.options[i].value === newPatientId.toString()) {
+        patientSelect.selectedIndex = i;
+        break;
+      }
+    }
     
     // Mettre à jour les infos et focus
     updatePatientInfo();
     patientSelect.focus();
     
-    // Recharger la liste complète en arrière-plan pour synchroniser
+    // Synchroniser en arrière-plan SANS interférer
     setTimeout(async () => {
-      await chargerPatientsDansSelect();
-      // Resélectionner après rechargement
-      for (let i = 0; i < patientSelect.options.length; i++) {
-        if (patientSelect.options[i].value === newPatientId.toString()) {
-          patientSelect.selectedIndex = i;
+      try {
+        // Sauvegarder la sélection actuelle
+        const currentSelection = patientSelect.value;
+        
+        // Recharger silencieusement
+        await chargerPatientsDansSelect();
+        
+        // Restaurer la sélection
+        if (currentSelection) {
+          patientSelect.value = currentSelection;
           updatePatientInfo();
-          break;
         }
+        
+        // Recharger les filtres
+        chargerPatientsFiltre();
+      } catch (err) {
+        console.error('Erreur synchronisation:', err);
       }
-      chargerPatientsFiltre();
-    }, 2000); // Attendre 2 secondes avant de synchroniser
+      
+      // Nettoyer le flag
+      delete window.justAddedPatient;
+    }, 3000); // Attendre 3 secondes pour être sûr
 
   } catch (err) {
     console.error('Erreur création patient:', err);
