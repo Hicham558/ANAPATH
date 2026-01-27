@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Sous-Familles d'Examens - ANAPATH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        .toast.show { display: flex; align-items: center; }
+        
+        .badge-histologie { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }
+        .badge-biopsie { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        .badge-cytologie { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .badge-fcv { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; }
+        .badge-immuno { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
+        .badge-autre { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; }
+        
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .price-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-vial text-2xl text-blue-300"></i>
+                <h1 class="text-2xl font-bold">Gestion des Examens ANAPATH</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="currentUser" class="text-sm bg-white/20 px-3 py-1 rounded-full"></span>
+                <button onclick="window.location.href='index.html'" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition flex items-center space-x-2">
+                    <i class="fas fa-home"></i>
+                    <span>Accueil</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- En-tête -->
+        <div class="mb-8 animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Gestion des Sous-Familles d'Examens</h2>
+            <p class="text-gray-600">Configurez les prix et les détails des examens ANAPATH</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
+            <div class="bg-gradient-to-br from-blue-500 to-cyan-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Histologie</p>
+                        <p id="countHistologie" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-microscope text-4xl opacity-30"></i>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-red-500 to-pink-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Biopsie</p>
+                        <p id="countBiopsie" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-syringe text-4xl opacity-30"></i>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Cytologie/FCV</p>
+                        <p id="countCytoFCV" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-vials text-4xl opacity-30"></i>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-orange-500 to-yellow-600 text-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-90">Immuno/Autre</p>
+                        <p id="countImmunoAutre" class="text-3xl font-bold">0</p>
+                    </div>
+                    <i class="fas fa-dna text-4xl opacity-30"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenu principal -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+            <!-- Formulaire de création -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg p-6 sticky top-4">
+                    <h3 class="text-xl font-semibold mb-6 text-gray-800">
+                        <i class="fas fa-plus-circle mr-2 text-green-600"></i>Nouvel Examen
+                    </h3>
+                    
+                    <form id="formSousFamille" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Famille d'examen*
+                            </label>
+                            <select id="famille" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+                                <option value="">Sélectionner une famille</option>
+                                <option value="HISTO" class="text-blue-600 font-medium">🧫 Histologie</option>
+                                <option value="BIOPS" class="text-red-600 font-medium">💉 Biopsie</option>
+                                <option value="CYTO" class="text-green-600 font-medium">🧪 Cytologie</option>
+                                <option value="FCV" class="text-purple-600 font-medium">🔬 FCV</option>
+                                <option value="IMMUN" class="text-orange-600 font-medium">🧬 Immuno-Histo</option>
+                                <option value="AUTRE" class="text-gray-600 font-medium">📄 Autre</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Code unique*
+                                <span class="text-xs text-gray-500">(Ex: HISTO_SIMPLE)</span>
+                            </label>
+                            <input type="text" id="code" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required placeholder="CODE_EXAMEN">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Désignation*
+                            </label>
+                            <input type="text" id="designation" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required placeholder="Ex: Histologie simple">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Description
+                            </label>
+                            <textarea id="description" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Détails supplémentaires..."></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Prix (DA)*
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500">DA</span>
+                                </div>
+                                <input type="number" id="prix" step="0.01" min="0" class="w-full pl-12 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent price-input" required placeholder="0.00">
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" id="actif" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="actif" class="ml-2 block text-sm text-gray-700">
+                                Actif pour les nouveaux paiements
+                            </label>
+                        </div>
+                        
+                        <input type="hidden" id="editId" value="">
+                        
+                        <div class="flex gap-2 pt-4">
+                            <button type="submit" id="btnSubmit" class="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-md hover:shadow-lg">
+                                <i class="fas fa-save mr-2"></i>Enregistrer
+                            </button>
+                            <button type="button" id="btnCancel" onclick="resetForm()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg transition hidden">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Liste des examens -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4 md:mb-0">
+                            <i class="fas fa-list-alt mr-2 text-indigo-600"></i>Liste des Examens
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="relative">
+                                <input type="text" id="searchInput" placeholder="Rechercher..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                            </div>
+                            <select id="filterFamille" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Toutes les familles</option>
+                                <option value="HISTO">Histologie</option>
+                                <option value="BIOPS">Biopsie</option>
+                                <option value="CYTO">Cytologie</option>
+                                <option value="FCV">FCV</option>
+                                <option value="IMMUN">Immuno-Histo</option>
+                                <option value="AUTRE">Autre</option>
+                            </select>
+                            <button onclick="loadSousFamilles()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                <i class="fas fa-sync-alt mr-2"></i>Actualiser
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Famille</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Désignation</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listeExamens" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Chargement des examens...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Statistiques -->
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <p class="text-sm text-blue-700">Examens actifs</p>
+                                <p id="totalActifs" class="text-2xl font-bold text-blue-800">0</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <p class="text-sm text-green-700">Prix moyen</p>
+                                <p id="prixMoyen" class="text-2xl font-bold text-green-800">0 DA</p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg">
+                                <p class="text-sm text-purple-700">Total examens</p>
+                                <p id="totalExamens" class="text-2xl font-bold text-purple-800">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Instructions -->
+                <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <h4 class="font-semibold text-yellow-800 mb-2">
+                        <i class="fas fa-info-circle mr-2"></i>Comment utiliser
+                    </h4>
+                    <ul class="text-sm text-yellow-700 space-y-1">
+                        <li>• Créez les sous-familles d'examens avec leurs prix</li>
+                        <li>• Ces examens seront disponibles dans le module de paiements</li>
+                        <li>• Les examens "Autre" permettent de saisir un prix personnalisé</li>
+                        <li>• Les examens désactivés n'apparaîtront pas dans les nouveaux paiements</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal-overlay">
+        <div class="bg-white rounded-xl w-full max-w-md mx-4">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-semibold text-gray-800" id="modalTitle"></h3>
+                <p class="text-gray-600 mt-1" id="modalMessage"></p>
+            </div>
+            <div class="p-6 flex justify-end space-x-3">
+                <button onclick="closeModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                    Annuler
+                </button>
+                <button onclick="confirmAction()" id="modalConfirmBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                    Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i id="toastIcon" class="mr-2"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = localStorage.getItem('apiBaseUrl') || 'https://anapath.onrender.com';
+        let currentUserId = localStorage.getItem('userId');
+        let allExamens = [];
+        let pendingAction = null;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!currentUserId) {
+                showToast('Veuillez vous connecter', 'error');
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+
+            updateCurrentUserDisplay();
+            loadSousFamilles();
+            setupEventListeners();
+        });
+
+        function updateCurrentUserDisplay() {
+            const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+            const displayName = selectedUser.nom || 'Utilisateur';
+            document.getElementById('currentUser').textContent = displayName;
+        }
+
+        function setupEventListeners() {
+            // Formulaire
+            document.getElementById('formSousFamille').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveSousFamille();
+            });
+
+            // Recherche
+            document.getElementById('searchInput').addEventListener('input', function() {
+                filterExamens();
+            });
+
+            // Filtre par famille
+            document.getElementById('filterFamille').addEventListener('change', function() {
+                filterExamens();
+            });
+
+            // Synchronisation automatique du prix avec la famille
+            document.getElementById('famille').addEventListener('change', function() {
+                suggestPrice();
+            });
+        }
+
+        // Charger toutes les sous-familles
+        async function loadSousFamilles() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    allExamens = await response.json();
+                    renderExamensList();
+                    updateStats();
+                    updateKPIs();
+                } else {
+                    showToast('Erreur lors du chargement des examens', 'error');
+                }
+            } catch (error) {
+                console.error('Erreur chargement examens:', error);
+                showToast('Erreur de connexion au serveur', 'error');
+            }
+        }
+
+        // Filtrer les examens
+        function filterExamens() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const familleFilter = document.getElementById('filterFamille').value;
+
+            let filtered = allExamens;
+
+            if (searchTerm) {
+                filtered = filtered.filter(e => 
+                    e.designation.toLowerCase().includes(searchTerm) ||
+                    e.code.toLowerCase().includes(searchTerm) ||
+                    (e.description && e.description.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            if (familleFilter) {
+                filtered = filtered.filter(e => e.famille === familleFilter);
+            }
+
+            renderExamensList(filtered);
+        }
+
+        // Afficher la liste des examens
+        function renderExamensList(examens = allExamens) {
+            const tbody = document.getElementById('listeExamens');
+
+            if (examens.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
+                            <p class="mt-2">Aucun examen trouvé</p>
+                            <p class="text-sm mt-1">Créez votre premier examen</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = examens.map(examen => {
+                const badgeClass = getBadgeClass(examen.famille);
+                const familleText = getFamilleText(examen.famille);
+                const prixFormatted = parseFloat(examen.prix).toFixed(2);
+                
+                return `
+                    <tr class="hover:bg-gray-50 transition-colors fade-in">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="${badgeClass} px-3 py-1 rounded-full text-xs font-medium">
+                                ${familleText}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-900">${examen.designation}</div>
+                            <div class="text-xs text-gray-500">${examen.code}</div>
+                            ${examen.description ? `<div class="text-xs text-gray-500 mt-1">${examen.description}</div>` : ''}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-lg font-bold text-gray-900">${prixFormatted} DA</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            ${examen.actif ? 
+                                '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Actif</span>' : 
+                                '<span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">Inactif</span>'
+                            }
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium">
+                            <div class="flex space-x-2">
+                                <button onclick="editExamen(${examen.id})" 
+                                        class="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition" 
+                                        title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="toggleActif(${examen.id}, ${examen.actif})" 
+                                        class="${examen.actif ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900'} p-2 rounded-lg ${examen.actif ? 'hover:bg-orange-50' : 'hover:bg-green-50'} transition" 
+                                        title="${examen.actif ? 'Désactiver' : 'Activer'}">
+                                    <i class="fas ${examen.actif ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                                </button>
+                                ${examen.user_id !== 'system' ? `
+                                    <button onclick="showDeleteConfirm(${examen.id}, '${examen.designation}')" 
+                                            class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition" 
+                                            title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Obtenir la classe CSS pour le badge
+        function getBadgeClass(famille) {
+            const badges = {
+                'HISTO': 'badge-histologie',
+                'BIOPS': 'badge-biopsie',
+                'CYTO': 'badge-cytologie',
+                'FCV': 'badge-fcv',
+                'IMMUN': 'badge-immuno',
+                'AUTRE': 'badge-autre'
+            };
+            return badges[famille] || 'badge-autre';
+        }
+
+        // Obtenir le texte de la famille
+        function getFamilleText(famille) {
+            const familles = {
+                'HISTO': 'Histologie',
+                'BIOPS': 'Biopsie',
+                'CYTO': 'Cytologie',
+                'FCV': 'FCV',
+                'IMMUN': 'Immuno-Histo',
+                'AUTRE': 'Autre'
+            };
+            return familles[famille] || famille;
+        }
+
+        // Mettre à jour les statistiques
+        function updateStats() {
+            const actifs = allExamens.filter(e => e.actif).length;
+            const total = allExamens.length;
+            
+            // Prix moyen des examens actifs
+            const prixActifs = allExamens.filter(e => e.actif).map(e => parseFloat(e.prix));
+            const prixMoyen = prixActifs.length > 0 ? 
+                (prixActifs.reduce((a, b) => a + b, 0) / prixActifs.length).toFixed(2) : 0;
+            
+            document.getElementById('totalActifs').textContent = actifs;
+            document.getElementById('totalExamens').textContent = total;
+            document.getElementById('prixMoyen').textContent = `${prixMoyen} DA`;
+        }
+
+        // Mettre à jour les KPI
+        function updateKPIs() {
+            const histologie = allExamens.filter(e => e.famille === 'HISTO').length;
+            const biopsie = allExamens.filter(e => e.famille === 'BIOPS').length;
+            const cytoFCV = allExamens.filter(e => e.famille === 'CYTO' || e.famille === 'FCV').length;
+            const immunoAutre = allExamens.filter(e => e.famille === 'IMMUN' || e.famille === 'AUTRE').length;
+            
+            document.getElementById('countHistologie').textContent = histologie;
+            document.getElementById('countBiopsie').textContent = biopsie;
+            document.getElementById('countCytoFCV').textContent = cytoFCV;
+            document.getElementById('countImmunoAutre').textContent = immunoAutre;
+        }
+
+        // Suggérer un prix selon la famille
+        function suggestPrice() {
+            const famille = document.getElementById('famille').value;
+            let suggestedPrice = 0;
+            
+            switch(famille) {
+                case 'HISTO': suggestedPrice = 4000; break;
+                case 'BIOPS': suggestedPrice = 5000; break;
+                case 'CYTO': suggestedPrice = 3000; break;
+                case 'FCV': suggestedPrice = 2000; break;
+                case 'IMMUN': suggestedPrice = 4000; break;
+                case 'AUTRE': suggestedPrice = 0; break;
+            }
+            
+            if (suggestedPrice > 0) {
+                document.getElementById('prix').value = suggestedPrice;
+                document.getElementById('prix').classList.add('shake');
+                setTimeout(() => {
+                    document.getElementById('prix').classList.remove('shake');
+                }, 500);
+            }
+        }
+
+        // Sauvegarder une sous-famille (création ou modification)
+        async function saveSousFamille() {
+            const editId = document.getElementById('editId').value;
+            const isEdit = editId !== '';
+            
+            const data = {
+                famille: document.getElementById('famille').value,
+                code: document.getElementById('code').value.trim(),
+                designation: document.getElementById('designation').value.trim(),
+                description: document.getElementById('description').value.trim(),
+                prix: parseFloat(document.getElementById('prix').value),
+                actif: document.getElementById('actif').checked
+            };
+
+            // Validation
+            if (!data.famille || !data.code || !data.designation || isNaN(data.prix)) {
+                showToast('Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+
+            try {
+                let response;
+                
+                if (isEdit) {
+                    // Mise à jour
+                    response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${editId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-User-ID': currentUserId
+                        },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    // Création
+                    response = await fetch(`${API_BASE_URL}/api/sous-familles-examens`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-User-ID': currentUserId
+                        },
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast(result.message || 'Examen enregistré avec succès', 'success');
+                    
+                    // Réinitialiser le formulaire
+                    resetForm();
+                    
+                    // Recharger la liste
+                    await loadSousFamilles();
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
+                }
+            } catch (error) {
+                console.error('Erreur enregistrement:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Éditer un examen
+        async function editExamen(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${id}`, {
+                    headers: { 'X-User-ID': currentUserId }
+                });
+
+                if (response.ok) {
+                    const examen = await response.json();
+                    
+                    // Remplir le formulaire
+                    document.getElementById('editId').value = examen.id;
+                    document.getElementById('famille').value = examen.famille;
+                    document.getElementById('code').value = examen.code;
+                    document.getElementById('designation').value = examen.designation;
+                    document.getElementById('description').value = examen.description || '';
+                    document.getElementById('prix').value = parseFloat(examen.prix);
+                    document.getElementById('actif').checked = examen.actif;
+                    
+                    // Changer le bouton
+                    document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-edit mr-2"></i>Modifier';
+                    document.getElementById('btnSubmit').classList.remove('from-green-600', 'to-emerald-600');
+                    document.getElementById('btnSubmit').classList.add('from-blue-600', 'to-blue-700');
+                    
+                    // Afficher le bouton annuler
+                    document.getElementById('btnCancel').classList.remove('hidden');
+                    
+                    // Faire défiler vers le formulaire
+                    document.getElementById('formSousFamille').scrollIntoView({ behavior: 'smooth' });
+                    
+                    showToast('Examen chargé pour modification', 'success');
+                }
+            } catch (error) {
+                console.error('Erreur chargement examen:', error);
+                showToast('Erreur lors du chargement', 'error');
+            }
+        }
+
+        // Basculer l'état actif/inactif
+        async function toggleActif(id, currentState) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-ID': currentUserId
+                    },
+                    body: JSON.stringify({ actif: !currentState })
+                });
+
+                if (response.ok) {
+                    showToast(`Examen ${!currentState ? 'activé' : 'désactivé'}`, 'success');
+                    await loadSousFamilles();
+                }
+            } catch (error) {
+                console.error('Erreur toggle actif:', error);
+                showToast('Erreur lors de la modification', 'error');
+            }
+        }
+
+        // Afficher la confirmation de suppression
+        function showDeleteConfirm(id, designation) {
+            pendingAction = { type: 'delete', id: id };
+            
+            document.getElementById('modalTitle').textContent = 'Confirmer la suppression';
+            document.getElementById('modalMessage').textContent = `Êtes-vous sûr de vouloir supprimer l'examen "${designation}" ?`;
+            document.getElementById('modalConfirmBtn').className = 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition';
+            document.getElementById('modalConfirmBtn').textContent = 'Supprimer';
+            
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        // Confirmer l'action
+        async function confirmAction() {
+            if (!pendingAction) return;
+
+            try {
+                if (pendingAction.type === 'delete') {
+                    const response = await fetch(`${API_BASE_URL}/api/sous-familles-examens/${pendingAction.id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-User-ID': currentUserId }
+                    });
+
+                    if (response.ok) {
+                        showToast('Examen supprimé avec succès', 'success');
+                        await loadSousFamilles();
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur action:', error);
+                showToast('Erreur lors de l\'opération', 'error');
+            } finally {
+                closeModal();
+                pendingAction = null;
+            }
+        }
+
+        // Fermer le modal
+        function closeModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            pendingAction = null;
+        }
+
+        // Réinitialiser le formulaire
+        function resetForm() {
+            document.getElementById('formSousFamille').reset();
+            document.getElementById('editId').value = '';
+            
+            // Réinitialiser le bouton
+            document.getElementById('btnSubmit').innerHTML = '<i class="fas fa-save mr-2"></i>Enregistrer';
+            document.getElementById('btnSubmit').classList.remove('from-blue-600', 'to-blue-700');
+            document.getElementById('btnSubmit').classList.add('from-green-600', 'to-emerald-600');
+            
+            // Cacher le bouton annuler
+            document.getElementById('btnCancel').classList.add('hidden');
+        }
+
+        // Afficher une notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+
+            toast.className = `toast ${type}`;
+            icon.className = `fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2`;
+            msg.textContent = message;
+
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Exporter les données (optionnel)
+        function exporterDonnees() {
+            if (allExamens.length === 0) {
+                showToast('Aucune donnée à exporter', 'warning');
+                return;
+            }
+
+            const csvContent = [
+                ['Famille', 'Code', 'Désignation', 'Description', 'Prix (DA)', 'Statut'],
+                ...allExamens.map(e => [
+                    getFamilleText(e.famille),
+                    e.code,
+                    e.designation,
+                    e.description || '',
+                    parseFloat(e.prix).toFixed(2),
+                    e.actif ? 'Actif' : 'Inactif'
+                ])
+            ].map(row => row.join(';')).join('\n');
+
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const dateExport = new Date().toISOString().split('T')[0];
+            link.setAttribute('href', url);
+            link.setAttribute('download', `examens_anapath_${dateExport}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast(`${allExamens.length} examens exportés`, 'success');
+        }
+
+        // Imprimer la liste
+        function imprimerListe() {
+            const printWindow = window.open('', '', 'height=800,width=1000');
+            
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Liste des Examens - ANAPATH</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .header h1 { color: #4f46e5; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th { background: #4f46e5; color: white; padding: 12px; text-align: left; }
+                        td { padding: 10px; border-bottom: 1px solid #ddd; }
+                        .badge { padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; }
+                        .badge-histo { background: #3b82f6; }
+                        .badge-biopsie { background: #ef4444; }
+                        .badge-cytologie { background: #10b981; }
+                        .badge-fcv { background: #8b5cf6; }
+                        .badge-immuno { background: #f59e0b; }
+                        .badge-autre { background: #6b7280; }
+                        .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>📋 LISTE DES EXAMENS ANAPATH</h1>
+                        <p><strong>Centre d'Anatomie Pathologique</strong></p>
+                        <p>Date d'édition: ${new Date().toLocaleDateString('fr-FR')}</p>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Famille</th>
+                                <th>Code</th>
+                                <th>Désignation</th>
+                                <th>Prix (DA)</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allExamens.map(e => `
+                                <tr>
+                                    <td><span class="badge badge-${e.famille.toLowerCase()}">${getFamilleText(e.famille)}</span></td>
+                                    <td>${e.code}</td>
+                                    <td>${e.designation}</td>
+                                    <td><strong>${parseFloat(e.prix).toFixed(2)} DA</strong></td>
+                                    <td>${e.actif ? '✅ Actif' : '❌ Inactif'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <div class="footer">
+                        <p>Document généré par ANAPATH - Système de Gestion des Examens</p>
+                        <p>Total: ${allExamens.length} examens | Actifs: ${allExamens.filter(e => e.actif).length}</p>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.focus();
+            
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+    </script>
+</body>
+</html>
