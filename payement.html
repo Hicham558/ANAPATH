@@ -4608,35 +4608,41 @@ async function saveQuickPatient() {
     showToast('Patient créé avec succès', 'success');
     closeQuickPatientModal();
 
-    // 1. Recharger la liste des patients
-    await chargerPatientsDansSelect();
-    
-    // 2. Sélectionner immédiatement le nouveau patient
+    // AJOUTER DIRECTEMENT À LA LISTE SANS ATTENDRE
     const patientSelect = document.getElementById('patientSelect');
     
-    if (patientSelect) {
-      // Chercher l'option avec l'ID du nouveau patient
+    // Créer une nouvelle option
+    const newOption = document.createElement('option');
+    newOption.value = newPatientId.toString();
+    newOption.textContent = `${nom} (${tel || 'N/A'}) - Solde: 0.00 DA`;
+    newOption.setAttribute('data-age', age || '');
+    newOption.setAttribute('data-sexe', sexe || '');
+    newOption.setAttribute('data-tel', tel || '');
+    newOption.setAttribute('data-solde', '0');
+    
+    // Ajouter à la liste
+    patientSelect.appendChild(newOption);
+    
+    // Sélectionner cette nouvelle option
+    patientSelect.selectedIndex = patientSelect.options.length - 1;
+    
+    // Mettre à jour les infos et focus
+    updatePatientInfo();
+    patientSelect.focus();
+    
+    // Recharger la liste complète en arrière-plan pour synchroniser
+    setTimeout(async () => {
+      await chargerPatientsDansSelect();
+      // Resélectionner après rechargement
       for (let i = 0; i < patientSelect.options.length; i++) {
-        const option = patientSelect.options[i];
-        if (option.value === newPatientId.toString()) {
-          // Sélectionner cet option
+        if (patientSelect.options[i].value === newPatientId.toString()) {
           patientSelect.selectedIndex = i;
-          
-          // Mettre à jour les infos du patient
           updatePatientInfo();
-          
-          // Remettre le focus sur la liste déroulante
-          patientSelect.focus();
-          
-          // Optionnel : montrer un petit message
-          showToast(`Patient "${newPatientNom}" sélectionné`, 'success');
           break;
         }
       }
-    }
-
-    // 3. Recharger aussi les filtres (en arrière-plan)
-    chargerPatientsFiltre(); // Pas besoin d'attendre
+      chargerPatientsFiltre();
+    }, 2000); // Attendre 2 secondes avant de synchroniser
 
   } catch (err) {
     console.error('Erreur création patient:', err);
