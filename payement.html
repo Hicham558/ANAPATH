@@ -1267,39 +1267,17 @@ async function chargerPatientsDansSelect() {
             });
             
             select.innerHTML = options;
+            return patientsArray; // Retourner les patients pour une utilisation ultérieure
             
         } else {
             console.error('Erreur chargement patients:', await response.text());
+            return [];
         }
     } catch (error) {
         console.error('Erreur chargement patients:', error);
+        return [];
     }
 }
-
-
-document.addEventListener('DOMContentLoaded', function() {
-    if (!currentUserId) {
-        showToast('Veuillez vous connecter', 'error');
-        setTimeout(() => window.location.href = 'index.html', 2000);
-        return;
-    }
-
-    updateCurrentUserDisplay();
-    loadDashboardData();
-    chargerPatientsDansSelect(); // ← Modifié ici
-    chargerPatientsFiltre(); // ← Modifié ici
-    loadPaiements();
-    loadDettes();
-    
-    // Initialiser les dates par défaut
-    const aujourdhui = new Date().toISOString().split('T')[0];
-    document.getElementById('rapportDate').value = aujourdhui;
-    document.getElementById('filterDateDebut').value = aujourdhui;
-    document.getElementById('filterDateFin').value = aujourdhui;
-    
-    // Écouteurs d'événements
-    setupEventListeners();
-});
        function updatePatientInfo() {
     const select = document.getElementById('patientSelect');
     const selectedOption = select.options[select.selectedIndex];
@@ -4625,43 +4603,40 @@ async function saveQuickPatient() {
 
     const result = await response.json();
     const newPatientId = result.id || result.numero;
-    const newPatientNom = nom; // Garder le nom pour l'affichage
+    const newPatientNom = nom;
 
     showToast('Patient créé avec succès', 'success');
     closeQuickPatientModal();
 
-    // Recharger la liste des patients
+    // 1. Recharger la liste des patients
     await chargerPatientsDansSelect();
     
-    // Attendre un peu que le DOM se mette à jour
-    setTimeout(() => {
-      // Sélectionner automatiquement le nouveau patient dans la liste déroulante
-      const patientSelect = document.getElementById('patientSelect');
-      
-      if (patientSelect) {
-        // Chercher l'option correspondant au nouvel ID
-        for (let i = 0; i < patientSelect.options.length; i++) {
-          if (patientSelect.options[i].value === newPatientId.toString()) {
-            patientSelect.selectedIndex = i;
-            break;
-          }
+    // 2. Sélectionner immédiatement le nouveau patient
+    const patientSelect = document.getElementById('patientSelect');
+    
+    if (patientSelect) {
+      // Chercher l'option avec l'ID du nouveau patient
+      for (let i = 0; i < patientSelect.options.length; i++) {
+        const option = patientSelect.options[i];
+        if (option.value === newPatientId.toString()) {
+          // Sélectionner cet option
+          patientSelect.selectedIndex = i;
+          
+          // Mettre à jour les infos du patient
+          updatePatientInfo();
+          
+          // Remettre le focus sur la liste déroulante
+          patientSelect.focus();
+          
+          // Optionnel : montrer un petit message
+          showToast(`Patient "${newPatientNom}" sélectionné`, 'success');
+          break;
         }
-        
-        // Déclencher l'événement change pour mettre à jour les informations
-        updatePatientInfo();
-        
-        // Remettre le focus sur la liste déroulante
-        patientSelect.focus();
-        
-        // Optionnel : scroll vers l'option sélectionnée
-        patientSelect.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        
-        showToast(`Patient "${newPatientNom}" sélectionné`, 'success');
       }
-    }, 300);
+    }
 
-    // Recharger aussi les filtres
-    await chargerPatientsFiltre();
+    // 3. Recharger aussi les filtres (en arrière-plan)
+    chargerPatientsFiltre(); // Pas besoin d'attendre
 
   } catch (err) {
     console.error('Erreur création patient:', err);
