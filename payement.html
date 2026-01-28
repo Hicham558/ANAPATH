@@ -1393,32 +1393,29 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
     }
 }
 
-      function toggleMontantTotal() {
-    const mode = document.querySelector('input[name="modePaiement"]:checked').value;
+    function toggleMontantTotal() {
+    const modeRadio = document.querySelector('input[name="modePaiement"]:checked');
+    
+    // Vérifier si l'élément existe
+    if (!modeRadio) return;
+    
+    const mode = modeRadio.value;
     const montantTotalGroup = document.getElementById('montantTotalGroup');
     const recapDetails = document.getElementById('recapDetails');
 
-    if (mode === 'a_terme') {
-        montantTotalGroup.classList.remove('hidden');
-        recapDetails.classList.remove('hidden');
-        
-        // Si un type d'examen est sélectionné, proposer d'utiliser le prix standard
-        const selectType = document.getElementById('typePaiement');
-        if (selectType.value && selectType.options[selectType.selectedIndex].dataset.prix) {
-            const prix = parseInt(selectType.options[selectType.selectedIndex].dataset.prix);
-            if (!document.getElementById('montantTotal').value) {
-                showToast(`Pour un paiement à terme, vous pouvez utiliser le prix standard de ${prix.toLocaleString('fr-FR')} DA`, 'info');
+    if (montantTotalGroup && recapDetails) {
+        if (mode === 'a_terme') {
+            montantTotalGroup.classList.remove('hidden');
+            recapDetails.classList.remove('hidden');
+        } else {
+            montantTotalGroup.classList.add('hidden');
+            if (mode === 'espece' || mode === 'paiement_partiel') {
+                recapDetails.classList.remove('hidden');
             }
         }
-    } else {
-        montantTotalGroup.classList.add('hidden');
-        if (mode === 'espece' || mode === 'paiement_partiel') {
-            recapDetails.classList.remove('hidden');
-        }
+        updateRecap();
     }
-    updateRecap();
 }
-
   function updateRecap() {
     const patientSelect = document.getElementById('patientSelect');
     const mode = document.querySelector('input[name="modePaiement"]:checked').value;
