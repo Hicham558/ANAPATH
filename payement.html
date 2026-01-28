@@ -5299,10 +5299,97 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
-// ===== NOUVEAU : SAUVEGARDE LOCALE =====
+// 1. Charger les fichiers existants depuis PostgreSQL
+async function loadExistingFilesFromDB(numeroCR) {
+    try {
+        // Récupérer le paiement_id depuis le numéro CR
+        const paiement = allPaiements.find(p => p.numero_cr === numeroCR);
+        if (!paiement || !paiement.id) {
+            console.log('Paiement non trouvé pour ce numéro CR');
+            return [];
+        }
 
-// Sauvegarder les fichiers localement (dans le navigateur)
-async function saveFilesLocally() {
+        const response = await fetch(`${API_BASE_URL}/api/paiements/${paiement.id}/fichiers`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data.fichiers || [];
+        } else {
+            console.error('Erreur chargement fichiers:', await response.text());
+            return [];
+        }
+    } catch (error) {
+        console.error('Erreur chargement fichiers DB:', error);
+        return [];
+    }
+}
+
+// 2. Sauvegarder les fichiers dans PostgreSQL
+async function saveFilesToDB() {
+    if (selectedFiles.length === 0) {
+        showToast('Aucun fichier à enregistrer', 'warning');
+        return;
+    }
+
+    // Trouver le paiement correspondant au numéro CR
+    const paiement = allPaiements.find(p => p.numero_cr === currentAttachmentNumeroCR);
+    if (!paiement || !paiement.id) {
+        showToast('Impossible de trouver le paiement correspondant', 'error');
+        return;
+    }
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enregistrement...';
+
+    try {
+        const formData = new FormData();
+        
+        // Ajouter chaque fichier au FormData
+        selectedFiles.forEach((file, index) => {
+            formData.append(`file_${index}`, file);
+        });
+
+        // Envoyer à l'API
+        const response = await fetch(`${API_BASE_URL}/api/paiements/${paiement.id}/fichiers`, {
+            method: 'POST',
+            headers: {
+                'X-User-ID': currentUserId
+                // NE PAS mettre Content-Type, FormData le fait automatiquement
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showToast(result.message, 'success');
+            
+            // Réinitialiser
+            selectedFiles = [];
+            displaySelectedFiles();
+            
+            // Recharger la liste des fichiers
+            displayExistingFilesLocal(currentAttachmentNumeroCR);
+            
+        } else {
+            const error = await response.json();
+            throw new Error(error.erreur || 'Erreur lors de l\'enregistrement');
+        }
+
+    } catch (error) {
+        console.error('Erreur sauvegarde DB:', error);
+        showToast(error.message || 'Erreur lors de l\'enregistrement', 'error');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
+    }
+}
+
+
+
+    async function saveFilesLocally() {
     if (selectedFiles.length === 0) {
         showToast('Aucun fichier à enregistrer', 'warning');
         return;
@@ -5369,15 +5456,15 @@ function convertFileToBase64(file) {
     });
 }
 
-// Charger les fichiers existants depuis localStorage
-function loadExistingFilesLocal(numeroCR) {
+// 3. Modifier la fonction loadExistingFilesLocal pour utiliser PostgreSQL
+async function loadExistingFilesLocal(numeroCR) {
     try {
-        const storageKey = `fichiers_${numeroCR}`;
-        const fichiers = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        displayExistingFiles(fichiers);
+        const files = await loadExistingFilesFromDB(numeroCR);
+        displayExistingFiles(files);
     } catch (error) {
-        console.error('Erreur chargement fichiers locaux:', error);
-        document.getElementById('existingFilesList').innerHTML = '<p class="text-sm text-gray-500">Aucun fichier attaché</p>';
+        console.error('Erreur:', error);
+        document.getElementById('existingFilesList').innerHTML = 
+            '<p class="text-sm text-gray-500">Aucun fichier attaché</p>';
     }
 }
 
@@ -5402,44 +5489,47 @@ function displayExistingFiles(files) {
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="downloadFileLocal('${file.id}')" class="text-blue-600 hover:text-blue-800 p-2" title="Télécharger">
+                <button onclick="downloadFileLocal(${file.id})" class="text-blue-600 hover:text-blue-800 p-2" title="Télécharger">
                     <i class="fas fa-download"></i>
                 </button>
-                <button onclick="viewFileLocal('${file.id}')" class="text-green-600 hover:text-green-800 p-2" title="Visualiser">
+                <button onclick="viewFileLocal(${file.id})" class="text-green-600 hover:text-green-800 p-2" title="Visualiser">
                     <i class="fas fa-eye"></i>
                 </button>
-                <button onclick="deleteFileLocal('${file.id}')" class="text-red-600 hover:text-red-800 p-2" title="Supprimer">
+                <button onclick="deleteFileLocal(${file.id})" class="text-red-600 hover:text-red-800 p-2" title="Supprimer">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
         </div>
     `).join('');
 }
-
-// Télécharger un fichier local
+// 4. Modifier les fonctions de gestion des fichiers
 function downloadFileLocal(fileId) {
+    window.open(`${API_BASE_URL}/api/fichiers/${fileId}/download`, '_blank');
+}
+
+function viewFileLocal(fileId) {
+    window.open(`${API_BASE_URL}/api/fichiers/${fileId}/view`, '_blank');
+}
+
+async function deleteFileLocal(fileId) {
+    if (!confirm('Supprimer ce fichier définitivement ?')) return;
+    
     try {
-        const storageKey = `fichiers_${currentAttachmentNumeroCR}`;
-        const fichiers = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        const file = fichiers.find(f => f.id == fileId);
-        
-        if (!file) {
-            showToast('Fichier introuvable', 'error');
-            return;
+        const response = await fetch(`${API_BASE_URL}/api/fichiers/${fileId}`, {
+            method: 'DELETE',
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            showToast('Fichier supprimé', 'success');
+            loadExistingFilesLocal(currentAttachmentNumeroCR);
+        } else {
+            const error = await response.json();
+            throw new Error(error.erreur || 'Erreur de suppression');
         }
-        
-        // Créer un lien de téléchargement
-        const link = document.createElement('a');
-        link.href = file.data; // base64
-        link.download = file.nom;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showToast('Téléchargement démarré', 'success');
     } catch (error) {
-        console.error('Erreur téléchargement:', error);
-        showToast('Erreur lors du téléchargement', 'error');
+        console.error('Erreur suppression:', error);
+        showToast(error.message || 'Erreur lors de la suppression', 'error');
     }
 }
 
@@ -5615,8 +5705,8 @@ function getBadgeNumero(numeroCR) {
             <button onclick="closeAttachmentModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
                 Fermer
             </button>
-            <button onclick="saveFilesLocally()" id="uploadBtn" class="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition flex items-center gap-2">
-    <i class="fas fa-save"></i> Enregistrer localement
+          <button onclick="saveFilesToDB()" id="uploadBtn" class="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition flex items-center gap-2">
+    <i class="fas fa-save"></i> Enregistrer
 </button>
         </div>
     </div>
