@@ -3984,31 +3984,20 @@ function genererRecuTicket(paiement) {
 function genererRecuVignette(paiement) {
     const dateObj = new Date(paiement.date_paiement);
     const date = dateObj.toLocaleDateString('fr-FR');
-    const heure = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     
-    // QR code contient uniquement le numéro de reçu
+    // QR code contient le numéro de reçu
     const qrContent = paiement.numero_cr || 'N/A';
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(qrContent)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrContent)}`;
     
-    // Créer une iframe pour l'impression (plus fiable qu'une nouvelle fenêtre)
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    iframe.style.visibility = 'hidden';
-    document.body.appendChild(iframe);
+    const printWindow = window.open('', '', 'height=600,width=400');
     
     const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Vignette - ${paiement.numero_cr || 'N/A'}</title>
+            <title>Vignette 60x40 - ${paiement.numero_cr || 'N/A'}</title>
             <style>
-                /* IMPORTANT: Styles d'impression en premier */
                 @media print {
                     @page {
                         size: 60mm 40mm;
@@ -4017,221 +4006,206 @@ function genererRecuVignette(paiement) {
                     body {
                         margin: 0;
                         padding: 0;
-                        width: 60mm;
-                        height: 40mm;
-                        font-family: Arial, sans-serif;
-                        font-size: 8px;
-                        line-height: 1;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    .vignette {
-                        page-break-inside: avoid;
-                        break-inside: avoid;
                     }
                 }
                 
-                /* Styles écran (minimes) */
-                body {
+                * {
                     margin: 0;
-                    padding: 2mm;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
                     width: 60mm;
                     height: 40mm;
                     font-family: Arial, sans-serif;
-                    font-size: 8px;
-                    line-height: 1;
                     background: white;
                     color: black;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
+                    padding: 2mm;
                 }
                 
                 .vignette {
-                    width: 56mm;
-                    height: 36mm;
-                    padding: 1mm;
+                    width: 100%;
+                    height: 100%;
                     border: 1px solid #000;
                     display: flex;
                     flex-direction: column;
-                    align-items: center;
-                    justify-content: space-between;
-                    box-sizing: border-box;
+                    padding: 2mm;
                 }
                 
                 .header {
                     text-align: center;
-                    width: 100%;
-                    padding-bottom: 1mm;
                     border-bottom: 1px solid #000;
+                    padding-bottom: 1mm;
+                    margin-bottom: 1.5mm;
                 }
                 
                 .header h1 {
-                    font-size: 9px;
+                    font-size: 10pt;
                     font-weight: bold;
                     margin: 0;
-                    line-height: 1;
-                }
-                
-                .header p {
-                    font-size: 6px;
-                    color: #666;
-                    margin: 0;
+                    color: #1e40af;
                 }
                 
                 .content {
                     display: flex;
-                    align-items: center;
-                    justify-content: center;
                     gap: 2mm;
                     flex: 1;
-                    width: 100%;
+                    align-items: flex-start;
                 }
                 
-                .qr-container {
+                .left-section {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
+                
+                .qr-section {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
-                    justify-content: center;
                 }
                 
-                .qr-image {
-                    width: 23mm;
-                    height: 23mm;
-                    border: 0.5mm solid #000;
+                .qr-container {
+                    width: 22mm;
+                    height: 22mm;
+                    border: 1px solid #000;
+                    padding: 1mm;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 0.5mm;
+                    background: white;
                 }
                 
-                .qr-image img {
+                .qr-container img {
                     width: 100%;
                     height: 100%;
                     object-fit: contain;
                 }
                 
-                .qr-label {
-                    font-size: 5px;
-                    color: #666;
-                    margin-top: 0.5mm;
-                    text-align: center;
-                }
-                
-                .details {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    height: 100%;
-                }
-                
-                .patient {
-                    font-size: 8px;
+                .numero-cr {
+                    font-size: 7pt;
                     font-weight: bold;
+                    color: #1e40af;
+                    text-align: center;
+                    margin-top: 1mm;
+                    word-break: break-all;
+                }
+                
+                .patient-info {
+                    font-size: 7pt;
+                    line-height: 1.3;
+                }
+                
+                .patient-nom {
+                    font-weight: bold;
+                    font-size: 8pt;
                     margin-bottom: 1mm;
-                    max-width: 25mm;
-                    word-wrap: break-word;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
                 
                 .montant {
-                    font-size: 11px;
+                    font-size: 9pt;
                     font-weight: bold;
-                    color: #000;
-                    margin-bottom: 1mm;
+                    color: #059669;
+                    margin: 1mm 0;
                 }
                 
-                .date-heure {
-                    font-size: 6px;
-                    color: #666;
-                    margin-bottom: 1mm;
+                .notes-section {
+                    font-size: 5pt;
+                    line-height: 1.2;
+                    color: #333;
+                    border-top: 0.5px dashed #666;
+                    padding-top: 1mm;
+                    margin-top: auto;
+                    max-height: 8mm;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
                 
-                .type-mode {
-                    font-size: 6px;
-                    color: #666;
+                .notes-title {
+                    font-weight: bold;
+                    margin-bottom: 0.5mm;
+                }
+                
+                .btn-print {
+                    background: #4f46e5;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    margin: 10px;
+                    border-radius: 4px;
                 }
             </style>
         </head>
         <body>
+            <button onclick="window.print()" class="btn-print" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+                🖨️ Imprimer
+            </button>
+            
             <div class="vignette">
+                <!-- En-tête -->
                 <div class="header">
-                    <h1>ANAPATH</h1>
-                    <p>Centre d'Anatomie Pathologique</p>
+                    <h1>ANAPATH ELYOUSR</h1>
                 </div>
                 
+                <!-- Contenu principal -->
                 <div class="content">
-                    <div class="qr-container">
-                        <div class="qr-image">
-                            <img src="${qrUrl}" alt="QR Code" 
-                                 onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0id2hpdGUiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI4IiBmaWxsPSJibGFjayIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlFSIENvZGU8L3RleHQ+PC9zdmc+'">
+                    <!-- Partie gauche : Infos patient -->
+                    <div class="left-section">
+                        <div class="patient-info">
+                            <div class="patient-nom">${paiement.patient_nom.substring(0, 25)}${paiement.patient_nom.length > 25 ? '...' : ''}</div>
+                            <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
+                            <div style="font-size: 6pt; color: #666;">${date}</div>
+                            <div style="font-size: 6pt; color: #666;">${paiement.type_paiement || '—'}</div>
                         </div>
-                        <div class="qr-label">Scanner le QR code</div>
+                        
+                        <!-- Notes en bas -->
+                        ${paiement.notes ? `
+                            <div class="notes-section">
+                                <div class="notes-title">Notes:</div>
+                                <div>${paiement.notes.substring(0, 80)}${paiement.notes.length > 80 ? '...' : ''}</div>
+                            </div>
+                        ` : ''}
                     </div>
                     
-                    <div class="details">
-                        <div class="patient">${paiement.patient_nom.substring(0, 20)}${paiement.patient_nom.length > 20 ? '...' : ''}</div>
-                        <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
-                        <div class="date-heure">${date} ${heure}</div>
-                        <div class="type-mode">
-                            ${paiement.type_paiement} • 
-                            ${paiement.mode_paiement === 'espece' ? 'Comptant' : 
-                              paiement.mode_paiement === 'a_terme' ? 'À terme' : 'Partiel'}
+                    <!-- Partie droite : QR Code + Numéro CR -->
+                    <div class="qr-section">
+                        <div class="qr-container">
+                            <img src="${qrUrl}" alt="QR Code" 
+                                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'font-size:8pt;text-align:center;\\'>QR<br>Code</div>';">
                         </div>
+                        <div class="numero-cr">N° ${paiement.numero_cr || 'N/A'}</div>
                     </div>
                 </div>
             </div>
             
             <script>
-                // Impression automatique après chargement de l'image
                 window.onload = function() {
                     const img = document.querySelector('img');
-                    if (img.complete) {
-                        imprimer();
-                    } else {
-                        img.onload = imprimer;
-                        img.onerror = function() {
-                            setTimeout(imprimer, 500);
+                    if (img) {
+                        img.onload = function() {
+                            setTimeout(() => window.print(), 500);
                         };
+                        if (img.complete) {
+                            setTimeout(() => window.print(), 500);
+                        }
+                    } else {
+                        setTimeout(() => window.print(), 500);
                     }
                 };
-                
-                function imprimer() {
-                    setTimeout(function() {
-                        window.print();
-                        // Fermer la fenêtre après impression (si dans un popup)
-                        if (window.opener) {
-                            setTimeout(function() {
-                                window.close();
-                            }, 100);
-                        }
-                    }, 500);
-                }
-                
-                // Fallback si l'image QR ne se charge pas
-                document.addEventListener('DOMContentLoaded', function() {
-                    const qrImg = document.querySelector('.qr-image img');
-                    qrImg.onerror = function() {
-                        this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLXdpZHRoPSIyIi8+PHRleHQgeD0iNTAiIHk9IjUwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iOCIgb3BhY2l0eT0iMC43IiBmaWxsPSIjMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UVI8L3RleHQ+PC9zdmc+';
-                    };
-                });
             <\/script>
         </body>
         </html>
     `;
     
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(htmlContent);
-    iframe.contentDocument.close();
-    
-    // Détruire l'iframe après impression
-    iframe.onload = function() {
-        setTimeout(function() {
-            iframe.contentWindow.print();
-            setTimeout(function() {
-                document.body.removeChild(iframe);
-            }, 1000);
-        }, 1000);
-    };
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 }
     // Fonction pour imprimer le rapport journalier
 async function imprimerRapportJournalier() {
