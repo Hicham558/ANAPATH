@@ -98,7 +98,32 @@
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
-
+  <SCRIPT>
+    // Dans params.html - au début du fichier
+document.addEventListener('DOMContentLoaded', function() {
+  // Vérifier si l'utilisateur est connecté
+  const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+  const userStatut = selectedUser.statut || '';
+  
+  // Si pas d'utilisateur ou statut "utilisateur", rediriger
+  if (!selectedUser || !selectedUser.numero) {
+    alert('Veuillez sélectionner un utilisateur avant d\'accéder .');
+    window.location.href = 'index.html';
+  }
+  
+  // Si l'utilisateur a le statut "utilisateur", bloquer l'accès
+  if (userStatut.toLowerCase() === 'utilisateur') {
+    alert('Accès interdit. Vous n\'avez pas les permissions nécessaires pour accéder aux TEMPLATES.');
+    window.location.href = 'index.html';
+  }
+  
+  // Afficher le nom de l'utilisateur actuel
+  const userDisplay = document.getElementById('currentUserDisplay');
+  if (userDisplay && selectedUser.nom) {
+    userDisplay.textContent = `${selectedUser.nom} (${selectedUser.statut || 'Utilisateur'})`;
+  }
+});
+  </SCRIPT>
   <!-- Navigation -->
   <nav class="bg-indigo-600 text-white p-4 fixed w-full top-0 z-50 shadow-md animate-slide-in">
     <div class="container mx-auto flex justify-between items-center">
