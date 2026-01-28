@@ -259,17 +259,17 @@
         </div>
       </div>
       
-      <!-- Paramètres & Templates -->
+     <!-- Paramètres & Templates -->
 <div class="mb-8">
   <h3 class="text-lg font-semibold mb-4 flex items-center">
     <i class="fas fa-cog mr-2 text-blue-300"></i> Configuration
   </h3>
   <div class="space-y-3">
-    <a href="templates.html" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group">
+    <a href="templates.html" id="templatesLink" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group hidden">
       <i class="fas fa-file-alt"></i>
       <span>Gérer les Templates</span>
     </a>
-    <a href="ARTICLE.html" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group">
+    <a href="ARTICLE.html" id="sousFamilleLink" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group hidden">
       <i class="fas fa-folder-open"></i>
       <span>Sous-famille d'examen</span>
     </a>
@@ -1037,33 +1037,54 @@
     }
 
     // Fonction pour mettre à jour l'affichage de l'utilisateur
-    function updateSelectedUserDisplay() {
-      const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
-      const selectedUtilisateurId = selectedUtilisateur.numero;
-      const selectedUtilisateurNom = selectedUtilisateur.nom || 'Non sélectionné';
-      const selectedUtilisateurStatut = selectedUtilisateur.statut || '';
-     
-      document.getElementById('currentUserName').textContent = `${selectedUtilisateurNom}${selectedUtilisateurStatut ? ` (${selectedUtilisateurStatut})` : ''}`;
-     
-      // Mettre à jour dans le modal des comptes rendus
-      const currentReportUserElement = document.getElementById('currentReportUser');
-      if (currentReportUserElement) {
-        currentReportUserElement.textContent = selectedUtilisateurNom;
-      }
-     
-      // Afficher/masquer l'alerte si aucun utilisateur n'est sélectionné
-      const alertElement = document.getElementById('userSelectionAlert');
-      if (alertElement) {
-        if (!selectedUtilisateurId) {
-          alertElement.classList.remove('hidden');
-        } else {
-          alertElement.classList.add('hidden');
-        }
-      }
-     
-      return { id: selectedUtilisateurId, nom: selectedUtilisateurNom };
+  // Fonction pour mettre à jour l'affichage de l'utilisateur
+function updateSelectedUserDisplay() {
+  const selectedUtilisateur = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+  const selectedUtilisateurId = selectedUtilisateur.numero;
+  const selectedUtilisateurNom = selectedUtilisateur.nom || 'Non sélectionné';
+  const selectedUtilisateurStatut = selectedUtilisateur.statut || '';
+ 
+  document.getElementById('currentUserName').textContent = `${selectedUtilisateurNom}${selectedUtilisateurStatut ? ` (${selectedUtilisateurStatut})` : ''}`;
+ 
+  // Mettre à jour dans le modal des comptes rendus
+  const currentReportUserElement = document.getElementById('currentReportUser');
+  if (currentReportUserElement) {
+    currentReportUserElement.textContent = selectedUtilisateurNom;
+  }
+ 
+  // Afficher/masquer l'alerte si aucun utilisateur n'est sélectionné
+  const alertElement = document.getElementById('userSelectionAlert');
+  if (alertElement) {
+    if (!selectedUtilisateurId) {
+      alertElement.classList.remove('hidden');
+    } else {
+      alertElement.classList.add('hidden');
     }
-
+  }
+  
+  // Vérifier les permissions selon le statut
+  checkUserPermissions();
+ 
+  return { id: selectedUtilisateurId, nom: selectedUtilisateurNom };
+}
+// Fonction pour vérifier et gérer les permissions selon le statut
+function checkUserPermissions() {
+  const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+  const userStatut = selectedUser.statut || '';
+  
+  const templatesLink = document.getElementById('templatesLink');
+  const sousFamilleLink = document.getElementById('sousFamilleLink');
+  
+  // Si l'utilisateur a le statut "utilisateur", masquer les liens
+  if (userStatut.toLowerCase() === 'utilisateur') {
+    if (templatesLink) templatesLink.classList.add('hidden');
+    if (sousFamilleLink) sousFamilleLink.classList.add('hidden');
+  } else {
+    // Pour les autres statuts (admin, medecin, technicien), afficher les liens
+    if (templatesLink) templatesLink.classList.remove('hidden');
+    if (sousFamilleLink) sousFamilleLink.classList.remove('hidden');
+  }
+}
     // Fonction pour afficher les notifications
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
@@ -2708,7 +2729,8 @@ function searchInUtilisateurs() {
       const userEmail = localStorage.getItem('userEmail');
      
       updateSelectedUserDisplay();
-     
+      checkUserPermissions();
+      
       if (userId && userEmail) {
         currentUser = { userId, email: userEmail };
         document.getElementById('userDisplay').textContent = userEmail;
