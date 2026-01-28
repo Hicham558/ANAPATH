@@ -1805,7 +1805,7 @@ async function enregistrerPaiement() {
     }
 }
 
-   function renderPaiementsList() {
+  function renderPaiementsList() {
     const tbody = document.getElementById('listePaiements');
     
     if (allPaiements.length === 0) {
@@ -1833,39 +1833,6 @@ async function enregistrerPaiement() {
         } else {
             modeBadge = '<span class="badge-partiel px-2 py-1 rounded-full text-xs">Partiel</span>';
         }
-
-        // ✅ Générer le badge du numéro de reçu avec style selon le type
-        const getBadgeNumero = (numeroCR) => {
-            if (!numeroCR) {
-                return `<span class="text-xs text-gray-400 italic">
-                    <i class="fas fa-minus-circle mr-1"></i>Non attribué
-                </span>`;
-            }
-            
-            const typeCode = numeroCR.charAt(3);
-            
-            const badges = {
-                'H': { class: 'badge-histologie', icon: 'fa-microscope', label: 'Histologie' },
-                'B': { class: 'badge-biopsie', icon: 'fa-syringe', label: 'Biopsie' },
-                'C': { class: 'badge-cytologie', icon: 'fa-vials', label: 'Cytologie' },
-                'F': { class: 'badge-fcv', icon: 'fa-flask', label: 'FCV' },
-                'I': { class: 'badge-immuno', icon: 'fa-dna', label: 'Immuno-Histo' }
-            };
-            
-            const badge = badges[typeCode] || { class: 'badge-recu', icon: 'fa-receipt', label: '' };
-            
-            return `
-                <div class="flex flex-col space-y-1">
-                    <span class="badge-recu ${badge.class}">
-                        <i class="fas ${badge.icon}"></i>
-                        ${numeroCR}
-                    </span>
-                    <span class="text-xs text-gray-500">
-                        ${badge.label}
-                    </span>
-                </div>
-            `;
-        };
 
         const typeInfo = getTypeExamen(p.numero_cr);
 
@@ -1908,6 +1875,11 @@ async function enregistrerPaiement() {
                                 title="Imprimer reçu">
                             <i class="fas fa-print"></i>
                         </button>
+                        <button onclick="openAttachmentModal(${p.id}, '${p.numero_cr || ''}')" 
+                                class="text-orange-600 hover:text-orange-900 p-2 rounded-lg hover:bg-orange-50 transition" 
+                                title="Attacher fichier">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
                         <button onclick="deletePayment(${p.id})" 
                                 class="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition" 
                                 title="Supprimer">
@@ -1919,7 +1891,6 @@ async function enregistrerPaiement() {
         `;
     }).join('');
 }
-
 function getTypeExamen(numeroCR) {
     if (!numeroCR) return { icon: 'fa-file-medical', color: 'text-gray-500', text: '-' };
     
@@ -5156,7 +5127,353 @@ function utiliserPrixSousFamille() {
         updateRecap();
     }
 }
+    // Variables globales pour l'attachement
+let currentAttachmentPaymentId = null;
+let currentAttachmentNumeroCR = null;
+let selectedFiles = [];
+
+// Ouvrir le modal d'attachement
+function openAttachmentModal(paymentId, numeroCR) {
+    currentAttachmentPaymentId = paymentId;
+    currentAttachmentNumeroCR = numeroCR;
+    selectedFiles = [];
+    
+    document.getElementById('attachmentFolder').textContent = numeroCR || 'N/A';
+    document.getElementById('filesList').innerHTML = '';
+    document.getElementById('attachmentModal').classList.remove('hidden');
+    
+    // Charger les fichiers existants
+    loadExistingFiles(numeroCR);
+    
+    // Setup drag and drop
+    setupDragAndDrop();
+}
+
+// Fermer le modal
+function closeAttachmentModal() {
+    document.getElementById('attachmentModal').classList.add('hidden');
+    currentAttachmentPaymentId = null;
+    currentAttachmentNumeroCR = null;
+    selectedFiles = [];
+}
+
+// Configuration du drag and drop
+function setupDragAndDrop() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    
+    // Click pour ouvrir le sélecteur
+    dropZone.onclick = () => fileInput.click();
+    
+    // Drag and drop events
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('border-orange-500', 'bg-orange-50');
+        }, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('border-orange-500', 'bg-orange-50');
+        }, false);
+    });
+    
+    dropZone.addEventListener('drop', handleDrop, false);
+    fileInput.addEventListener('change', handleFileSelect, false);
+}
+
+// Gestion du drop
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    handleFiles(files);
+}
+
+// Gestion de la sélection de fichiers
+function handleFileSelect(e) {
+    const files = e.target.files;
+    handleFiles(files);
+}
+
+// Traitement des fichiers
+function handleFiles(files) {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const validExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
+    
+    Array.from(files).forEach(file => {
+        // Vérifier la taille
+        if (file.size > maxSize) {
+            showToast(`${file.name} est trop volumineux (max 10MB)`, 'error');
+            return;
+        }
+        
+        // Vérifier l'extension
+        const extension = file.name.split('.').pop().toLowerCase();
+        if (!validExtensions.includes(extension)) {
+            showToast(`${file.name} - format non supporté`, 'error');
+            return;
+        }
+        
+        // Ajouter à la liste
+        selectedFiles.push(file);
+    });
+    
+    displaySelectedFiles();
+}
+
+// Afficher les fichiers sélectionnés
+function displaySelectedFiles() {
+    const filesList = document.getElementById('filesList');
+    
+    if (selectedFiles.length === 0) {
+        filesList.innerHTML = '';
+        return;
+    }
+    
+    filesList.innerHTML = `
+        <div class="space-y-2">
+            ${selectedFiles.map((file, index) => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-file-${getFileIcon(file.name)} text-2xl text-orange-600"></i>
+                        <div>
+                            <p class="font-medium text-sm">${file.name}</p>
+                            <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
+                        </div>
+                    </div>
+                    <button onclick="removeFile(${index})" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Supprimer un fichier de la liste
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    displaySelectedFiles();
+}
+
+// Obtenir l'icône selon le type de fichier
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = {
+        'jpg': 'image', 'jpeg': 'image', 'png': 'image',
+        'pdf': 'pdf',
+        'doc': 'word', 'docx': 'word'
+    };
+    return icons[ext] || 'alt';
+}
+
+// Formater la taille du fichier
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Charger les fichiers existants
+async function loadExistingFiles(numeroCR) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/paiements/${currentAttachmentPaymentId}/fichiers`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+        
+        if (response.ok) {
+            const files = await response.json();
+            displayExistingFiles(files);
+        }
+    } catch (error) {
+        console.log('Aucun fichier existant ou erreur:', error);
+        document.getElementById('existingFilesList').innerHTML = '<p class="text-sm text-gray-500">Aucun fichier attaché</p>';
+    }
+}
+
+// Afficher les fichiers existants
+function displayExistingFiles(files) {
+    const container = document.getElementById('existingFilesList');
+    
+    if (!files || files.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-500">Aucun fichier attaché</p>';
+        return;
+    }
+    
+    container.innerHTML = files.map(file => `
+        <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-file-${getFileIcon(file.nom)} text-2xl text-blue-600"></i>
+                <div>
+                    <p class="font-medium text-sm">${file.nom}</p>
+                    <p class="text-xs text-gray-500">${file.date_upload ? new Date(file.date_upload).toLocaleDateString('fr-FR') : ''}</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="downloadFile('${file.id}')" class="text-blue-600 hover:text-blue-800 p-2" title="Télécharger">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button onclick="deleteFile('${file.id}')" class="text-red-600 hover:text-red-800 p-2" title="Supprimer">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Upload des fichiers
+async function uploadFiles() {
+    if (selectedFiles.length === 0) {
+        showToast('Aucun fichier à envoyer', 'warning');
+        return;
+    }
+    
+    const uploadBtn = document.getElementById('uploadBtn');
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Envoi en cours...';
+    
+    try {
+        const formData = new FormData();
+        
+        // Ajouter les métadonnées
+        formData.append('payment_id', currentAttachmentPaymentId);
+        formData.append('numero_cr', currentAttachmentNumeroCR);
+        
+        // Ajouter tous les fichiers
+        selectedFiles.forEach((file, index) => {
+            formData.append('files[]', file);
+        });
+        
+        const response = await fetch(`${API_BASE_URL}/paiements/${currentAttachmentPaymentId}/upload-fichiers`, {
+            method: 'POST',
+            headers: {
+                'X-User-ID': currentUserId
+            },
+            body: formData
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showToast(`${selectedFiles.length} fichier(s) uploadé(s) avec succès`, 'success');
+            selectedFiles = [];
+            displaySelectedFiles();
+            loadExistingFiles(currentAttachmentNumeroCR);
+        } else {
+            throw new Error('Erreur lors de l\'upload');
+        }
+    } catch (error) {
+        console.error('Erreur upload:', error);
+        showToast('Erreur lors de l\'envoi des fichiers', 'error');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Envoyer les fichiers';
+    }
+}
+
+// Télécharger un fichier
+async function downloadFile(fileId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/paiements/fichiers/${fileId}/download`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = ''; // Le nom sera fourni par le serveur
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showToast('Téléchargement démarré', 'success');
+        }
+    } catch (error) {
+        console.error('Erreur téléchargement:', error);
+        showToast('Erreur lors du téléchargement', 'error');
+    }
+}
+
+// Supprimer un fichier
+async function deleteFile(fileId) {
+    if (!confirm('Supprimer ce fichier définitivement ?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/paiements/fichiers/${fileId}`, {
+            method: 'DELETE',
+            headers: { 'X-User-ID': currentUserId }
+        });
+        
+        if (response.ok) {
+            showToast('Fichier supprimé', 'success');
+            loadExistingFiles(currentAttachmentNumeroCR);
+        }
+    } catch (error) {
+        console.error('Erreur suppression:', error);
+        showToast('Erreur lors de la suppression', 'error');
+    }
+}
     </script>
- 
+ <!-- Modal Attacher Fichier -->
+<div id="attachmentModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay">
+    <div class="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl">
+        <div class="flex justify-between items-center mb-5 pb-3 border-b">
+            <h3 class="text-xl font-semibold text-orange-700">
+                <i class="fas fa-paperclip mr-2"></i>Attacher des Fichiers
+            </h3>
+            <button onclick="closeAttachmentModal()" class="text-gray-500 hover:text-gray-800 text-2xl">
+                ×
+            </button>
+        </div>
+
+        <div class="mb-4 p-4 bg-orange-50 border-l-4 border-orange-500 rounded">
+            <div class="flex items-center">
+                <i class="fas fa-info-circle text-orange-600 mr-3"></i>
+                <div>
+                    <p class="font-medium text-orange-800">Dossier : <span id="attachmentFolder" class="font-bold"></span></p>
+                    <p class="text-sm text-orange-700 mt-1">Les fichiers seront enregistrés avec ce numéro de reçu</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone de drop -->
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 transition cursor-pointer mb-4">
+            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+            <p class="text-gray-600 mb-2">Glissez vos fichiers ici ou cliquez pour parcourir</p>
+            <p class="text-sm text-gray-500">Formats acceptés: JPG, PNG, PDF, DOCX (Max 10MB par fichier)</p>
+            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx" class="hidden">
+        </div>
+
+        <!-- Liste des fichiers sélectionnés -->
+        <div id="filesList" class="mb-4 max-h-48 overflow-y-auto"></div>
+
+        <!-- Fichiers déjà attachés -->
+        <div id="existingFiles" class="mb-4">
+            <h4 class="font-medium text-gray-700 mb-2">Fichiers déjà attachés:</h4>
+            <div id="existingFilesList" class="space-y-2"></div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t">
+            <button onclick="closeAttachmentModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
+                Fermer
+            </button>
+            <button onclick="uploadFiles()" id="uploadBtn" class="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition flex items-center gap-2">
+                <i class="fas fa-upload"></i> Envoyer les fichiers
+            </button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
