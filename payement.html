@@ -4669,7 +4669,24 @@ async function imprimerSynthesePatient() {
         showToast('Erreur lors de la génération de la synthèse patient', 'error');
     }
 }
-       function scannerQRCode() {
+     function reinitialiserFiltres() {
+    // Réinitialiser tous les champs de filtre
+    document.getElementById('filterPatient').value = '';
+    document.getElementById('filterTypeExamen').value = '';
+    document.getElementById('filterDateDebut').value = '';
+    document.getElementById('filterDateFin').value = '';
+    document.getElementById('filterModePaiement').value = '';
+    
+    // Réinitialiser les filtres actifs
+    filtresActifs = {};
+    
+    // Recharger tous les paiements
+    currentPage = 1;
+    loadPaiements();
+    
+    showToast('Filtres réinitialisés', 'success');
+}
+        function scannerQRCode() {
     // Créer un modal pour le scanner QR
     const modalHTML = `
         <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
