@@ -5501,26 +5501,76 @@ function displayExistingFiles(files) {
     `).join('');
 }
 // 4. Modifier les fonctions de gestion des fichiers
-function downloadFileLocal(fileId) {
-    window.open(`${API_BASE_URL}/api/fichiers/${fileId}/download`, '_blank');
+function downloadFileLocal(fichierId) {
+    // ✅ CORRECTION : Utiliser fichierId directement (pas besoin de window.open)
+    const url = `${API_BASE_URL}/api/fichiers/${fichierId}/download`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', '');
+    link.setAttribute('target', '_blank');
+    
+    // Ajouter le header X-User-ID via les cookies ou autre méthode
+    fetch(url, {
+        headers: { 'X-User-ID': currentUserId }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('Erreur de téléchargement');
+    })
+    .then(blob => {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        link.href = downloadUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showToast('Erreur lors du téléchargement', 'error');
+    });
 }
 
-function viewFileLocal(fileId) {
-    window.open(`${API_BASE_URL}/api/fichiers/${fileId}/view`, '_blank');
+function viewFileLocal(fichierId) {
+    // ✅ CORRECTION : Ouvrir directement l'URL avec l'ID
+    const url = `${API_BASE_URL}/api/fichiers/${fichierId}/view`;
+    
+    // Créer une requête avec les headers
+    fetch(url, {
+        headers: { 'X-User-ID': currentUserId }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('Fichier non trouvé');
+    })
+    .then(blob => {
+        const fileUrl = window.URL.createObjectURL(blob);
+        window.open(fileUrl, '_blank');
+        // Libérer l'URL après un délai
+        setTimeout(() => window.URL.revokeObjectURL(fileUrl), 1000);
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showToast('Fichier introuvable', 'error');
+    });
 }
 
-async function deleteFileLocal(fileId) {
+async function deleteFileLocal(fichierId) {
     if (!confirm('Supprimer ce fichier définitivement ?')) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/fichiers/${fileId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/fichiers/${fichierId}`, {
             method: 'DELETE',
             headers: { 'X-User-ID': currentUserId }
         });
 
         if (response.ok) {
             showToast('Fichier supprimé', 'success');
-            loadExistingFilesLocal(currentAttachmentNumeroCR);
+            await loadExistingFilesLocal(currentAttachmentNumeroCR);
         } else {
             const error = await response.json();
             throw new Error(error.erreur || 'Erreur de suppression');
@@ -5531,72 +5581,7 @@ async function deleteFileLocal(fileId) {
     }
 }
 
-// Visualiser un fichier local
-function viewFileLocal(fileId) {
-    try {
-        const storageKey = `fichiers_${currentAttachmentNumeroCR}`;
-        const fichiers = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        const file = fichiers.find(f => f.id == fileId);
-        
-        if (!file) {
-            showToast('Fichier introuvable', 'error');
-            return;
-        }
-        
-        // Ouvrir dans un nouvel onglet
-        const newWindow = window.open();
-        
-        if (file.type.startsWith('image/')) {
-            newWindow.document.write(`
-                <html>
-                <head><title>${file.nom}</title></head>
-                <body style="margin:0; display:flex; justify-content:center; align-items:center; background:#000;">
-                    <img src="${file.data}" style="max-width:100%; max-height:100vh;">
-                </body>
-                </html>
-            `);
-        } else if (file.type === 'application/pdf') {
-            newWindow.document.write(`
-                <html>
-                <head><title>${file.nom}</title></head>
-                <body style="margin:0; height:100vh;">
-                    <iframe src="${file.data}" style="width:100%; height:100%; border:none;"></iframe>
-                </body>
-                </html>
-            `);
-        } else {
-            // Pour les autres types, proposer le téléchargement
-            newWindow.close();
-            downloadFileLocal(fileId);
-        }
-        
-    } catch (error) {
-        console.error('Erreur visualisation:', error);
-        showToast('Erreur lors de la visualisation', 'error');
-    }
-}
 
-// Supprimer un fichier local
-function deleteFileLocal(fileId) {
-    if (!confirm('Supprimer ce fichier définitivement ?')) return;
-    
-    try {
-        const storageKey = `fichiers_${currentAttachmentNumeroCR}`;
-        let fichiers = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        
-        // Filtrer pour retirer le fichier
-        fichiers = fichiers.filter(f => f.id != fileId);
-        
-        // Sauvegarder
-        localStorage.setItem(storageKey, JSON.stringify(fichiers));
-        
-        showToast('Fichier supprimé', 'success');
-        loadExistingFilesLocal(currentAttachmentNumeroCR);
-    } catch (error) {
-        console.error('Erreur suppression:', error);
-        showToast('Erreur lors de la suppression', 'error');
-    }
-}
 
 // BONUS : Fonction pour exporter tous les fichiers d'un paiement
 function exporterTousFichiers(numeroCR) {
