@@ -5425,6 +5425,38 @@ async function deleteFile(fileId) {
         showToast('Erreur lors de la suppression', 'error');
     }
 }
+        // Fonction pour générer le badge du numéro de reçu avec style selon le type
+function getBadgeNumero(numeroCR) {
+    if (!numeroCR) {
+        return '<span class="text-xs text-gray-400">N/A</span>';
+    }
+    
+    // Extraire le type d'examen du numéro (4ème caractère)
+    const typeCode = numeroCR.charAt(3);
+    
+    // Classes CSS selon le type
+    const typeClasses = {
+        'H': 'badge-histologie',
+        'B': 'badge-biopsie',
+        'C': 'badge-cytologie',
+        'F': 'badge-fcv',
+        'I': 'badge-immuno'
+    };
+    
+    const badgeClass = typeClasses[typeCode] || 'badge-recu';
+    
+    return `
+        <div class="flex flex-col gap-1">
+            <span class="badge-recu ${badgeClass}">
+                <i class="fas fa-receipt"></i>
+                ${numeroCR}
+            </span>
+            <span class="text-xs text-gray-500">
+                ${getDescriptionNumero(numeroCR)}
+            </span>
+        </div>
+    `;
+}
     </script>
  <!-- Modal Attacher Fichier -->
 <div id="attachmentModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay">
