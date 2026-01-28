@@ -4007,6 +4007,9 @@ function genererRecuVignette(paiement) {
                         margin: 0;
                         padding: 0;
                     }
+                    .no-print {
+                        display: none !important;
+                    }
                 }
                 
                 * {
@@ -4131,20 +4134,29 @@ function genererRecuVignette(paiement) {
                     margin-bottom: 0.5mm;
                 }
                 
+                /* Bouton d'impression - caché à l'impression */
                 .btn-print {
+                    position: fixed;
+                    top: 10px;
+                    right: 10px;
                     background: #4f46e5;
                     color: white;
                     border: none;
                     padding: 10px 20px;
                     cursor: pointer;
                     font-size: 14px;
-                    margin: 10px;
                     border-radius: 4px;
+                    z-index: 1000;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                }
+                
+                .btn-print:hover {
+                    background: #4338ca;
                 }
             </style>
         </head>
         <body>
-            <button onclick="window.print()" class="btn-print" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+            <button onclick="window.print()" class="btn-print no-print">
                 🖨️ Imprimer
             </button>
             
@@ -4187,6 +4199,7 @@ function genererRecuVignette(paiement) {
             
             <script>
                 window.onload = function() {
+                    // Attendre le chargement du QR code avant d'imprimer automatiquement
                     const img = document.querySelector('img');
                     if (img) {
                         img.onload = function() {
