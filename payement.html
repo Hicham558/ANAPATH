@@ -5327,6 +5327,7 @@ async function loadExistingFilesFromDB(numeroCR) {
 }
 
 // 2. Sauvegarder les fichiers dans PostgreSQL
+// 2. Sauvegarder les fichiers dans PostgreSQL
 async function saveFilesToDB() {
     if (selectedFiles.length === 0) {
         showToast('Aucun fichier à enregistrer', 'warning');
@@ -5370,8 +5371,8 @@ async function saveFilesToDB() {
             selectedFiles = [];
             displaySelectedFiles();
             
-            // Recharger la liste des fichiers
-            displayExistingFilesLocal(currentAttachmentNumeroCR);
+            // ✅ CORRECTION ICI : Utiliser loadExistingFilesLocal
+            await loadExistingFilesLocal(currentAttachmentNumeroCR);
             
         } else {
             const error = await response.json();
@@ -5386,9 +5387,6 @@ async function saveFilesToDB() {
         uploadBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
     }
 }
-
-
-
     async function saveFilesLocally() {
     if (selectedFiles.length === 0) {
         showToast('Aucun fichier à enregistrer', 'warning');
