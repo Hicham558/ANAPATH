@@ -259,24 +259,31 @@
         </div>
       </div>
       
-     <!-- Paramètres & Templates -->
+  <!-- Paramètres & Templates -->
 <div class="mb-8">
   <h3 class="text-lg font-semibold mb-4 flex items-center">
     <i class="fas fa-cog mr-2 text-blue-300"></i> Configuration
   </h3>
   <div class="space-y-3">
+    <!-- Bouton Paramètres - seulement pour non-utilisateurs -->
+    <a href="params.html" id="paramsLink" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group hidden">
+      <i class="fas fa-sliders-h"></i>
+      <span>Paramètres</span>
+    </a>
+    
+    <!-- Bouton Gérer les Templates - seulement pour non-utilisateurs -->
     <a href="templates.html" id="templatesLink" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group hidden">
       <i class="fas fa-file-alt"></i>
       <span>Gérer les Templates</span>
     </a>
+    
+    <!-- Bouton Sous-famille d'examen - seulement pour non-utilisateurs -->
     <a href="ARTICLE.html" id="sousFamilleLink" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group hidden">
       <i class="fas fa-folder-open"></i>
       <span>Sous-famille d'examen</span>
     </a>
-    <a href="params.html" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group">
-      <i class="fas fa-sliders-h"></i>
-      <span>Paramètres</span>
-    </a>
+    
+    <!-- Bouton Changer d'utilisateur - visible pour tous -->
     <a href="selection.html" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group">
       <i class="fas fa-user-edit"></i>
       <span>Changer d'utilisateur</span>
@@ -1068,19 +1075,35 @@ function updateSelectedUserDisplay() {
   return { id: selectedUtilisateurId, nom: selectedUtilisateurNom };
 }
 // Fonction pour vérifier et gérer les permissions selon le statut
+// Fonction pour vérifier et gérer les permissions selon le statut
 function checkUserPermissions() {
   const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
   const userStatut = selectedUser.statut || '';
+  const userNumero = selectedUser.numero || '';
   
+  const paramsLink = document.getElementById('paramsLink');
   const templatesLink = document.getElementById('templatesLink');
   const sousFamilleLink = document.getElementById('sousFamilleLink');
   
-  // Si l'utilisateur a le statut "utilisateur", masquer les liens
+  // Vérifier si un utilisateur est sélectionné
+  if (!userNumero) {
+    console.log('Aucun utilisateur sélectionné');
+    if (paramsLink) paramsLink.classList.add('hidden');
+    if (templatesLink) templatesLink.classList.add('hidden');
+    if (sousFamilleLink) sousFamilleLink.classList.add('hidden');
+    return;
+  }
+  
+  // Si l'utilisateur a le statut "utilisateur", masquer tous les liens de configuration
   if (userStatut.toLowerCase() === 'utilisateur') {
+    console.log('Statut utilisateur détecté - masquage de tous les liens de configuration');
+    if (paramsLink) paramsLink.classList.add('hidden');
     if (templatesLink) templatesLink.classList.add('hidden');
     if (sousFamilleLink) sousFamilleLink.classList.add('hidden');
   } else {
-    // Pour les autres statuts (admin, medecin, technicien), afficher les liens
+    // Pour les autres statuts (admin, medecin, technicien), afficher tous les liens
+    console.log('Statut non-utilisateur détecté - affichage de tous les liens de configuration');
+    if (paramsLink) paramsLink.classList.remove('hidden');
     if (templatesLink) templatesLink.classList.remove('hidden');
     if (sousFamilleLink) sousFamilleLink.classList.remove('hidden');
   }
