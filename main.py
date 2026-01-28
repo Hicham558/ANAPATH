@@ -329,6 +329,153 @@ def test_db():
             'message': str(e)
         }), 500
 # ================================================
+# GESTION DES FICHIERS ATTACHES - POSTGRESQL
+# ================================================
+
+@app.route('/api/paiements/<int:paiement_id>/fichiers', methods=['POST'])
+def upload_fichier_paiement(paiement_id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('SELECT numero_cr FROM paiements WHERE id = %s AND user_id = %s', (paiement_id, user_id))
+        paiement = cur.fetchone()
+        if not paiement: return jsonify({'erreur': 'Paiement non trouvé'}), 404
+        
+        numero_cr = paiement['numero_cr']
+        fichiers_enregistres = []
+        
+        for file_key in request.files:
+            file = request.files[file_key]
+            if file.filename == '': continue
+            
+            donnees = file.read()
+            if len(donnees) > 10 * 1024 * 1024:
+                return jsonify({'erreur': f'Fichier trop volumineux: {file.filename} (max 10MB)'}), 400
+            
+            cur.execute('''
+                INSERT INTO fichiers_paiements (user_id, paiement_id, numero_cr, nom_original, type_mime, taille_bytes, donnees)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, nom_original, type_mime, taille_bytes, date_upload
+            ''', (user_id, paiement_id, numero_cr, file.filename, file.mimetype, len(donnees), donnees))
+            
+            result = cur.fetchone()
+            fichiers_enregistres.append(dict(result))
+        
+        conn.commit()
+        return jsonify({'message': f'{len(fichiers_enregistres)} fichier(s) enregistré(s)', 'fichiers': fichiers_enregistres})
+        
+    except Exception as e:
+        if conn: conn.rollback()
+        print(f"❌ Erreur upload fichier: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/paiements/<int:paiement_id>/fichiers', methods=['GET'])
+def get_fichiers_paiement(paiement_id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT id, paiement_id, numero_cr, nom_original, type_mime, taille_bytes, date_upload
+            FROM fichiers_paiements WHERE paiement_id = %s AND user_id = %s ORDER BY date_upload DESC
+        ''', (paiement_id, user_id))
+        
+        fichiers = cur.fetchall()
+        result = [dict(f) for f in fichiers]
+        return jsonify({'fichiers': result})
+        
+    except Exception as e:
+        print(f"❌ Erreur get fichiers: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/fichiers/<int:fichier_id>/download', methods=['GET'])
+def download_fichier(fichier_id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('SELECT nom_original, type_mime, donnees FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
+        fichier = cur.fetchone()
+        if not fichier: return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        
+        from flask import Response
+        return Response(fichier['donnees'], mimetype=fichier['type_mime'],
+                       headers={'Content-Disposition': f'attachment; filename="{fichier["nom_original"]}"'})
+        
+    except Exception as e:
+        print(f"❌ Erreur download fichier: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/fichiers/<int:fichier_id>', methods=['DELETE'])
+def delete_fichier(fichier_id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('SELECT id FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
+        if not cur.fetchone(): return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        
+        cur.execute('DELETE FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
+        conn.commit()
+        return jsonify({'message': 'Fichier supprimé avec succès'})
+        
+    except Exception as e:
+        if conn: conn.rollback()
+        print(f"❌ Erreur delete fichier: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/fichiers/<int:fichier_id>/view', methods=['GET'])
+def view_fichier(fichier_id):
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('SELECT nom_original, type_mime, donnees FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
+        fichier = cur.fetchone()
+        if not fichier: return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        
+        from flask import Response
+        if fichier['type_mime'].startswith('image/') or fichier['type_mime'] == 'application/pdf':
+            return Response(fichier['donnees'], mimetype=fichier['type_mime'])
+        else:
+            return Response(fichier['donnees'], mimetype=fichier['type_mime'],
+                           headers={'Content-Disposition': f'attachment; filename="{fichier["nom_original"]}"'})
+        
+    except Exception as e:
+        print(f"❌ Erreur view fichier: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if conn: conn.close()
+# ================================================
 # SOUS-FAMILLES EXAMENS - CRUD COMPLET
 # ================================================
 
