@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Générateur d'Icônes PWA - ANAPATH</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 800px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #4f46e5;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      margin-bottom: 30px;
+    }
+
+    .preview-section {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 30px;
+      background: #f9fafb;
+      border-radius: 12px;
+    }
+
+    #preview {
+      margin: 20px auto;
+      border: 2px dashed #d1d5db;
+      border-radius: 16px;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 600;
+      color: #374151;
+      font-size: 14px;
+    }
+
+    input[type="text"],
+    input[type="color"] {
+      padding: 10px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+
+    input[type="text"]:focus,
+    input[type="color"]:focus {
+      outline: none;
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    input[type="color"] {
+      height: 50px;
+      cursor: pointer;
+    }
+
+    .sizes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .size-preview {
+      text-align: center;
+      padding: 15px;
+      background: #f9fafb;
+      border-radius: 12px;
+      border: 2px solid #e5e7eb;
+      transition: all 0.3s;
+    }
+
+    .size-preview:hover {
+      border-color: #4f46e5;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
+    .size-preview canvas {
+      display: block;
+      margin: 10px auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .size-label {
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .info-box h3 {
+      color: #1e40af;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .info-box p {
+      color: #1e3a8a;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 640px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+      
+      .container {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Générateur d'Icônes PWA</h1>
+    <p class="subtitle">ANAPATH ELYOUSR</p>
+
+    <div class="preview-section">
+      <h3 style="margin-bottom: 15px; color: #374151;">Aperçu Principal (512x512)</h3>
+      <canvas id="preview" width="512" height="512"></canvas>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label for="iconText">Texte de l'icône</label>
+        <input type="text" id="iconText" value="ANAPATH" placeholder="ANAPATH">
+      </div>
+
+      <div class="control-group">
+        <label for="backgroundColor">Couleur de fond</label>
+        <input type="color" id="backgroundColor" value="#4f46e5">
+      </div>
+
+      <div class="control-group">
+        <label for="textColor">Couleur du texte</label>
+        <input type="color" id="textColor" value="#ffffff">
+      </div>
+
+      <div class="control-group">
+        <label for="iconSymbol">Symbole (emoji)</label>
+        <input type="text" id="iconSymbol" value="🔬" placeholder="🔬">
+      </div>
+    </div>
+
+    <h3 style="margin-bottom: 15px; color: #374151;">Toutes les tailles</h3>
+    <div class="sizes-grid" id="sizesGrid"></div>
+
+    <button class="btn" onclick="downloadAllIcons()">
+      <span>📥</span>
+      <span>Télécharger toutes les icônes (ZIP)</span>
+    </button>
+
+    <div class="info-box">
+      <h3>💡 Instructions</h3>
+      <p>
+        1. Personnalisez le texte, les couleurs et le symbole ci-dessus<br>
+        2. Vérifiez l'aperçu des différentes tailles<br>
+        3. Cliquez sur "Télécharger toutes les icônes"<br>
+        4. Placez les fichiers PNG dans le dossier <code>/icons/</code> de votre projet
+      </p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+    let currentConfig = {
+      text: 'ANAPATH',
+      bgColor: '#4f46e5',
+      textColor: '#ffffff',
+      symbol: '🔬'
+    };
+
+    // Fonction pour dessiner une icône
+    function drawIcon(canvas, size, config) {
+      const ctx = canvas.getContext('2d');
+      
+      // Fond
+      ctx.fillStyle = config.bgColor;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Symbole (emoji en haut)
+      if (config.symbol) {
+        ctx.font = `${size * 0.35}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(config.symbol, size / 2, size * 0.35);
+      }
+      
+      // Texte
+      ctx.fillStyle = config.textColor;
+      ctx.font = `bold ${size * 0.15}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(config.text, size / 2, size * 0.7);
+    }
+
+    // Fonction pour mettre à jour toutes les icônes
+    function updateAllIcons() {
+      // Aperçu principal
+      const previewCanvas = document.getElementById('preview');
+      drawIcon(previewCanvas, 512, currentConfig);
+      
+      // Toutes les tailles
+      const grid = document.getElementById('sizesGrid');
+      grid.innerHTML = '';
+      
+      sizes.forEach(size => {
+        const div = document.createElement('div');
+        div.className = 'size-preview';
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        canvas.style.width = '80px';
+        canvas.style.height = '80px';
+        
+        drawIcon(canvas, size, currentConfig);
+        
+        const label = document.createElement('div');
+        label.className = 'size-label';
+        label.textContent = `${size}×${size}`;
+        
+        div.appendChild(canvas);
+        div.appendChild(label);
+        grid.appendChild(div);
+      });
+    }
+
+    // Event listeners
+    document.getElementById('iconText').addEventListener('input', (e) => {
+      currentConfig.text = e.target.value;
+      updateAllIcons();
+    });
+
+    document.getElementById('backgroundColor').addEventListener('input', (e) => {
+      currentConfig.bgColor = e.target.value;
+      updateAllIcons();
+    });
+
+    document.getElementById('textColor').addEventListener('input', (e) => {
+      currentConfig.textColor = e.target.value;
+      updateAllIcons();
+    });
+
+    document.getElementById('iconSymbol').addEventListener('input', (e) => {
+      currentConfig.symbol = e.target.value;
+      updateAllIcons();
+    });
+
+    // Fonction pour télécharger toutes les icônes
+    async function downloadAllIcons() {
+      const zip = new JSZip();
+      const iconsFolder = zip.folder('icons');
+      
+      // Créer toutes les icônes
+      for (const size of sizes) {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        drawIcon(canvas, size, currentConfig);
+        
+        // Convertir en blob
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        iconsFolder.file(`icon-${size}x${size}.png`, blob);
+      }
+      
+      // Générer et télécharger le ZIP
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = 'anapath-icons.zip';
+      link.click();
+      
+      // Afficher un message de succès
+      alert('✅ Toutes les icônes ont été téléchargées !\n\nExtrayez le fichier ZIP et placez le dossier "icons" à la racine de votre projet.');
+    }
+
+    // Initialiser
+    updateAllIcons();
+  </script>
+</body>
+</html>
