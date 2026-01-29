@@ -1,46 +1,41 @@
-// service-worker.js
-const CACHE_NAME = 'anapath-cache-v3';
-const APP_VERSION = '1.0.0';
 
-// Fichiers essentiels à mettre en cache
-const CORE_ASSETS = [
+// service-worker.js
+const CACHE_NAME = 'anapath-cache-v1';
+const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
   './icons/icon-192x192.png',
   './icons/icon-512x512.png',
-  './Offline.html'
+  'https://cdn.tailwindcss.com',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'
 ];
 
-// Installation - seulement mettre en cache les fichiers essentiels
-self.addEventListener('install', (event) => {
-  console.log(`[Service Worker] Installation v${APP_VERSION}`);
-  
+// Installation du Service Worker
+self.addEventListener('install', event => {
+  console.log('Service Worker: Installation');
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[Service Worker] Mise en cache des fichiers de base');
-        return cache.addAll(CORE_ASSETS.map(url => {
-          return new Request(url, { mode: 'no-cors' });
-        })).catch(error => {
-          console.log('[Service Worker] Erreur lors de la mise en cache:', error);
-        });
+      .then(cache => {
+        console.log('Service Worker: Mise en cache des fichiers');
+        return cache.addAll(urlsToCache);
       })
       .then(() => self.skipWaiting())
   );
 });
 
-// Activation - nettoyer les anciens caches
-self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activation');
-  
+// Activation du Service Worker
+self.addEventListener('activate', event => {
+  console.log('Service Worker: Activation');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log(`[Service Worker] Suppression ancien cache: ${cacheName}`);
-            return caches.delete(cacheName);
+        cacheNames.map(cache => {
+          if (cache !== CACHE_NAME) {
+            console.log('Service Worker: Suppression ancien cache', cache);
+            return caches.delete(cache);
           }
         })
       );
@@ -48,94 +43,54 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Stratégie de cache: Cache First, Network Fallback
-self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET et les requêtes vers l'API
-  if (event.request.method !== 'GET' || 
-      event.request.url.includes('/api/') ||
-      event.request.url.includes('anapath.onrender.com')) {
-    return;
-  }
+// Interception des requêtes
+self.addEventListener('fetch', event => {
+  if (!event.request.url.startsWith('http')) return;
   
   event.respondWith(
     caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          console.log(`[Service Worker] Servi depuis le cache: ${event.request.url}`);
-          return cachedResponse;
-        }
-        
-        // Si pas en cache, faire la requête réseau
-        return fetch(event.request)
-          .then((networkResponse) => {
-            // Ne pas mettre en cache les requêtes cross-origin en mode 'no-cors'
-            if (!networkResponse || networkResponse.status !== 200 || 
-                networkResponse.type === 'opaque' ||
-                event.request.url.startsWith('chrome-extension://') ||
-                event.request.url.includes('cdn.tailwindcss.com')) {
-              return networkResponse;
+      .then(response => {
+        // Retourner le fichier en cache ou faire la requête
+        return response || fetch(event.request)
+          .then(response => {
+            // Ne mettre en cache que les requêtes réussies
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
             }
             
-            // Mettre en cache la réponse
-            const responseToCache = networkResponse.clone();
+            // Cloner la réponse car elle peut être utilisée une seule fois
+            const responseToCache = response.clone();
+            
             caches.open(CACHE_NAME)
-              .then((cache) => {
+              .then(cache => {
                 cache.put(event.request, responseToCache);
               });
             
-            return networkResponse;
+            return response;
           })
-          .catch((error) => {
-            console.log(`[Service Worker] Erreur réseau pour ${event.request.url}:`, error);
-            
-            // Pour les pages HTML, retourner la page hors ligne
-            if (event.request.destination === 'document' ||
-                event.request.headers.get('accept')?.includes('text/html')) {
-              return caches.match('./Offline.html');
+          .catch(() => {
+            // En cas d'erreur réseau, retourner une page d'erreur ou une alternative
+            if (event.request.destination === 'document') {
+              return caches.match('./index.html');
             }
-            
-            // Pour les images, retourner une icône par défaut
-            if (event.request.destination === 'image') {
-              return caches.match('./icons/icon-192x192.png');
-            }
-            
-            // Pour les CSS, retourner un CSS minimal
-            if (event.request.destination === 'style') {
-              return new Response(`
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                .offline-message { color: #666; text-align: center; margin-top: 50px; }
-              `, { headers: { 'Content-Type': 'text/css' } });
-            }
-            
-            return new Response('Hors ligne', {
-              status: 503,
-              statusText: 'Service Unavailable',
-              headers: new Headers({ 'Content-Type': 'text/plain' })
-            });
           });
       })
   );
 });
 
-// Gestion des messages
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+// Gestion des messages depuis la page
+self.addEventListener('message', event => {
+  if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
   
-  if (event.data && event.data.type === 'GET_VERSION') {
-    event.source.postMessage({
-      type: 'VERSION_INFO',
-      version: APP_VERSION,
-      cacheName: CACHE_NAME
-    });
-  }
-  
-  if (event.data && event.data.type === 'CLEAR_CACHE') {
-    caches.delete(CACHE_NAME)
-      .then(() => {
-        console.log('[Service Worker] Cache vidé');
-        event.source.postMessage({ type: 'CACHE_CLEARED' });
+  if (event.data.type === 'CLEAR_CACHE') {
+    caches.keys().then(cacheNames => {
+      cacheNames.forEach(cacheName => {
+        caches.delete(cacheName);
       });
+    }).then(() => {
+      event.source.postMessage({ type: 'CACHE_CLEARED' });
+    });
   }
 });
