@@ -1,16 +1,11 @@
-
-// service-worker.js
+// service-worker.js - Version corrigée
 const CACHE_NAME = 'anapath-cache-v1';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
   './icons/icon-192x192.png',
-  './icons/icon-512x512.png',
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'
+  './icons/icon-512x512.png'
 ];
 
 // Installation du Service Worker
@@ -20,9 +15,13 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Service Worker: Mise en cache des fichiers');
+        // N'utilisez cache.addAll() que pour les ressources locales
         return cache.addAll(urlsToCache);
       })
       .then(() => self.skipWaiting())
+      .catch(error => {
+        console.error('Erreur lors de l\'installation du cache:', error);
+      })
   );
 });
 
@@ -45,52 +44,81 @@ self.addEventListener('activate', event => {
 
 // Interception des requêtes
 self.addEventListener('fetch', event => {
+  // Ignorer les requêtes non-HTTP
   if (!event.request.url.startsWith('http')) return;
+  
+  // Ne pas intercepter les requêtes vers l'API
+  if (event.request.url.includes('anapath.onrender.com')) {
+    return fetch(event.request);
+  }
   
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Retourner le fichier en cache ou faire la requête
-        return response || fetch(event.request)
+        // Si la ressource est en cache, la retourner
+        if (response) {
+          console.log('Service Worker: Ressource depuis le cache', event.request.url);
+          return response;
+        }
+        
+        // Sinon, faire la requête réseau
+        console.log('Service Worker: Requête réseau', event.request.url);
+        return fetch(event.request)
           .then(response => {
-            // Ne mettre en cache que les requêtes réussies
+            // Vérifier si la réponse est valide
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
             
-            // Cloner la réponse car elle peut être utilisée une seule fois
+            // Cloner la réponse pour la mettre en cache
             const responseToCache = response.clone();
             
             caches.open(CACHE_NAME)
               .then(cache => {
-                cache.put(event.request, responseToCache);
+                // Mettre en cache uniquement les ressources locales
+                if (event.request.url.includes(window.location.origin)) {
+                  cache.put(event.request, responseToCache);
+                }
               });
             
             return response;
           })
-          .catch(() => {
-            // En cas d'erreur réseau, retourner une page d'erreur ou une alternative
-            if (event.request.destination === 'document') {
+          .catch(error => {
+            console.error('Service Worker: Erreur fetch', error);
+            
+            // Fallback pour les pages HTML
+            if (event.request.headers.get('accept').includes('text/html')) {
               return caches.match('./index.html');
             }
+            
+            // Fallback pour les images
+            if (event.request.destination === 'image') {
+              return caches.match('./icons/icon-192x192.png');
+            }
+            
+            return new Response('Ressource non disponible hors ligne', {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: new Headers({
+                'Content-Type': 'text/plain'
+              })
+            });
           });
       })
   );
 });
 
-// Gestion des messages depuis la page
+// Gestion des messages
 self.addEventListener('message', event => {
-  if (event.data.type === 'SKIP_WAITING') {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
   
-  if (event.data.type === 'CLEAR_CACHE') {
-    caches.keys().then(cacheNames => {
-      cacheNames.forEach(cacheName => {
-        caches.delete(cacheName);
-      });
-    }).then(() => {
-      event.source.postMessage({ type: 'CACHE_CLEARED' });
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    caches.delete(CACHE_NAME).then(() => {
+      if (event.source) {
+        event.source.postMessage({ type: 'CACHE_CLEARED' });
+      }
     });
   }
 });
