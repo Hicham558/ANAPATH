@@ -7,7 +7,10 @@ import os
 from io import BytesIO
 import traceback
 import textwrap
-
+import tempfile
+import shutil
+from werkzeug.utils import secure_filename
+from flask import Response, stream_with_context
 
 
 app = Flask(__name__)
@@ -331,150 +334,608 @@ def test_db():
 # ================================================
 # GESTION DES FICHIERS ATTACHES - POSTGRESQL
 # ================================================
-
-@app.route('/api/paiements/<int:paiement_id>/fichiers', methods=['POST'])
-def upload_fichier_paiement(paiement_id):
+@app.route('/api/paiements/<int:paiement_id>/fichiers/chunk', methods=['POST'])
+def upload_file_chunk(paiement_id):
+    """Upload un fichier volumineux par chunks"""
     user_id = request.headers.get('X-User-ID')
-    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
     conn = None
+    cur = None
     try:
+        # Récupérer les paramètres du chunk
+        chunk = request.files.get('chunk')
+        chunk_index = int(request.form.get('chunkIndex'))
+        total_chunks = int(request.form.get('totalChunks'))
+        file_name = secure_filename(request.form.get('fileName'))
+        file_size = int(request.form.get('fileSize'))
+        
+        if not chunk or not file_name:
+            return jsonify({'erreur': 'Données manquantes'}), 400
+        
+        # Vérifier que le paiement existe
         conn = get_db()
         cur = conn.cursor()
         
-        cur.execute('SELECT numero_cr FROM paiements WHERE id = %s AND user_id = %s', (paiement_id, user_id))
+        cur.execute('SELECT numero_cr FROM paiements WHERE id = %s AND user_id = %s', 
+                   (paiement_id, user_id))
         paiement = cur.fetchone()
-        if not paiement: return jsonify({'erreur': 'Paiement non trouvé'}), 404
+        
+        if not paiement:
+            return jsonify({'erreur': 'Paiement non trouvé'}), 404
         
         numero_cr = paiement['numero_cr']
+        
+        # Créer un dossier temporaire pour les chunks
+        temp_base = tempfile.gettempdir()
+        upload_folder = os.path.join(temp_base, 'anapath_uploads', str(user_id), str(paiement_id))
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Créer un sous-dossier pour ce fichier spécifique
+        file_folder = os.path.join(upload_folder, file_name)
+        os.makedirs(file_folder, exist_ok=True)
+        
+        # Sauvegarder le chunk
+        chunk_path = os.path.join(file_folder, f"chunk_{chunk_index}")
+        chunk.save(chunk_path)
+        
+        # Si c'est le dernier chunk, assembler le fichier
+        if chunk_index == total_chunks - 1:
+            final_file_path = os.path.join(file_folder, file_name)
+            
+            # Assembler tous les chunks
+            with open(final_file_path, 'wb') as final_file:
+                for i in range(total_chunks):
+                    chunk_file = os.path.join(file_folder, f"chunk_{i}")
+                    
+                    if not os.path.exists(chunk_file):
+                        raise Exception(f"Chunk {i} manquant")
+                    
+                    with open(chunk_file, 'rb') as cf:
+                        final_file.write(cf.read())
+                    
+                    # Supprimer le chunk après lecture
+                    os.remove(chunk_file)
+            
+            # Lire le fichier complet
+            with open(final_file_path, 'rb') as f:
+                donnees = f.read()
+            
+            # Vérifier la taille (max 50MB)
+            if len(donnees) > 50 * 1024 * 1024:
+                os.remove(final_file_path)
+                shutil.rmtree(file_folder)
+                return jsonify({'erreur': 'Fichier trop volumineux (max 50MB)'}), 400
+            
+            # Détecter le type MIME
+            import mimetypes
+            mime_type = mimetypes.guess_type(file_name)[0] or 'application/octet-stream'
+            
+            # Enregistrer dans PostgreSQL
+            cur.execute('''
+                INSERT INTO fichiers_paiements 
+                (user_id, paiement_id, numero_cr, nom_original, type_mime, taille_bytes, donnees, uploaded_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, nom_original, type_mime, taille_bytes, date_upload
+            ''', (user_id, paiement_id, numero_cr, file_name, 
+                  mime_type, len(donnees), donnees, user_id))
+            
+            result = cur.fetchone()
+            conn.commit()
+            
+            # Nettoyer les fichiers temporaires
+            os.remove(final_file_path)
+            shutil.rmtree(file_folder)
+            
+            # Nettoyer le dossier parent si vide
+            try:
+                if not os.listdir(upload_folder):
+                    os.rmdir(upload_folder)
+            except:
+                pass
+            
+            return jsonify({
+                'message': 'Fichier uploadé avec succès',
+                'fichier': {
+                    'id': result['id'],
+                    'nom': result['nom_original'],
+                    'type': result['type_mime'],
+                    'taille': result['taille_bytes'],
+                    'date_upload': result['date_upload'].isoformat() if result['date_upload'] else None
+                }
+            }), 200
+        
+        # Si ce n'est pas le dernier chunk, retourner un statut de progression
+        return jsonify({
+            'message': f'Chunk {chunk_index + 1}/{total_chunks} reçu',
+            'progress': round((chunk_index + 1) / total_chunks * 100, 2)
+        }), 200
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ Erreur upload chunk: {str(e)}")
+        
+        # Nettoyer en cas d'erreur
+        try:
+            if 'file_folder' in locals() and os.path.exists(file_folder):
+                shutil.rmtree(file_folder)
+        except:
+            pass
+        
+        return jsonify({'erreur': str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+# ================================================
+# FONCTION HELPER POUR NETTOYER LES ANCIENS CHUNKS
+# ================================================
+
+def cleanup_old_temp_files():
+    """Nettoyer les fichiers temporaires de plus de 24h"""
+    try:
+        temp_base = tempfile.gettempdir()
+        upload_folder = os.path.join(temp_base, 'anapath_uploads')
+        
+        if not os.path.exists(upload_folder):
+            return
+        
+        import time
+        current_time = time.time()
+        
+        for root, dirs, files in os.walk(upload_folder):
+            for file in files:
+                file_path = os.path.join(root, file)
+                file_age = current_time - os.path.getmtime(file_path)
+                
+                # Supprimer les fichiers de plus de 24h
+                if file_age > 24 * 3600:
+                    try:
+                        os.remove(file_path)
+                        print(f"🗑️ Fichier temporaire supprimé: {file_path}")
+                    except:
+                        pass
+        
+        # Supprimer les dossiers vides
+        for root, dirs, files in os.walk(upload_folder, topdown=False):
+            for dir_name in dirs:
+                dir_path = os.path.join(root, dir_name)
+                try:
+                    if not os.listdir(dir_path):
+                        os.rmdir(dir_path)
+                except:
+                    pass
+                    
+    except Exception as e:
+        print(f"⚠️ Erreur nettoyage temp files: {str(e)}")
+
+
+# ================================================
+# ROUTE POUR VÉRIFIER L'ÉTAT D'UN UPLOAD
+# ================================================
+
+@app.route('/api/paiements/<int:paiement_id>/fichiers/upload-status', methods=['GET'])
+def check_upload_status(paiement_id):
+    """Vérifier l'état d'un upload en cours"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    file_name = request.args.get('fileName')
+    if not file_name:
+        return jsonify({'erreur': 'fileName manquant'}), 400
+    
+    try:
+        file_name = secure_filename(file_name)
+        temp_base = tempfile.gettempdir()
+        file_folder = os.path.join(temp_base, 'anapath_uploads', str(user_id), str(paiement_id), file_name)
+        
+        if not os.path.exists(file_folder):
+            return jsonify({'status': 'not_started', 'chunks_received': 0})
+        
+        # Compter les chunks reçus
+        chunks = [f for f in os.listdir(file_folder) if f.startswith('chunk_')]
+        
+        return jsonify({
+            'status': 'in_progress',
+            'chunks_received': len(chunks)
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur check status: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+
+
+# ================================================
+# ROUTE POUR ANNULER UN UPLOAD EN COURS
+# ================================================
+
+@app.route('/api/paiements/<int:paiement_id>/fichiers/cancel-upload', methods=['POST'])
+def cancel_upload(paiement_id):
+    """Annuler un upload en cours et nettoyer les chunks"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    try:
+        data = request.get_json()
+        file_name = secure_filename(data.get('fileName'))
+        
+        if not file_name:
+            return jsonify({'erreur': 'fileName manquant'}), 400
+        
+        temp_base = tempfile.gettempdir()
+        file_folder = os.path.join(temp_base, 'anapath_uploads', str(user_id), str(paiement_id), file_name)
+        
+        if os.path.exists(file_folder):
+            shutil.rmtree(file_folder)
+            return jsonify({'message': 'Upload annulé et chunks supprimés'})
+        
+        return jsonify({'message': 'Aucun upload en cours pour ce fichier'})
+        
+    except Exception as e:
+        print(f"❌ Erreur cancel upload: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+
+# 1. Upload de fichiers
+@app.route('/api/paiements/<int:paiement_id>/fichiers', methods=['POST'])
+def upload_fichier_paiement(paiement_id):
+    """Upload un ou plusieurs fichiers pour un paiement"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    conn = None
+    cur = None
+    try:
+        # Récupérer le numéro CR pour le dossier
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute('SELECT numero_cr FROM paiements WHERE id = %s AND user_id = %s', 
+                   (paiement_id, user_id))
+        paiement = cur.fetchone()
+        
+        if not paiement:
+            return jsonify({'erreur': 'Paiement non trouvé'}), 404
+        
+        numero_cr = paiement['numero_cr']
+        
         fichiers_enregistres = []
         
+        # Traiter chaque fichier
         for file_key in request.files:
             file = request.files[file_key]
-            if file.filename == '': continue
             
+            if file.filename == '':
+                continue
+            
+            # Lire le fichier en bytes
             donnees = file.read()
+            
+            # Vérifier la taille (max 10MB)
             if len(donnees) > 10 * 1024 * 1024:
                 return jsonify({'erreur': f'Fichier trop volumineux: {file.filename} (max 10MB)'}), 400
             
+            # Enregistrer dans PostgreSQL
             cur.execute('''
-                INSERT INTO fichiers_paiements (user_id, paiement_id, numero_cr, nom_original, type_mime, taille_bytes, donnees)
+                INSERT INTO fichiers_paiements 
+                (user_id, paiement_id, numero_cr, nom_original, type_mime, taille_bytes, donnees)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, nom_original, type_mime, taille_bytes, date_upload
-            ''', (user_id, paiement_id, numero_cr, file.filename, file.mimetype, len(donnees), donnees))
+            ''', (user_id, paiement_id, numero_cr, file.filename, 
+                  file.mimetype, len(donnees), donnees))
             
             result = cur.fetchone()
             fichiers_enregistres.append(dict(result))
         
         conn.commit()
-        return jsonify({'message': f'{len(fichiers_enregistres)} fichier(s) enregistré(s)', 'fichiers': fichiers_enregistres})
+        
+        return jsonify({
+            'message': f'{len(fichiers_enregistres)} fichier(s) enregistré(s)',
+            'fichiers': fichiers_enregistres
+        })
         
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"❌ Erreur upload fichier: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     finally:
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
+# 2. Lister les fichiers d'un paiement
 @app.route('/api/paiements/<int:paiement_id>/fichiers', methods=['GET'])
 def get_fichiers_paiement(paiement_id):
+    """Récupérer la liste des fichiers attachés à un paiement"""
     user_id = request.headers.get('X-User-ID')
-    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
     conn = None
+    cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
         cur.execute('''
-            SELECT id, paiement_id, numero_cr, nom_original, type_mime, taille_bytes, date_upload
-            FROM fichiers_paiements WHERE paiement_id = %s AND user_id = %s ORDER BY date_upload DESC
+            SELECT 
+                id, paiement_id, numero_cr, nom_original, 
+                type_mime, taille_bytes, date_upload, uploaded_by
+            FROM fichiers_paiements 
+            WHERE paiement_id = %s AND user_id = %s
+            ORDER BY date_upload DESC
         ''', (paiement_id, user_id))
         
         fichiers = cur.fetchall()
-        result = [dict(f) for f in fichiers]
+        
+        result = []
+        for fichier in fichiers:
+            result.append({
+                'id': fichier['id'],
+                'paiement_id': fichier['paiement_id'],
+                'numero_cr': fichier['numero_cr'],
+                'nom': fichier['nom_original'],
+                'type': fichier['type_mime'],
+                'taille': fichier['taille_bytes'],
+                'date_upload': fichier['date_upload'].isoformat() if fichier['date_upload'] else None,
+                'uploaded_by': fichier['uploaded_by']
+            })
+        
         return jsonify({'fichiers': result})
         
     except Exception as e:
         print(f"❌ Erreur get fichiers: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     finally:
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
+# 3. Télécharger un fichier
 @app.route('/api/fichiers/<int:fichier_id>/download', methods=['GET'])
 def download_fichier(fichier_id):
+    """Télécharger un fichier avec streaming optimisé"""
     user_id = request.headers.get('X-User-ID')
-    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
     conn = None
+    cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        cur.execute('SELECT nom_original, type_mime, donnees FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
-        fichier = cur.fetchone()
-        if not fichier: return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        # D'abord récupérer les métadonnées SANS les données
+        cur.execute('''
+            SELECT nom_original, type_mime, taille_bytes
+            FROM fichiers_paiements 
+            WHERE id = %s AND user_id = %s
+        ''', (fichier_id, user_id))
         
-        from flask import Response
-        return Response(fichier['donnees'], mimetype=fichier['type_mime'],
-                       headers={'Content-Disposition': f'attachment; filename="{fichier["nom_original"]}"'})
+        fichier_info = cur.fetchone()
+        
+        if not fichier_info:
+            return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        
+        nom_fichier = fichier_info['nom_original']
+        type_mime = fichier_info['type_mime']
+        taille = fichier_info['taille_bytes']
+        
+        # Fonction génératrice pour streamer les données par chunks
+        def generate():
+            chunk_size = 64 * 1024  # 64KB par chunk
+            
+            # Utiliser un curseur serveur pour éviter de charger tout en mémoire
+            cursor_name = f'file_cursor_{fichier_id}'
+            
+            with get_db() as conn_stream:
+                with conn_stream.cursor(name=cursor_name) as cur_stream:
+                    cur_stream.execute('''
+                        SELECT donnees 
+                        FROM fichiers_paiements 
+                        WHERE id = %s AND user_id = %s
+                    ''', (fichier_id, user_id))
+                    
+                    # PostgreSQL retourne un memoryview ou bytes
+                    result = cur_stream.fetchone()
+                    if result and result['donnees']:
+                        donnees = bytes(result['donnees'])
+                        
+                        # Streamer par chunks
+                        for i in range(0, len(donnees), chunk_size):
+                            yield donnees[i:i + chunk_size]
+        
+        # Créer la réponse avec streaming
+        response = Response(
+            stream_with_context(generate()),
+            mimetype=type_mime,
+            headers={
+                'Content-Disposition': f'attachment; filename="{nom_fichier}"',
+                'Content-Length': str(taille),
+                'Cache-Control': 'no-cache'
+            }
+        )
+        
+        return response
         
     except Exception as e:
         print(f"❌ Erreur download fichier: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     finally:
-        if conn: conn.close()
-
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+# 4. Supprimer un fichier
 @app.route('/api/fichiers/<int:fichier_id>', methods=['DELETE'])
 def delete_fichier(fichier_id):
+    """Supprimer un fichier"""
     user_id = request.headers.get('X-User-ID')
-    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
     
     conn = None
+    cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        cur.execute('SELECT id FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
-        if not cur.fetchone(): return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        # Vérifier si le fichier existe et appartient à l'utilisateur
+        cur.execute('SELECT id FROM fichiers_paiements WHERE id = %s AND user_id = %s', 
+                   (fichier_id, user_id))
         
-        cur.execute('DELETE FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
+        if not cur.fetchone():
+            return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        
+        # Supprimer le fichier
+        cur.execute('DELETE FROM fichiers_paiements WHERE id = %s AND user_id = %s', 
+                   (fichier_id, user_id))
+        
         conn.commit()
+        
         return jsonify({'message': 'Fichier supprimé avec succès'})
         
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"❌ Erreur delete fichier: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     finally:
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+# 5. Visualiser un fichier (stream)
+file_cache = {}
+CACHE_MAX_SIZE = 10 * 1024 * 1024  # 10MB max en cache
 
 @app.route('/api/fichiers/<int:fichier_id>/view', methods=['GET'])
 def view_fichier(fichier_id):
+    """Visualiser un fichier avec optimisations"""
     user_id = request.headers.get('X-User-ID')
-    if not user_id: return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    # Clé de cache
+    cache_key = f"{user_id}_{fichier_id}"
     
     conn = None
+    cur = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        cur.execute('SELECT nom_original, type_mime, donnees FROM fichiers_paiements WHERE id = %s AND user_id = %s', (fichier_id, user_id))
-        fichier = cur.fetchone()
-        if not fichier: return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        # Récupérer les métadonnées
+        cur.execute('''
+            SELECT nom_original, type_mime, taille_bytes, date_upload
+            FROM fichiers_paiements 
+            WHERE id = %s AND user_id = %s
+        ''', (fichier_id, user_id))
         
-        from flask import Response
-        if fichier['type_mime'].startswith('image/') or fichier['type_mime'] == 'application/pdf':
-            return Response(fichier['donnees'], mimetype=fichier['type_mime'])
+        fichier_info = cur.fetchone()
+        
+        if not fichier_info:
+            return jsonify({'erreur': 'Fichier non trouvé'}), 404
+        
+        type_mime = fichier_info['type_mime']
+        taille = fichier_info['taille_bytes']
+        nom_fichier = fichier_info['nom_original']
+        date_upload = fichier_info['date_upload']
+        
+        # Vérifier si le fichier est en cache
+        if cache_key in file_cache:
+            cached_data, cached_date = file_cache[cache_key]
+            if cached_date == date_upload:
+                print(f"✅ Cache hit pour fichier {fichier_id}")
+                return Response(
+                    cached_data,
+                    mimetype=type_mime,
+                    headers={'Cache-Control': 'public, max-age=3600'}
+                )
+        
+        # Si fichier petit (< 1MB), le mettre en cache
+        if taille < 1 * 1024 * 1024:
+            cur.execute('''
+                SELECT donnees 
+                FROM fichiers_paiements 
+                WHERE id = %s AND user_id = %s
+            ''', (fichier_id, user_id))
+            
+            result = cur.fetchone()
+            if result and result['donnees']:
+                donnees = bytes(result['donnees'])
+                
+                # Ajouter au cache si possible
+                current_cache_size = sum(len(v[0]) for v in file_cache.values())
+                if current_cache_size + len(donnees) < CACHE_MAX_SIZE:
+                    file_cache[cache_key] = (donnees, date_upload)
+                    print(f"✅ Fichier {fichier_id} ajouté au cache")
+                
+                return Response(
+                    donnees,
+                    mimetype=type_mime,
+                    headers={'Cache-Control': 'public, max-age=3600'}
+                )
+        
+        # Pour les gros fichiers, utiliser le streaming
+        def generate_large():
+            chunk_size = 128 * 1024  # 128KB
+            
+            with get_db() as conn_stream:
+                with conn_stream.cursor() as cur_stream:
+                    cur_stream.execute('''
+                        SELECT donnees 
+                        FROM fichiers_paiements 
+                        WHERE id = %s AND user_id = %s
+                    ''', (fichier_id, user_id))
+                    
+                    result = cur_stream.fetchone()
+                    if result and result['donnees']:
+                        donnees = bytes(result['donnees'])
+                        
+                        for i in range(0, len(donnees), chunk_size):
+                            yield donnees[i:i + chunk_size]
+        
+        # Images et PDF peuvent être affichés directement
+        if type_mime.startswith('image/') or type_mime == 'application/pdf':
+            return Response(
+                stream_with_context(generate_large()),
+                mimetype=type_mime,
+                headers={
+                    'Cache-Control': 'public, max-age=3600',
+                    'Content-Length': str(taille)
+                }
+            )
         else:
-            return Response(fichier['donnees'], mimetype=fichier['type_mime'],
-                           headers={'Content-Disposition': f'attachment; filename="{fichier["nom_original"]}"'})
+            # Autres types: forcer le téléchargement
+            return Response(
+                stream_with_context(generate_large()),
+                mimetype=type_mime,
+                headers={
+                    'Content-Disposition': f'attachment; filename="{nom_fichier}"',
+                    'Content-Length': str(taille)
+                }
+            )
         
     except Exception as e:
         print(f"❌ Erreur view fichier: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
     finally:
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 # ================================================
 # SOUS-FAMILLES EXAMENS - CRUD COMPLET
 # ================================================
