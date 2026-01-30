@@ -1642,90 +1642,58 @@ if (!form.classList.contains('open')) {
     // ────────────────────────────────────────────
     // GESTION DES COMPTES RENDUS
     // ────────────────────────────────────────────
- async function loadReports() {
-  try {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
-   
-    const res = await fetch(`${API_BASE_URL}/comptes-rendus`, {
-      headers: { 'X-User-ID': userId }
-    });
-   
-    if (!res.ok) throw new Error('Erreur lors du chargement des comptes rendus');
-   
-    const reports = await res.json();
-    allReports = reports;
-   
-    const tbody = document.getElementById('reportsList');
-    if (reports.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">Aucun compte rendu trouvé</td></tr>';
-    } else {
-      tbody.innerHTML = reports.map(r => `
-        <tr class="hover:bg-gray-50" data-report-id="${r.id}">
-          <td class="px-6 py-4 text-sm font-medium">${r.numero_enregistrement}</td>
-          <td class="px-6 py-4 text-sm">${r.patient_nom || '-'}</td>
-          <td class="px-6 py-4 text-sm">${r.medecin_nom || '-'}</td>
-          <td class="px-6 py-4 text-sm">${r.utilisateur_nom || '-'}</td>
-          <td class="px-6 py-4 text-sm">${r.date_prelevement || '-'}</td>
-          <td class="px-6 py-4 text-sm">
-            <span class="status-badge status-${r.statut}">${r.statut}</span>
-          </td>
-          <td class="px-6 py-4 text-sm">
-            <button class="view-report-btn text-blue-600 hover:text-blue-800 mr-2" 
-                    data-report-id="${r.id}"
-                    title="Voir">
-              <i class="fas fa-eye"></i>
-            </button>
-            <button class="edit-report-btn text-green-600 hover:text-green-800 mr-2" 
-                    data-report-id="${r.id}"
-                    title="Modifier">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button onclick="printReport(${r.id})" 
-                    class="text-purple-600 hover:text-purple-800 mr-2" 
-                    title="Imprimer">
-              <i class="fas fa-print"></i>
-            </button>
-            <button onclick="deleteReport(${r.id})" 
-                    class="text-red-600 hover:text-red-800" 
-                    title="Supprimer">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `).join('');
-      
-      // Attacher les événements aux boutons
-      attachReportButtonEvents();
+    async function loadReports() {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+       
+        const res = await fetch(`${API_BASE_URL}/comptes-rendus`, {
+          headers: { 'X-User-ID': userId }
+        });
+       
+        if (!res.ok) throw new Error('Erreur lors du chargement des comptes rendus');
+       
+        const reports = await res.json();
+        allReports = reports;
+       
+        const tbody = document.getElementById('reportsList');
+        if (reports.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">Aucun compte rendu trouvé</td></tr>';
+        } else {
+          tbody.innerHTML = reports.map(r => `
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 text-sm font-medium">${r.numero_enregistrement}</td>
+              <td class="px-6 py-4 text-sm">${r.patient_nom || '-'}</td>
+              <td class="px-6 py-4 text-sm">${r.medecin_nom || '-'}</td>
+              <td class="px-6 py-4 text-sm">${r.utilisateur_nom || '-'}</td>
+              <td class="px-6 py-4 text-sm">${r.date_prelevement || '-'}</td>
+              <td class="px-6 py-4 text-sm">
+                <span class="status-badge status-${r.statut}">${r.statut}</span>
+              </td>
+              <td class="px-6 py-4 text-sm">
+                <button onclick='viewReport(${JSON.stringify(r)})' class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button onclick='editReport(${JSON.stringify(r)})' class="text-green-600 hover:text-green-800 mr-2" title="Modifier">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="printReport(${r.id})" class="text-purple-600 hover:text-purple-800 mr-2" title="Imprimer">
+                  <i class="fas fa-print"></i>
+                </button>
+                <button onclick="deleteReport(${r.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `).join('');
+        }
+       
+        updateKPIs();
+      } catch (err) {
+        console.error(err);
+        showToast('Erreur lors du chargement des comptes rendus', 'error');
+      }
     }
-   
-    updateKPIs();
-  } catch (err) {
-    console.error(err);
-    showToast('Erreur lors du chargement des comptes rendus', 'error');
-  }
-}
-
-// Fonction pour attacher les événements aux boutons
-function attachReportButtonEvents() {
-  // Attacher événements aux boutons "Voir"
-  document.querySelectorAll('.view-report-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const reportId = this.getAttribute('data-report-id');
-      viewReportById(reportId);
-    });
-  });
-  
-  // Attacher événements aux boutons "Modifier"
-  document.querySelectorAll('.edit-report-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const reportId = this.getAttribute('data-report-id');
-      editReportById(reportId);
-    });
-  });
-}
  function updatePatientInfo() {
   const select = document.getElementById('reportPatient');
   const selectedOption = select.options[select.selectedIndex];
