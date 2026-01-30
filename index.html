@@ -1076,6 +1076,7 @@ function updateSelectedUserDisplay() {
 }
 // Fonction pour vérifier et gérer les permissions selon le statut
 // Fonction pour vérifier et gérer les permissions selon le statut
+// Fonction pour vérifier et gérer les permissions selon le statut
 function checkUserPermissions() {
   const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
   const userStatut = selectedUser.statut || '';
@@ -1094,16 +1095,16 @@ function checkUserPermissions() {
     return;
   }
   
-  // Si l'utilisateur a le statut "utilisateur", masquer tous les liens de configuration
+  // MODIFICATION ICI : Toujours afficher le lien des paramètres, quel que soit le statut
+  if (paramsLink) paramsLink.classList.remove('hidden');
+  
+  // Pour les autres liens, conserver la logique originale
   if (userStatut.toLowerCase() === 'utilisateur') {
-    console.log('Statut utilisateur détecté - masquage de tous les liens de configuration');
-    if (paramsLink) paramsLink.classList.add('hidden');
+    console.log('Statut utilisateur détecté - masquage des autres liens de configuration');
     if (templatesLink) templatesLink.classList.add('hidden');
     if (sousFamilleLink) sousFamilleLink.classList.add('hidden');
   } else {
-    // Pour les autres statuts (admin, medecin, technicien), afficher tous les liens
     console.log('Statut non-utilisateur détecté - affichage de tous les liens de configuration');
-    if (paramsLink) paramsLink.classList.remove('hidden');
     if (templatesLink) templatesLink.classList.remove('hidden');
     if (sousFamilleLink) sousFamilleLink.classList.remove('hidden');
   }
