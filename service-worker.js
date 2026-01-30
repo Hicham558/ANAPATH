@@ -3,11 +3,11 @@
 // service-worker.js
 const CACHE_NAME = 'anapath-cache-v1';
 const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icons/icon-192x192.png',
-  './icons/icon-512x512.png',
+  '/ANAPATH/',
+  '/ANAPATH/index.html',
+  '/ANAPATH/manifest.json',
+  '/ANAPATH/icons/icon-192x192.png',
+  '/ANAPATH/icons/icon-512x512.png',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
