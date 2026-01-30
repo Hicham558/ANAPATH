@@ -266,7 +266,7 @@
   </h3>
   <div class="space-y-3">
     <!-- Bouton Paramètres - seulement pour non-utilisateurs -->
-    <a href="params.html" id="paramsLink" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group hidden">
+    <a href="params.html" id="paramsLink" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-lg transition flex items-center gap-3 group">
       <i class="fas fa-sliders-h"></i>
       <span>Paramètres</span>
     </a>
@@ -1076,28 +1076,26 @@ function updateSelectedUserDisplay() {
 }
 // Fonction pour vérifier et gérer les permissions selon le statut
 // Fonction pour vérifier et gérer les permissions selon le statut
+// Fonction pour vérifier et gérer les permissions selon le statut
 function checkUserPermissions() {
   const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
   const userStatut = selectedUser.statut || '';
   const userNumero = selectedUser.numero || '';
   
-  const paramsLink = document.getElementById('paramsLink');
+  // NE PAS INCLURE paramsLink ici
   const templatesLink = document.getElementById('templatesLink');
   const sousFamilleLink = document.getElementById('sousFamilleLink');
   
-  // MODIFICATION PRINCIPALE : Toujours afficher le lien des paramètres si un utilisateur est sélectionné
-  if (userNumero) {
-    console.log('Utilisateur sélectionné - affichage des paramètres');
-    if (paramsLink) paramsLink.classList.remove('hidden');
-  } else {
-    console.log('Aucun utilisateur sélectionné - masquage de tous les liens');
-    if (paramsLink) paramsLink.classList.add('hidden');
+  // Vérifier si un utilisateur est sélectionné
+  if (!userNumero) {
+    console.log('Aucun utilisateur sélectionné');
+    // NE PAS MASQUER paramsLink ici
     if (templatesLink) templatesLink.classList.add('hidden');
     if (sousFamilleLink) sousFamilleLink.classList.add('hidden');
     return;
   }
   
-  // Pour les autres liens, conserver la logique originale basée sur le statut
+  // Pour les autres liens, conserver la logique originale
   if (userStatut.toLowerCase() === 'utilisateur') {
     console.log('Statut utilisateur détecté - masquage des autres liens de configuration');
     if (templatesLink) templatesLink.classList.add('hidden');
