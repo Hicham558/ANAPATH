@@ -1076,7 +1076,6 @@ function updateSelectedUserDisplay() {
 }
 // Fonction pour vérifier et gérer les permissions selon le statut
 // Fonction pour vérifier et gérer les permissions selon le statut
-// Fonction pour vérifier et gérer les permissions selon le statut
 function checkUserPermissions() {
   const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
   const userStatut = selectedUser.statut || '';
@@ -1086,19 +1085,19 @@ function checkUserPermissions() {
   const templatesLink = document.getElementById('templatesLink');
   const sousFamilleLink = document.getElementById('sousFamilleLink');
   
-  // Vérifier si un utilisateur est sélectionné
-  if (!userNumero) {
-    console.log('Aucun utilisateur sélectionné');
+  // MODIFICATION PRINCIPALE : Toujours afficher le lien des paramètres si un utilisateur est sélectionné
+  if (userNumero) {
+    console.log('Utilisateur sélectionné - affichage des paramètres');
+    if (paramsLink) paramsLink.classList.remove('hidden');
+  } else {
+    console.log('Aucun utilisateur sélectionné - masquage de tous les liens');
     if (paramsLink) paramsLink.classList.add('hidden');
     if (templatesLink) templatesLink.classList.add('hidden');
     if (sousFamilleLink) sousFamilleLink.classList.add('hidden');
     return;
   }
   
-  // MODIFICATION ICI : Toujours afficher le lien des paramètres, quel que soit le statut
-  if (paramsLink) paramsLink.classList.remove('hidden');
-  
-  // Pour les autres liens, conserver la logique originale
+  // Pour les autres liens, conserver la logique originale basée sur le statut
   if (userStatut.toLowerCase() === 'utilisateur') {
     console.log('Statut utilisateur détecté - masquage des autres liens de configuration');
     if (templatesLink) templatesLink.classList.add('hidden');
