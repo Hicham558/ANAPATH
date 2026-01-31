@@ -6,6 +6,8 @@
   <title>Paramètres - ANAPATH</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Bibliothèque QR Code -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -55,7 +57,7 @@
       }
     }
 
-    #certModal > div {
+    #certModal > div, #qrModal > div {
       animation: modalFadeIn 0.3s ease-out;
     }
 
@@ -69,6 +71,17 @@
       background-color: rgba(79, 70, 229, 0.05);
       padding-left: 8px;
       border-radius: 8px;
+    }
+
+    /* Style pour le QR code */
+    #qrCodeContainer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
   </style>
 </head>
@@ -108,11 +121,14 @@
           
           <!-- Boutons d'action alignés horizontalement -->
           <div class="flex space-x-2 mb-1">
+            <button onclick="generateQrCode()" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Générer un QR code">
+              <i class="fas fa-qrcode text-lg"></i>
+            </button>
             <button onclick="openApiUrlInBrowser()" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Ouvrir l'URL dans le navigateur">
               <i class="fas fa-external-link-alt text-lg"></i>
             </button>
             <button onclick="scanQrCode()" class="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Scanner un QR code">
-              <i class="fas fa-qrcode text-lg"></i>
+              <i class="fas fa-camera text-lg"></i>
             </button>
             <button onclick="testConnection()" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Tester la connexion">
               <i class="fas fa-plug text-lg"></i>
@@ -243,6 +259,54 @@
     </div>
   </div>
 
+  <!-- Modal QR Code -->
+  <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl p-8 max-w-lg mx-4 shadow-2xl">
+      <div class="text-center">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-2xl font-bold text-gray-800">QR Code de Connexion</h3>
+          <button onclick="closeQrModal()" class="text-gray-500 hover:text-gray-700 transition">
+            <i class="fas fa-times text-2xl"></i>
+          </button>
+        </div>
+        
+        <div id="qrCodeContainer" class="mb-6"></div>
+        
+        <div class="bg-indigo-50 p-4 rounded-lg mb-4">
+          <p class="text-sm font-medium text-indigo-900 mb-2">URL du serveur :</p>
+          <p id="qrUrlDisplay" class="text-lg font-mono text-indigo-700 break-all"></p>
+        </div>
+        
+        <div class="text-left text-sm text-gray-600 bg-gray-50 p-4 rounded-lg space-y-2">
+          <p class="font-semibold text-gray-800 mb-3">📱 Pour vous connecter depuis votre mobile :</p>
+          <ol class="space-y-2 ml-4">
+            <li class="flex items-start">
+              <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">1</span>
+              <span>Ouvrez l'application ANAPATH sur votre mobile</span>
+            </li>
+            <li class="flex items-start">
+              <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">2</span>
+              <span>Scannez ce QR code avec la caméra de votre téléphone</span>
+            </li>
+            <li class="flex items-start">
+              <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">3</span>
+              <span>Acceptez le certificat si demandé (cliquez sur "Avancé" puis "Continuer")</span>
+            </li>
+          </ol>
+        </div>
+        
+        <div class="flex gap-3 mt-6">
+          <button onclick="downloadQrCode()" class="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition shadow-md hover:shadow-lg">
+            <i class="fas fa-download mr-2"></i>Télécharger
+          </button>
+          <button onclick="closeQrModal()" class="flex-1 bg-gray-500 text-white px-4 py-3 rounded-lg hover:bg-gray-600 transition shadow-md hover:shadow-lg">
+            <i class="fas fa-times mr-2"></i>Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal pour accepter le certificat -->
   <div id="certModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
@@ -284,6 +348,7 @@
     const DEFAULT_API = 'https://anapath.onrender.com';
     let pendingUrl = null;
     let stream = null; // Pour la caméra QR code
+    let currentQrCode = null; // Pour stocker l'instance du QR code
 
     function showToast(message, isError = false) {
       const toast = document.getElementById('toast');
@@ -297,6 +362,70 @@
       
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    // Fonction pour générer un QR code
+    function generateQrCode() {
+      const apiBaseUrlInput = document.getElementById('apiBaseUrl');
+      let apiUrl = apiBaseUrlInput.value.trim();
+      
+      if (!apiUrl) {
+        showToast('Veuillez saisir une URL valide', true);
+        return;
+      }
+      
+      // Nettoyer le conteneur
+      const container = document.getElementById('qrCodeContainer');
+      container.innerHTML = '';
+      
+      // Afficher le modal
+      document.getElementById('qrModal').classList.remove('hidden');
+      document.getElementById('qrUrlDisplay').textContent = apiUrl;
+      
+      try {
+        // Générer le QR code
+        currentQrCode = new QRCode(container, {
+          text: apiUrl,
+          width: 256,
+          height: 256,
+          colorDark: "#4F46E5",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        showToast('QR Code généré avec succès');
+        console.log('QR Code généré pour:', apiUrl);
+        
+      } catch (error) {
+        showToast('Erreur lors de la génération du QR code', true);
+        console.error('Erreur QR code:', error);
+        closeQrModal();
+      }
+    }
+
+    // Fonction pour télécharger le QR code
+    function downloadQrCode() {
+      const container = document.getElementById('qrCodeContainer');
+      const canvas = container.querySelector('canvas');
+      
+      if (canvas) {
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'anapath-qrcode.png';
+        link.href = url;
+        link.click();
+        showToast('QR Code téléchargé');
+      } else {
+        showToast('Erreur: QR Code non trouvé', true);
+      }
+    }
+
+    // Fonction pour fermer le modal QR
+    function closeQrModal() {
+      document.getElementById('qrModal').classList.add('hidden');
+      const container = document.getElementById('qrCodeContainer');
+      container.innerHTML = '';
+      currentQrCode = null;
     }
 
     // Fonction pour ouvrir l'URL dans le navigateur avec gestion du certificat
@@ -459,11 +588,16 @@
       }
     }
 
-    // Fermer le modal en cliquant en dehors
+    // Fermer les modals en cliquant en dehors
     document.addEventListener('click', function(event) {
-      const modal = document.getElementById('certModal');
-      if (event.target === modal) {
+      const certModal = document.getElementById('certModal');
+      const qrModal = document.getElementById('qrModal');
+      
+      if (event.target === certModal) {
         closeModal();
+      }
+      if (event.target === qrModal) {
+        closeQrModal();
       }
     });
 
@@ -480,11 +614,16 @@
     }
 
     function setServerMode() {
-      const serverUrl = prompt('URL serveur local (ex: http://192.168.1.10:5000)');
+      const serverUrl = prompt('URL serveur local (ex: https://192.168.1.10:5000)');
       if (serverUrl) {
         document.getElementById('apiBaseUrl').value = serverUrl;
         localStorage.setItem('apiBaseUrl', serverUrl);
         showToast('Serveur local configuré');
+        
+        // Proposer de générer le QR code
+        if (confirm('Voulez-vous générer un QR code pour cette URL ?')) {
+          generateQrCode();
+        }
       }
     }
 
