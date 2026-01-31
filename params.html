@@ -121,7 +121,10 @@
           
           <!-- Boutons d'action alignés horizontalement -->
           <div class="flex space-x-2 mb-1">
-            <button onclick="generateQrCode()" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Générer un QR code">
+            <button onclick="generateQrCodeFromLocalIP()" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Générer QR code avec IP locale">
+              <i class="fas fa-qrcode text-lg"></i>
+            </button>
+            <button onclick="generateQrCode()" class="bg-pink-600 text-white p-3 rounded-lg hover:bg-pink-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Générer QR code de l'URL actuelle">
               <i class="fas fa-qrcode text-lg"></i>
             </button>
             <button onclick="openApiUrlInBrowser()" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Ouvrir l'URL dans le navigateur">
@@ -350,6 +353,117 @@
     let stream = null; // Pour la caméra QR code
     let currentQrCode = null; // Pour stocker l'instance du QR code
 
+    // Fonction pour détecter l'IP locale de la machine
+    async function getLocalIPAddress() {
+      return new Promise((resolve, reject) => {
+        // Créer une connexion WebRTC pour obtenir l'IP locale
+        const pc = new RTCPeerConnection({
+          iceServers: []
+        });
+        
+        pc.createDataChannel('');
+        
+        pc.createOffer().then(offer => pc.setLocalDescription(offer));
+        
+        pc.onicecandidate = (ice) => {
+          if (!ice || !ice.candidate || !ice.candidate.candidate) {
+            return;
+          }
+          
+          const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
+          const match = ipRegex.exec(ice.candidate.candidate);
+          
+          if (match) {
+            const ip = match[1];
+            // Ignorer les IP de loopback (127.x.x.x)
+            if (!ip.startsWith('127.')) {
+              pc.close();
+              resolve(ip);
+            }
+          }
+        };
+        
+        // Timeout de 3 secondes
+        setTimeout(() => {
+          pc.close();
+          reject(new Error('Impossible de détecter l\'IP locale'));
+        }, 3000);
+      });
+    }
+
+    // Fonction pour générer le QR code avec l'IP locale auto-détectée
+    async function generateQrCodeFromLocalIP() {
+      showToast('🔍 Détection de l\'IP locale...', false);
+      
+      try {
+        const localIP = await getLocalIPAddress();
+        const port = prompt('Port du serveur local ?', '5000');
+        
+        if (!port) {
+          showToast('Port requis pour générer le QR code', true);
+          return;
+        }
+        
+        const localUrl = `https://${localIP}:${port}`;
+        
+        // Mettre à jour le champ URL
+        document.getElementById('apiBaseUrl').value = localUrl;
+        saveSettings();
+        
+        // Générer le QR code avec cette URL
+        generateQrCodeWithUrl(localUrl);
+        
+        showToast(`✅ IP détectée: ${localIP}`, false);
+        
+      } catch (error) {
+        console.error('Erreur détection IP:', error);
+        showToast('❌ Impossible de détecter l\'IP locale. Utilisez le mode manuel.', true);
+        
+        // Fallback: demander manuellement
+        const manualIP = prompt('Entrez l\'IP locale manuellement (ex: 192.168.1.135)');
+        if (manualIP) {
+          const port = prompt('Port du serveur ?', '5000');
+          if (port) {
+            const localUrl = `https://${manualIP}:${port}`;
+            document.getElementById('apiBaseUrl').value = localUrl;
+            saveSettings();
+            generateQrCodeWithUrl(localUrl);
+          }
+        }
+      }
+    }
+
+    // Fonction générique pour générer un QR code avec une URL spécifique
+    function generateQrCodeWithUrl(url) {
+      // Nettoyer le conteneur
+      const container = document.getElementById('qrCodeContainer');
+      container.innerHTML = '';
+      
+      // Afficher le modal
+      document.getElementById('qrModal').classList.remove('hidden');
+      document.getElementById('qrUrlDisplay').textContent = url;
+      
+      try {
+        // Générer le QR code
+        currentQrCode = new QRCode(container, {
+          text: url,
+          width: 256,
+          height: 256,
+          colorDark: "#4F46E5",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        showToast('QR Code généré avec succès');
+        console.log('QR Code généré pour:', url);
+        
+      } catch (error) {
+        showToast('Erreur lors de la génération du QR code', true);
+        console.error('Erreur QR code:', error);
+        closeQrModal();
+      }
+    }
+
     function showToast(message, isError = false) {
       const toast = document.getElementById('toast');
       const icon = document.getElementById('toastIcon');
@@ -364,7 +478,7 @@
       setTimeout(() => toast.classList.add('hidden'), 3000);
     }
 
-    // Fonction pour générer un QR code
+    // Fonction pour générer un QR code avec l'URL du champ
     function generateQrCode() {
       const apiBaseUrlInput = document.getElementById('apiBaseUrl');
       let apiUrl = apiBaseUrlInput.value.trim();
@@ -374,33 +488,7 @@
         return;
       }
       
-      // Nettoyer le conteneur
-      const container = document.getElementById('qrCodeContainer');
-      container.innerHTML = '';
-      
-      // Afficher le modal
-      document.getElementById('qrModal').classList.remove('hidden');
-      document.getElementById('qrUrlDisplay').textContent = apiUrl;
-      
-      try {
-        // Générer le QR code
-        currentQrCode = new QRCode(container, {
-          text: apiUrl,
-          width: 256,
-          height: 256,
-          colorDark: "#4F46E5",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
-        
-        showToast('QR Code généré avec succès');
-        console.log('QR Code généré pour:', apiUrl);
-        
-      } catch (error) {
-        showToast('Erreur lors de la génération du QR code', true);
-        console.error('Erreur QR code:', error);
-        closeQrModal();
-      }
+      generateQrCodeWithUrl(apiUrl);
     }
 
     // Fonction pour télécharger le QR code
