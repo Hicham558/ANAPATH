@@ -436,7 +436,7 @@ td .flex.flex-col {
     <div class="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-green-700 font-medium">?? Prix de la sous-famille</p>
+                <p class="text-sm text-green-700 font-medium">💰 Prix de la sous-famille</p>
                 <p id="prixExamenValeur" class="text-2xl font-bold text-green-900 mt-1">0 DA</p>
                 <p id="descriptionSousFamille" class="text-xs text-green-600 mt-1"></p>
                 <p class="text-xs text-green-500 mt-2">
@@ -1072,14 +1072,14 @@ td .flex.flex-col {
 
 async function loadDashboardData() {
     try {
-        // ? Charger les statistiques (plus fiable)
+        // ✅ Charger les statistiques (plus fiable)
         const statsRes = await fetch(`${API_BASE_URL}/paiements/statistiques`, {
             headers: { 'X-User-ID': currentUserId }
         });
         
         if (statsRes.ok) {
             const stats = await statsRes.json();
-            console.log("?? Stats reçues:", stats);
+            console.log("📊 Stats reçues:", stats);
             
             // Mettre à jour les KPI avec les données du backend
             document.getElementById('totalEncaisse').textContent = 
@@ -1114,7 +1114,7 @@ async function loadDashboardData() {
         await loadDettes();
         
     } catch (error) {
-        console.error('? Erreur chargement dashboard:', error);
+        console.error('❌ Erreur chargement dashboard:', error);
         showToast('Erreur lors du chargement des données', 'error');
     }
 }
@@ -1461,7 +1461,7 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
                             <p class="text-xs text-green-600">Code: ${code}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-sm text-green-700 font-medium">?? Prix standard</p>
+                            <p class="text-sm text-green-700 font-medium">💰 Prix standard</p>
                             <p class="text-lg font-bold text-green-800">${prix.toLocaleString('fr-FR')} DA</p>
                         </div>
                     </div>
@@ -1904,7 +1904,7 @@ function getTypeExamen(numeroCR) {
     return types[typeCode] || { icon: 'fa-file-medical', color: 'text-gray-500', text: '-' };
 }
 
-// ? Fonction pour décrire le numéro de reçu
+// ✅ Fonction pour décrire le numéro de reçu
 function getDescriptionNumero(numeroCR) {
     if (!numeroCR || numeroCR.length < 7) return '';
     
@@ -2548,7 +2548,7 @@ function ouvrirModalHistorique(paiements, nomPatient) {
         <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold">Historique - ${nomPatient}</h2>
-                <button onclick="this.closest('.fixed').remove()" class="text-gray-600">?</button>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-600">✕</button>
             </div>
             
             ${paiements.length > 0 ? `
@@ -2586,7 +2586,7 @@ function ouvrirModalHistorique(paiements, nomPatient) {
 }
      async function voirHistoriquePatient(pId, nomPatient) {
     try {
-        console.log(`?? Chargement historique patient ${pId}: ${nomPatient}`);
+        console.log(`🔍 Chargement historique patient ${pId}: ${nomPatient}`);
         
         const userId = localStorage.getItem('userId');
         if (!userId) {
@@ -2607,19 +2607,19 @@ function ouvrirModalHistorique(paiements, nomPatient) {
         // Essayer chaque endpoint jusqu'à ce qu'un fonctionne
         for (const endpoint of endpoints) {
             try {
-                console.log(`?? Essai endpoint: ${endpoint}`);
+                console.log(`🔄 Essai endpoint: ${endpoint}`);
                 
                 const response = await fetch(endpoint, {
                     headers: { 'X-User-ID': userId }
                 });
                 
                 if (!response.ok) {
-                    console.log(`? Endpoint ${endpoint}: ${response.status}`);
+                    console.log(`❌ Endpoint ${endpoint}: ${response.status}`);
                     continue;
                 }
                 
                 const result = await response.json();
-                console.log(`?? Résultat de ${endpoint}:`, result);
+                console.log(`📦 Résultat de ${endpoint}:`, result);
                 
                 // Fonction pour extraire les paiements
                 const extractPaiements = (data) => {
@@ -2634,26 +2634,26 @@ function ouvrirModalHistorique(paiements, nomPatient) {
                 paiements = extractPaiements(result);
                 
                 if (Array.isArray(paiements) && paiements.length > 0) {
-                    console.log(`? ${paiements.length} paiement(s) trouvé(s) avec ${endpoint}`);
+                    console.log(`✅ ${paiements.length} paiement(s) trouvé(s) avec ${endpoint}`);
                     break;
                 }
                 
             } catch (err) {
                 lastError = err;
-                console.log(`?? Erreur avec ${endpoint}:`, err.message);
+                console.log(`⚠️ Erreur avec ${endpoint}:`, err.message);
                 continue;
             }
         }
         
         if (paiements.length === 0) {
-            console.log('?? Aucun paiement trouvé pour ce patient');
+            console.log('ℹ️ Aucun paiement trouvé pour ce patient');
         }
         
         // Ouvrir le modal avec les paiements trouvés
         ouvrirModalHistorique(paiements, nomPatient);
         
     } catch (error) {
-        console.error('?? Erreur critique dans voirHistoriquePatient:', error);
+        console.error('🔥 Erreur critique dans voirHistoriquePatient:', error);
         showToast('Impossible de charger l\'historique', 'error');
         
         // Ouvrir un modal vide
@@ -2832,7 +2832,7 @@ async function prepareAndShowPrintModal(paymentId) {
             date_paiement: paiement.date_paiement || new Date().toISOString()
         };
 
-        // ? On réutilise exactement la même logique que après l'enregistrement
+        // → On réutilise exactement la même logique que après l'enregistrement
         afficherModalChoixImpression(paiementInfo);
 
     } catch (err) {
@@ -3142,10 +3142,10 @@ function imprimerListe() {
             </style>
         </head>
         <body>
-            <button onclick="window.print()" class="btn-print no-print">??? Imprimer</button>
+            <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimer</button>
             
             <div class="header">
-                <h1>?? LISTE DES PAIEMENTS</h1>
+                <h1>📋 LISTE DES PAIEMENTS</h1>
                 <p><strong>ANAPATH - Gestion des Paiements</strong></p>
                 <p>Date d'édition: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
             </div>
@@ -3209,7 +3209,7 @@ function imprimerListe() {
             </table>
 
             <div class="totaux">
-                <h3>?? Récapitulatif des Totaux</h3>
+                <h3>💰 Récapitulatif des Totaux</h3>
                 <div class="total-row">
                     <span>Paiements comptant (${allPaiements.filter(p => p.mode_paiement === 'espece').length}):</span>
                     <span class="mode-comptant">${totalComptant.toFixed(2)} DA</span>
@@ -3567,12 +3567,12 @@ function genererRecuA4(paiement) {
             <div class="watermark">ANAPATH</div>
             
             <button onclick="window.print()" class="btn-print no-print">
-                ??? Imprimer le Reçu
+                🖨️ Imprimer le Reçu
             </button>
             
             <div class="recu-container">
                 <div class="header">
-                    <h1>?? ANAPATH</h1>
+                    <h1>🏥 ANAPATH</h1>
                     <p>Centre d'Anatomie Pathologique</p>
                     <div class="numero-recu">
                         Reçu N° ${paiement.numero_cr || 'Non spécifié'}
@@ -3581,7 +3581,7 @@ function genererRecuA4(paiement) {
                 
                 <div class="content">
                     <div class="info-section">
-                        <h3>?? Informations de Transaction</h3>
+                        <h3>📅 Informations de Transaction</h3>
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="info-label">Date</span>
@@ -3595,7 +3595,7 @@ function genererRecuA4(paiement) {
                     </div>
                     
                     <div class="info-section">
-                        <h3>?? Informations Patient</h3>
+                        <h3>👤 Informations Patient</h3>
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="info-label">Nom du Patient</span>
@@ -3636,7 +3636,7 @@ function genererRecuA4(paiement) {
                     
                     ${paiement.notes ? `
                         <div class="notes">
-                            <h4>?? Notes</h4>
+                            <h4>📝 Notes</h4>
                             <p>${paiement.notes}</p>
                         </div>
                     ` : ''}
@@ -3854,7 +3854,7 @@ function genererRecuTicket(paiement) {
         </head>
         <body>
             <button onclick="window.print()" class="btn-print no-print">
-                ??? IMPRIMER
+                🖨️ IMPRIMER
             </button>
             
             <div class="ticket">
@@ -4125,7 +4125,7 @@ function genererRecuVignette(paiement) {
         </head>
         <body>
             <button onclick="window.print()" class="btn-print no-print">
-                ??? Imprimer
+                🖨️ Imprimer
             </button>
             
             <div class="vignette">
@@ -4310,10 +4310,10 @@ async function imprimerRapportJournalier() {
                     </style>
                 </head>
                 <body>
-                    <button onclick="window.print()" class="btn-print no-print">??? Imprimer</button>
+                    <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimer</button>
                     
                     <div class="header">
-                        <h1>?? RAPPORT JOURNALIER DES PAIEMENTS</h1>
+                        <h1>📊 RAPPORT JOURNALIER DES PAIEMENTS</h1>
                         <p><strong>ANAPATH - Centre d'Anatomie Pathologique</strong></p>
                         <p>Date du rapport: ${date}</p>
                         <p>Généré le: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
@@ -4546,10 +4546,10 @@ async function imprimerSynthesePatient() {
                     </style>
                 </head>
                 <body>
-                    <button onclick="window.print()" class="btn-print no-print">??? Imprimer</button>
+                    <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimer</button>
                     
                     <div class="header">
-                        <h1>?? SYNTHÈSE PATIENT</h1>
+                        <h1>📋 SYNTHÈSE PATIENT</h1>
                         <p><strong>ANAPATH - Centre d'Anatomie Pathologique</strong></p>
                         <p>Date du rapport: ${new Date().toLocaleDateString('fr-FR')}</p>
                     </div>
@@ -4601,7 +4601,7 @@ async function imprimerSynthesePatient() {
                     
                     ${synthese.details_a_terme && synthese.details_a_terme.length > 0 ? `
                         <div class="page-break"></div>
-                        <h3>?? Détails des paiements à terme:</h3>
+                        <h3>📋 Détails des paiements à terme:</h3>
                         <table>
                             <thead>
                                 <tr>
@@ -4845,9 +4845,9 @@ async function rechercherPaiementParNumeroAPI(numeroRecu) {
         showToast('Erreur lors de la recherche', 'error');
     }
 }
-        // --------------------------------------------
+        // ────────────────────────────────────────────
 // MODAL AJOUT RAPIDE PATIENT
-// --------------------------------------------
+// ────────────────────────────────────────────
 
 function openQuickPatientModal() {
   document.getElementById('quickPatientForm').reset();
@@ -5720,7 +5720,7 @@ function displayExistingFiles(files) {
 }
 // 4. Modifier les fonctions de gestion des fichiers
 function downloadFileLocal(fichierId) {
-    // ? CORRECTION : Utiliser fichierId directement (pas besoin de window.open)
+    // ✅ CORRECTION : Utiliser fichierId directement (pas besoin de window.open)
     const url = `${API_BASE_URL}/api/fichiers/${fichierId}/download`;
     const link = document.createElement('a');
     link.href = url;
@@ -5752,7 +5752,7 @@ function downloadFileLocal(fichierId) {
 }
 
 function viewFileLocal(fichierId) {
-    // ? CORRECTION : Ouvrir directement l'URL avec l'ID
+    // ✅ CORRECTION : Ouvrir directement l'URL avec l'ID
     const url = `${API_BASE_URL}/api/fichiers/${fichierId}/view`;
     
     // Créer une requête avec les headers
