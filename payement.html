@@ -23,7 +23,8 @@
             background: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(4px);
         }
- /* Styles responsive pour les onglets */
+        
+      /* Styles responsive pour les onglets */
 @media (max-width: 768px) {
     nav button {
         flex-direction: column;
@@ -321,7 +322,7 @@ td .flex.flex-col {
             </div>
         </div>
 
-    <!-- Onglets - Responsive avec 2 lignes sur mobile -->
+        <!-- Onglets - Responsive avec 2 lignes sur mobile -->
 <div class="mb-8">
     <div class="border-b border-gray-200">
         <!-- Grille responsive: 2 lignes sur mobile, 1 ligne sur desktop -->
@@ -360,6 +361,7 @@ td .flex.flex-col {
         </nav>
     </div>
 </div>
+
         <!-- Contenu des onglets -->
         <div id="content-nouveau" class="tab-content animate-fade-in">
             <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
@@ -380,7 +382,7 @@ td .flex.flex-col {
             <option value="">Chargement des patients...</option>
         </select>
         <button type="button" onclick="openQuickPatientModal()" class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-3 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm" title="Ajouter un nouveau patient">
-            <i class="fas fa-user-plus"></i>
+            <i class="fas fa-user-plus"></i> + Patient
         </button>
         <button type="button" onclick="chargerPatientsDansSelect()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition" title="Actualiser">
             <i class="fas fa-sync-alt"></i>
@@ -4225,7 +4227,7 @@ function genererRecuVignette(paiement) {
                         setTimeout(() => window.print(), 500);
                     }
                 };
-            </script>
+            <\/script>
         </body>
         </html>
     `;
@@ -5951,7 +5953,7 @@ function getBadgeNumero(numeroCR) {
             <button onclick="closeAttachmentModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
                 Fermer
             </button>
-          <button onclick="saveFilesToDB()" id="uploadBtn" class="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition flex items-center gap-2">
+          <button onclick="saveFilesToDBImproved()" id="uploadBtn" class="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition flex items-center gap-2">
     <i class="fas fa-save"></i> Enregistrer
 </button>
         </div>
