@@ -199,7 +199,41 @@ td .flex.flex-col {
 #typePaiement option:hover {
     background-color: #f8fafc;
 }
+/* Styles responsive pour les onglets */
+@media (max-width: 768px) {
+    nav button {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 60px;
+    }
+    
+    nav button i {
+        font-size: 1.2rem;
+    }
+    
+    nav button span {
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    /* Bordure active plus visible sur mobile */
+    .tab-active {
+        border-bottom-width: 3px;
+        background-color: rgba(79, 70, 229, 0.05);
+    }
+}
 
+@media (min-width: 769px) {
+    nav {
+        display: flex !important;
+        flex-wrap: nowrap;
+    }
+    
+    nav button {
+        white-space: nowrap;
+    }
+}
 /* Badge de prix dans les options */
 .option-prix {
     float: right;
@@ -292,29 +326,45 @@ td .flex.flex-col {
             </div>
         </div>
 
-        <!-- Onglets -->
-        <div class="mb-8">
-            <div class="border-b border-gray-200">
-                <nav class="-mb-px flex space-x-8">
-                    <button onclick="showTab('nouveau')" id="tab-nouveau" class="py-3 px-1 border-b-2 font-medium text-lg tab-active">
-                        <i class="fas fa-plus-circle mr-2"></i>Nouveau Paiement
-                    </button>
-                    <button onclick="showTab('liste')" id="tab-liste" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                        <i class="fas fa-list mr-2"></i>Liste des Paiements
-                    </button>
-                    <button onclick="showTab('dettes')" id="tab-dettes" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>Dettes Actives
-                    </button>
-                    <button onclick="showTab('statistiques')" id="tab-statistiques" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                        <i class="fas fa-chart-bar mr-2"></i>Statistiques
-                    </button>
-                    <button onclick="showTab('rapports')" id="tab-rapports" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                        <i class="fas fa-file-alt mr-2"></i>Rapports
-                    </button>
-                </nav>
-            </div>
-        </div>
-
+      <!-- Onglets - Responsive avec 2 lignes sur mobile -->
+<div class="mb-8">
+    <div class="border-b border-gray-200">
+        <!-- Grille responsive: 2 lignes sur mobile, 1 ligne sur desktop -->
+        <nav class="grid grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-4">
+            <!-- Première ligne mobile (3 onglets) -->
+            <button onclick="showTab('nouveau')" id="tab-nouveau" 
+                    class="py-3 px-2 md:px-4 border-b-2 font-medium text-sm md:text-base tab-active text-center">
+                <i class="fas fa-plus-circle md:mr-2 block md:inline mb-1 md:mb-0"></i>
+                <span class="block md:inline text-xs md:text-base">Nouveau</span>
+            </button>
+            
+            <button onclick="showTab('liste')" id="tab-liste" 
+                    class="py-3 px-2 md:px-4 border-b-2 font-medium text-sm md:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 text-center">
+                <i class="fas fa-list md:mr-2 block md:inline mb-1 md:mb-0"></i>
+                <span class="block md:inline text-xs md:text-base">Liste</span>
+            </button>
+            
+            <button onclick="showTab('dettes')" id="tab-dettes" 
+                    class="py-3 px-2 md:px-4 border-b-2 font-medium text-sm md:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 text-center">
+                <i class="fas fa-exclamation-triangle md:mr-2 block md:inline mb-1 md:mb-0"></i>
+                <span class="block md:inline text-xs md:text-base">Dettes</span>
+            </button>
+            
+            <!-- Deuxième ligne mobile (2 onglets) - Centré avec col-span -->
+            <button onclick="showTab('statistiques')" id="tab-statistiques" 
+                    class="py-3 px-2 md:px-4 border-b-2 font-medium text-sm md:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 text-center col-span-1 md:col-span-auto">
+                <i class="fas fa-chart-bar md:mr-2 block md:inline mb-1 md:mb-0"></i>
+                <span class="block md:inline text-xs md:text-base">Stats</span>
+            </button>
+            
+            <button onclick="showTab('rapports')" id="tab-rapports" 
+                    class="py-3 px-2 md:px-4 border-b-2 font-medium text-sm md:text-base text-gray-500 hover:text-gray-700 hover:border-gray-300 text-center col-span-2 md:col-span-auto">
+                <i class="fas fa-file-alt md:mr-2 block md:inline mb-1 md:mb-0"></i>
+                <span class="block md:inline text-xs md:text-base">Rapports</span>
+            </button>
+        </nav>
+    </div>
+</div>
         <!-- Contenu des onglets -->
         <div id="content-nouveau" class="tab-content animate-fade-in">
             <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
