@@ -6,7 +6,8 @@
     <title>Réceptions - ANAPATH</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-      <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+   
+   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @keyframes fadeIn {
@@ -23,6 +24,11 @@
             backdrop-filter: blur(4px);
         }
         
+        .tab-active {
+            border-bottom: 3px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
         
         .payment-card {
             border-left: 4px solid;
@@ -68,76 +74,7 @@
         .table-container::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-   /* === STYLES ONGLETS RESPONSIVE === */
-.tab-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-height: 70px;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.tab-text {
-    font-size: 0.65rem;
-    font-weight: 600;
-    text-align: center;
-    line-height: 1.2;
-}
-
-/* Onglet actif */
-.tab-active {
-    border-bottom: 3px solid #4f46e5 !important;
-    color: #4f46e5 !important;
-    background-color: rgba(79, 70, 229, 0.05);
-    font-weight: 600;
-}
-
-.tab-active .tab-text {
-    color: #4f46e5;
-}
-
-/* Hover sur mobile */
-@media (max-width: 768px) {
-    .tab-btn:active {
-        background-color: rgba(79, 70, 229, 0.1);
-        transform: scale(0.98);
-    }
-    
-    .tab-btn i {
-        font-size: 1.25rem;
-    }
-}
-
-/* Desktop styles */
-@media (min-width: 769px) {
-    .tab-btn {
-        flex-direction: row;
-        gap: 8px;
-        min-height: auto;
-        padding: 12px 16px;
-    }
-    
-    .tab-text {
-        font-size: 1rem;
-        font-weight: 500;
-    }
-    
-    .tab-active .tab-text {
-        font-weight: 600;
-    }
-    
-    .tab-btn:hover {
-        background-color: rgba(0, 0, 0, 0.02);
-    }
-}
-
-/* Suppression de l'ancien CSS conflictuel */
-.tab-active {
-    /* Garde seulement les styles ci-dessus */
-}
+        
         .drawer-content {
             max-height: 0;
             overflow: hidden;
@@ -355,45 +292,29 @@ td .flex.flex-col {
             </div>
         </div>
 
-     <!-- Onglets - Responsive avec 2 lignes sur mobile -->
-<div class="mb-8">
-    <div class="border-b border-gray-200 overflow-x-hidden">
-        <!-- Grille responsive: 2 lignes sur mobile, 1 ligne sur desktop -->
-        <div class="grid grid-cols-3 md:grid-cols-5 gap-1 md:gap-0 md:flex md:space-x-4">
-            <!-- Ligne 1 sur mobile -->
-            <button onclick="showTab('nouveau')" id="tab-nouveau" 
-                    class="tab-btn py-3 px-1 border-b-2 font-medium tab-active">
-                <i class="fas fa-plus-circle text-lg md:text-base"></i>
-                <span class="tab-text">Nouveau</span>
-            </button>
-            
-            <button onclick="showTab('liste')" id="tab-liste" 
-                    class="tab-btn py-3 px-1 border-b-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                <i class="fas fa-list text-lg md:text-base"></i>
-                <span class="tab-text">Liste</span>
-            </button>
-            
-            <button onclick="showTab('dettes')" id="tab-dettes" 
-                    class="tab-btn py-3 px-1 border-b-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                <i class="fas fa-exclamation-triangle text-lg md:text-base"></i>
-                <span class="tab-text">Dettes</span>
-            </button>
-            
-            <!-- Ligne 2 sur mobile -->
-            <button onclick="showTab('statistiques')" id="tab-statistiques" 
-                    class="tab-btn py-3 px-1 border-b-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 col-span-1">
-                <i class="fas fa-chart-bar text-lg md:text-base"></i>
-                <span class="tab-text">Stats</span>
-            </button>
-            
-            <button onclick="showTab('rapports')" id="tab-rapports" 
-                    class="tab-btn py-3 px-1 border-b-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 col-span-2">
-                <i class="fas fa-file-alt text-lg md:text-base"></i>
-                <span class="tab-text">Rapports</span>
-            </button>
+        <!-- Onglets -->
+        <div class="mb-8">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button onclick="showTab('nouveau')" id="tab-nouveau" class="py-3 px-1 border-b-2 font-medium text-lg tab-active">
+                        <i class="fas fa-plus-circle mr-2"></i>Nouveau Paiement
+                    </button>
+                    <button onclick="showTab('liste')" id="tab-liste" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-list mr-2"></i>Liste des Paiements
+                    </button>
+                    <button onclick="showTab('dettes')" id="tab-dettes" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Dettes Actives
+                    </button>
+                    <button onclick="showTab('statistiques')" id="tab-statistiques" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-chart-bar mr-2"></i>Statistiques
+                    </button>
+                    <button onclick="showTab('rapports')" id="tab-rapports" class="py-3 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        <i class="fas fa-file-alt mr-2"></i>Rapports
+                    </button>
+                </nav>
+            </div>
         </div>
-    </div>
-</div>
+
         <!-- Contenu des onglets -->
         <div id="content-nouveau" class="tab-content animate-fade-in">
             <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
@@ -414,7 +335,7 @@ td .flex.flex-col {
             <option value="">Chargement des patients...</option>
         </select>
         <button type="button" onclick="openQuickPatientModal()" class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-3 rounded-lg transition flex items-center gap-2 text-sm font-medium whitespace-nowrap shadow-sm" title="Ajouter un nouveau patient">
-            <i class="fas fa-user-plus"></i>
+            <i class="fas fa-user-plus"></i> + Patient
         </button>
         <button type="button" onclick="chargerPatientsDansSelect()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition" title="Actualiser">
             <i class="fas fa-sync-alt"></i>
@@ -515,7 +436,7 @@ td .flex.flex-col {
     <div class="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-green-700 font-medium">💰 Prix de la sous-famille</p>
+                <p class="text-sm text-green-700 font-medium">?? Prix de la sous-famille</p>
                 <p id="prixExamenValeur" class="text-2xl font-bold text-green-900 mt-1">0 DA</p>
                 <p id="descriptionSousFamille" class="text-xs text-green-600 mt-1"></p>
                 <p class="text-xs text-green-500 mt-2">
@@ -1151,14 +1072,14 @@ td .flex.flex-col {
 
 async function loadDashboardData() {
     try {
-        // ✅ Charger les statistiques (plus fiable)
+        // ? Charger les statistiques (plus fiable)
         const statsRes = await fetch(`${API_BASE_URL}/paiements/statistiques`, {
             headers: { 'X-User-ID': currentUserId }
         });
         
         if (statsRes.ok) {
             const stats = await statsRes.json();
-            console.log("📊 Stats reçues:", stats);
+            console.log("?? Stats reçues:", stats);
             
             // Mettre à jour les KPI avec les données du backend
             document.getElementById('totalEncaisse').textContent = 
@@ -1188,11 +1109,12 @@ async function loadDashboardData() {
             });
             document.getElementById('paiementsMois').textContent = paiementsMois.length;
         }
-      // Charger les dettes
+        
+        // Charger les dettes
         await loadDettes();
         
     } catch (error) {
-        console.error('❌ Erreur chargement dashboard:', error);
+        console.error('? Erreur chargement dashboard:', error);
         showToast('Erreur lors du chargement des données', 'error');
     }
 }
@@ -1539,7 +1461,7 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
                             <p class="text-xs text-green-600">Code: ${code}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-sm text-green-700 font-medium">💰 Prix standard</p>
+                            <p class="text-sm text-green-700 font-medium">?? Prix standard</p>
                             <p class="text-lg font-bold text-green-800">${prix.toLocaleString('fr-FR')} DA</p>
                         </div>
                     </div>
@@ -1982,7 +1904,7 @@ function getTypeExamen(numeroCR) {
     return types[typeCode] || { icon: 'fa-file-medical', color: 'text-gray-500', text: '-' };
 }
 
-// ✅ Fonction pour décrire le numéro de reçu
+// ? Fonction pour décrire le numéro de reçu
 function getDescriptionNumero(numeroCR) {
     if (!numeroCR || numeroCR.length < 7) return '';
     
@@ -2626,7 +2548,7 @@ function ouvrirModalHistorique(paiements, nomPatient) {
         <div class="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold">Historique - ${nomPatient}</h2>
-                <button onclick="this.closest('.fixed').remove()" class="text-gray-600">✕</button>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-600">?</button>
             </div>
             
             ${paiements.length > 0 ? `
@@ -2664,7 +2586,7 @@ function ouvrirModalHistorique(paiements, nomPatient) {
 }
      async function voirHistoriquePatient(pId, nomPatient) {
     try {
-        console.log(`🔍 Chargement historique patient ${pId}: ${nomPatient}`);
+        console.log(`?? Chargement historique patient ${pId}: ${nomPatient}`);
         
         const userId = localStorage.getItem('userId');
         if (!userId) {
@@ -2685,19 +2607,19 @@ function ouvrirModalHistorique(paiements, nomPatient) {
         // Essayer chaque endpoint jusqu'à ce qu'un fonctionne
         for (const endpoint of endpoints) {
             try {
-                console.log(`🔄 Essai endpoint: ${endpoint}`);
+                console.log(`?? Essai endpoint: ${endpoint}`);
                 
                 const response = await fetch(endpoint, {
                     headers: { 'X-User-ID': userId }
                 });
                 
                 if (!response.ok) {
-                    console.log(`❌ Endpoint ${endpoint}: ${response.status}`);
+                    console.log(`? Endpoint ${endpoint}: ${response.status}`);
                     continue;
                 }
                 
                 const result = await response.json();
-                console.log(`📦 Résultat de ${endpoint}:`, result);
+                console.log(`?? Résultat de ${endpoint}:`, result);
                 
                 // Fonction pour extraire les paiements
                 const extractPaiements = (data) => {
@@ -2712,26 +2634,26 @@ function ouvrirModalHistorique(paiements, nomPatient) {
                 paiements = extractPaiements(result);
                 
                 if (Array.isArray(paiements) && paiements.length > 0) {
-                    console.log(`✅ ${paiements.length} paiement(s) trouvé(s) avec ${endpoint}`);
+                    console.log(`? ${paiements.length} paiement(s) trouvé(s) avec ${endpoint}`);
                     break;
                 }
                 
             } catch (err) {
                 lastError = err;
-                console.log(`⚠️ Erreur avec ${endpoint}:`, err.message);
+                console.log(`?? Erreur avec ${endpoint}:`, err.message);
                 continue;
             }
         }
         
         if (paiements.length === 0) {
-            console.log('ℹ️ Aucun paiement trouvé pour ce patient');
+            console.log('?? Aucun paiement trouvé pour ce patient');
         }
         
         // Ouvrir le modal avec les paiements trouvés
         ouvrirModalHistorique(paiements, nomPatient);
         
     } catch (error) {
-        console.error('🔥 Erreur critique dans voirHistoriquePatient:', error);
+        console.error('?? Erreur critique dans voirHistoriquePatient:', error);
         showToast('Impossible de charger l\'historique', 'error');
         
         // Ouvrir un modal vide
@@ -2910,7 +2832,7 @@ async function prepareAndShowPrintModal(paymentId) {
             date_paiement: paiement.date_paiement || new Date().toISOString()
         };
 
-        // → On réutilise exactement la même logique que après l'enregistrement
+        // ? On réutilise exactement la même logique que après l'enregistrement
         afficherModalChoixImpression(paiementInfo);
 
     } catch (err) {
@@ -3220,10 +3142,10 @@ function imprimerListe() {
             </style>
         </head>
         <body>
-            <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimer</button>
+            <button onclick="window.print()" class="btn-print no-print">??? Imprimer</button>
             
             <div class="header">
-                <h1>📋 LISTE DES PAIEMENTS</h1>
+                <h1>?? LISTE DES PAIEMENTS</h1>
                 <p><strong>ANAPATH - Gestion des Paiements</strong></p>
                 <p>Date d'édition: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
             </div>
@@ -3287,7 +3209,7 @@ function imprimerListe() {
             </table>
 
             <div class="totaux">
-                <h3>💰 Récapitulatif des Totaux</h3>
+                <h3>?? Récapitulatif des Totaux</h3>
                 <div class="total-row">
                     <span>Paiements comptant (${allPaiements.filter(p => p.mode_paiement === 'espece').length}):</span>
                     <span class="mode-comptant">${totalComptant.toFixed(2)} DA</span>
@@ -3645,12 +3567,12 @@ function genererRecuA4(paiement) {
             <div class="watermark">ANAPATH</div>
             
             <button onclick="window.print()" class="btn-print no-print">
-                🖨️ Imprimer le Reçu
+                ??? Imprimer le Reçu
             </button>
             
             <div class="recu-container">
                 <div class="header">
-                    <h1>🏥 ANAPATH</h1>
+                    <h1>?? ANAPATH</h1>
                     <p>Centre d'Anatomie Pathologique</p>
                     <div class="numero-recu">
                         Reçu N° ${paiement.numero_cr || 'Non spécifié'}
@@ -3659,7 +3581,7 @@ function genererRecuA4(paiement) {
                 
                 <div class="content">
                     <div class="info-section">
-                        <h3>📅 Informations de Transaction</h3>
+                        <h3>?? Informations de Transaction</h3>
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="info-label">Date</span>
@@ -3673,7 +3595,7 @@ function genererRecuA4(paiement) {
                     </div>
                     
                     <div class="info-section">
-                        <h3>👤 Informations Patient</h3>
+                        <h3>?? Informations Patient</h3>
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="info-label">Nom du Patient</span>
@@ -3714,7 +3636,7 @@ function genererRecuA4(paiement) {
                     
                     ${paiement.notes ? `
                         <div class="notes">
-                            <h4>📝 Notes</h4>
+                            <h4>?? Notes</h4>
                             <p>${paiement.notes}</p>
                         </div>
                     ` : ''}
@@ -3932,7 +3854,7 @@ function genererRecuTicket(paiement) {
         </head>
         <body>
             <button onclick="window.print()" class="btn-print no-print">
-                🖨️ IMPRIMER
+                ??? IMPRIMER
             </button>
             
             <div class="ticket">
@@ -4203,7 +4125,7 @@ function genererRecuVignette(paiement) {
         </head>
         <body>
             <button onclick="window.print()" class="btn-print no-print">
-                🖨️ Imprimer
+                ??? Imprimer
             </button>
             
             <div class="vignette">
@@ -4258,7 +4180,7 @@ function genererRecuVignette(paiement) {
                         setTimeout(() => window.print(), 500);
                     }
                 };
-            </script>
+            <\/script>
         </body>
         </html>
     `;
@@ -4388,10 +4310,10 @@ async function imprimerRapportJournalier() {
                     </style>
                 </head>
                 <body>
-                    <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimer</button>
+                    <button onclick="window.print()" class="btn-print no-print">??? Imprimer</button>
                     
                     <div class="header">
-                        <h1>📊 RAPPORT JOURNALIER DES PAIEMENTS</h1>
+                        <h1>?? RAPPORT JOURNALIER DES PAIEMENTS</h1>
                         <p><strong>ANAPATH - Centre d'Anatomie Pathologique</strong></p>
                         <p>Date du rapport: ${date}</p>
                         <p>Généré le: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
@@ -4624,10 +4546,10 @@ async function imprimerSynthesePatient() {
                     </style>
                 </head>
                 <body>
-                    <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimer</button>
+                    <button onclick="window.print()" class="btn-print no-print">??? Imprimer</button>
                     
                     <div class="header">
-                        <h1>📋 SYNTHÈSE PATIENT</h1>
+                        <h1>?? SYNTHÈSE PATIENT</h1>
                         <p><strong>ANAPATH - Centre d'Anatomie Pathologique</strong></p>
                         <p>Date du rapport: ${new Date().toLocaleDateString('fr-FR')}</p>
                     </div>
@@ -4679,7 +4601,7 @@ async function imprimerSynthesePatient() {
                     
                     ${synthese.details_a_terme && synthese.details_a_terme.length > 0 ? `
                         <div class="page-break"></div>
-                        <h3>📋 Détails des paiements à terme:</h3>
+                        <h3>?? Détails des paiements à terme:</h3>
                         <table>
                             <thead>
                                 <tr>
@@ -4923,9 +4845,9 @@ async function rechercherPaiementParNumeroAPI(numeroRecu) {
         showToast('Erreur lors de la recherche', 'error');
     }
 }
-        // ────────────────────────────────────────────
+        // --------------------------------------------
 // MODAL AJOUT RAPIDE PATIENT
-// ────────────────────────────────────────────
+// --------------------------------------------
 
 function openQuickPatientModal() {
   document.getElementById('quickPatientForm').reset();
@@ -5798,7 +5720,7 @@ function displayExistingFiles(files) {
 }
 // 4. Modifier les fonctions de gestion des fichiers
 function downloadFileLocal(fichierId) {
-    // ✅ CORRECTION : Utiliser fichierId directement (pas besoin de window.open)
+    // ? CORRECTION : Utiliser fichierId directement (pas besoin de window.open)
     const url = `${API_BASE_URL}/api/fichiers/${fichierId}/download`;
     const link = document.createElement('a');
     link.href = url;
@@ -5830,7 +5752,7 @@ function downloadFileLocal(fichierId) {
 }
 
 function viewFileLocal(fichierId) {
-    // ✅ CORRECTION : Ouvrir directement l'URL avec l'ID
+    // ? CORRECTION : Ouvrir directement l'URL avec l'ID
     const url = `${API_BASE_URL}/api/fichiers/${fichierId}/view`;
     
     // Créer une requête avec les headers
