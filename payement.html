@@ -74,7 +74,41 @@
         .table-container::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        
+    /* Styles responsive pour les onglets */
+@media (max-width: 768px) {
+    nav button {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 60px;
+    }
+    
+    nav button i {
+        font-size: 1.2rem;
+    }
+    
+    nav button span {
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    /* Bordure active plus visible sur mobile */
+    .tab-active {
+        border-bottom-width: 3px;
+        background-color: rgba(79, 70, 229, 0.05);
+    }
+}
+
+@media (min-width: 769px) {
+    nav {
+        display: flex !important;
+        flex-wrap: nowrap;
+    }
+    
+    nav button {
+        white-space: nowrap;
+    }
+}    
         .drawer-content {
             max-height: 0;
             overflow: hidden;
@@ -199,41 +233,7 @@ td .flex.flex-col {
 #typePaiement option:hover {
     background-color: #f8fafc;
 }
-/* Styles responsive pour les onglets */
-@media (max-width: 768px) {
-    nav button {
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        min-height: 60px;
-    }
-    
-    nav button i {
-        font-size: 1.2rem;
-    }
-    
-    nav button span {
-        font-size: 0.7rem;
-        font-weight: 600;
-    }
-    
-    /* Bordure active plus visible sur mobile */
-    .tab-active {
-        border-bottom-width: 3px;
-        background-color: rgba(79, 70, 229, 0.05);
-    }
-}
 
-@media (min-width: 769px) {
-    nav {
-        display: flex !important;
-        flex-wrap: nowrap;
-    }
-    
-    nav button {
-        white-space: nowrap;
-    }
-}
 /* Badge de prix dans les options */
 .option-prix {
     float: right;
