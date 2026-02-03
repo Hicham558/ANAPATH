@@ -5345,7 +5345,7 @@ function handleFileSelect(e) {
 }
 
 // Traitement des fichiers
-// Remplacer complètement la fonction handleFiles par cette version
+// ✅ CORRECTION : Rendre handleFiles asynchrone
 async function handleFiles(files) {
     const maxSize = 50 * 1024 * 1024; // 50MB
     const validExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
@@ -5404,7 +5404,7 @@ async function handleFiles(files) {
                 statusEl.textContent = `Traitement de ${file.name}... (${i + 1}/${totalFiles})`;
             }
             
-            // Compression pour les images JPG et PNG
+            // ✅ Compression pour les images JPG et PNG
             if (isCompressibleImage(file)) {
                 const originalSize = file.size / (1024 * 1024); // MB
                 
@@ -5429,7 +5429,7 @@ async function handleFiles(files) {
                         console.log('📊 Image moyenne - compression normale');
                     }
                     
-                    // Compresser l'image
+                    // ✅ APPEL DE LA COMPRESSION
                     const compressedBlob = await compressImage(file, maxWidth, maxHeight, quality);
                     
                     // Créer un nouveau nom de fichier avec extension .jpg
