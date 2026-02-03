@@ -26,7 +26,7 @@ CORS(app, resources={r"/*": {
 # CONFIGURATION
 # ================================================
 try:
-    DATABASE_URL = os.environ['DATABASE_URL']
+    DATABASE_URL = os.environ['DATABASE_NEON']
     print("? DATABASE_URL chargée depuis environnement")
 except KeyError:
     print("? DATABASE_URL absente - Mode développement local")
