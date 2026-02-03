@@ -10,7 +10,281 @@
    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-      /* Animation pour l'indicateur de compression */
+   /* =========================================== */
+/* RESPONSIVE MODAL D'ATTACHEMENT DE FICHIERS */
+/* =========================================== */
+
+/* Modal responsive sur mobile */
+@media (max-width: 768px) {
+    #attachmentModal .bg-white {
+        width: 95%;
+        max-height: 85vh;
+        margin: 0;
+        border-radius: 12px;
+    }
+    
+    #attachmentModal .p-6 {
+        padding: 1.25rem;
+    }
+    
+    /* Zone de drop plus compacte */
+    #dropZone {
+        padding: 1.5rem 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    #dropZone i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    #dropZone p {
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    #dropZone p.text-sm {
+        font-size: 0.75rem;
+    }
+    
+    /* Boutons fixes en bas du modal */
+    #attachmentModal .pt-4 {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        background: white;
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 0.5rem;
+    }
+    
+    /* Boutons en colonne sur très petits écrans */
+    #attachmentModal .flex.gap-3 {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    #attachmentModal button {
+        width: 100%;
+        justify-content: center;
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Ajustement hauteur zones de liste */
+    #filesList {
+        max-height: 200px;
+        margin-bottom: 0.75rem;
+    }
+    
+    #existingFilesList {
+        max-height: 150px;
+        overflow-y: auto;
+    }
+    
+    /* Meilleure visibilité des fichiers */
+    #filesList .flex.items-center {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+    }
+    
+    #existingFilesList .flex.items-center {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Ajustement des icônes */
+    #existingFilesList .fa-2xl {
+        font-size: 1.5rem;
+    }
+}
+
+/* Sur très petits téléphones */
+@media (max-width: 400px) {
+    #attachmentModal .p-6 {
+        padding: 1rem;
+    }
+    
+    #attachmentModal h3 {
+        font-size: 1.125rem;
+    }
+    
+    /* Zone d'info plus compacte */
+    #attachmentModal .bg-orange-50 {
+        padding: 0.75rem;
+    }
+    
+    #attachmentModal .bg-orange-50 .fa-info-circle {
+        font-size: 1rem;
+        margin-right: 0.5rem;
+    }
+    
+    /* Ajustement texte zone de drop */
+    #dropZone p {
+        font-size: 0.8rem;
+        line-height: 1.2;
+    }
+}
+
+/* Sur tablettes */
+@media (min-width: 769px) and (max-width: 1024px) {
+    #attachmentModal .bg-white {
+        width: 90%;
+        max-height: 80vh;
+    }
+    
+    /* Boutons côte à côte mais plus espacés */
+    #attachmentModal .flex.gap-3 {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    #attachmentModal button {
+        flex: 1;
+        max-width: 48%;
+    }
+}
+
+/* =========================================== */
+/* AMÉLIORATIONS GÉNÉRALES DU MODAL */
+/* =========================================== */
+
+/* S'assurer que le modal reste dans l'écran */
+#attachmentModal .bg-white {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 40px);
+}
+
+/* Contenu scrollable */
+#attachmentModal .modal-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-right: -4px;
+}
+
+/* Style pour la scrollbar */
+#attachmentModal .modal-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+#attachmentModal .modal-content::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 2px;
+}
+
+#attachmentModal .modal-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+
+/* =========================================== */
+/* AMÉLIORATIONS POUR LES FICHIERS NOMBREUX */
+/* =========================================== */
+
+/* Conteneur avec hauteur fixe et scroll */
+.files-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px;
+    background: #fafafa;
+}
+
+/* Style compact pour les fichiers */
+.file-item-compact {
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.file-item-compact .file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.file-item-compact .file-name {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.file-item-compact .file-size {
+    font-size: 11px;
+    color: #6b7280;
+    min-width: 60px;
+    text-align: right;
+}
+
+/* =========================================== */
+/* BOUTONS TOUJOURS VISIBLES */
+/* =========================================== */
+
+.sticky-buttons {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding-top: 16px;
+    padding-bottom: 8px;
+    border-top: 1px solid #e5e7eb;
+    margin-top: auto;
+    z-index: 20;
+}
+
+/* =========================================== */
+/* ANIMATIONS POUR MEILLEURE UX */
+/* =========================================== */
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#attachmentModal {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* =========================================== */
+/* INDICATEUR DE NOMBRE DE FICHIERS */
+/* =========================================== */
+
+.file-count-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+}
+        /* Animation pour l'indicateur de compression */
 #compressionIndicator {
     animation: slideInRight 0.3s ease-out;
 }
@@ -3347,6 +3621,7 @@ function imprimerListe() {
                 toast.classList.remove('show');
             }, 3000);
         }
+ 
         // Variables globales pour l'impression
 let paiementEnCours = null;
 
@@ -5510,67 +5785,38 @@ function displaySelectedFiles() {
     const filesList = document.getElementById('filesList');
     
     if (selectedFiles.length === 0) {
-        filesList.innerHTML = '';
+        filesList.innerHTML = `
+            <div class="text-center py-8 text-gray-400">
+                <i class="fas fa-inbox text-3xl mb-3"></i>
+                <p>Aucun fichier sélectionné</p>
+            </div>
+        `;
+        updateFileCount();
         return;
     }
     
-    filesList.innerHTML = `
-        <div class="mb-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-layer-group text-orange-600"></i>
-                    <span class="font-medium text-gray-700">${selectedFiles.length} fichier(s) prêt(s)</span>
-                </div>
-                <div class="text-right">
-                    <span class="text-sm text-gray-600">Taille totale: </span>
-                    <span class="font-bold text-orange-700">
-                        ${formatFileSize(selectedFiles.reduce((sum, f) => sum + f.size, 0))}
-                    </span>
-                </div>
+    filesList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="file-item-compact">
+            <div class="file-info">
+                <i class="fas fa-file-${getFileIcon(file.name)} text-lg 
+                   ${file.name.includes('_compressed.jpg') ? 'text-green-600' : 'text-orange-600'}"></i>
+                <span class="file-name" title="${file.name}">
+                    ${file.name.length > 40 ? file.name.substring(0, 40) + '...' : file.name}
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="file-size">${formatFileSize(file.size)}</span>
+                <button onclick="removeFile(${index})" 
+                        class="text-red-500 hover:text-red-700 p-1">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         </div>
-        
-        <div class="space-y-2 max-h-64 overflow-y-auto">
-            ${selectedFiles.map((file, index) => {
-                const isCompressed = file.name.includes('_compressed.jpg');
-                const fileSize = formatFileSize(file.size);
-                
-                return `
-                    <div class="flex items-center justify-between p-3 rounded-lg border transition-all
-                                ${isCompressed ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-300'}">
-                        <div class="flex items-center gap-3 flex-1">
-                            <div class="flex-shrink-0">
-                                <i class="fas fa-file-${getFileIcon(file.name)} text-2xl 
-                                   ${isCompressed ? 'text-green-600' : 'text-orange-600'}"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <p class="font-medium text-sm truncate">${file.name}</p>
-                                    ${isCompressed ? `
-                                        <span class="flex-shrink-0 text-xs bg-green-600 text-white px-2 py-1 rounded-full font-medium flex items-center gap-1">
-                                            <i class="fas fa-check-circle"></i>
-                                            Compressé
-                                        </span>
-                                    ` : ''}
-                                </div>
-                                <div class="flex items-center gap-3 mt-1">
-                                    <p class="text-xs font-mono font-bold ${isCompressed ? 'text-green-700' : 'text-gray-600'}">
-                                        ${fileSize}
-                                    </p>
-                                    <p class="text-xs text-gray-500">${file.type || 'Type inconnu'}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <button onclick="removeFile(${index})" 
-                                class="ml-3 text-red-600 hover:text-red-800 hover:bg-red-100 p-2 rounded-lg transition">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-            }).join('')}
-        </div>
-    `;
+    `).join('');
+    
+    updateFileCount();
 }
+
 // Supprimer un fichier de la liste
 function removeFile(index) {
     selectedFiles.splice(index, 1);
@@ -6314,6 +6560,20 @@ async function deleteFileLocal(fichierId) {
 }
 
 
+function updateFileCount() {
+    const count = selectedFiles.length;
+    const badge = document.getElementById('fileCountBadge');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (badge) {
+        badge.textContent = count;
+        badge.classList.toggle('hidden', count === 0);
+    }
+    
+    if (selectedCount) {
+        selectedCount.textContent = count;
+    }
+}
 
 // BONUS : Fonction pour exporter tous les fichiers d'un paiement
 function exporterTousFichiers(numeroCR) {
@@ -6378,52 +6638,81 @@ function getBadgeNumero(numeroCR) {
 }
     </script>
  <!-- Modal Attacher Fichier -->
-<div id="attachmentModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay">
-    <div class="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 shadow-2xl">
-        <div class="flex justify-between items-center mb-5 pb-3 border-b">
+<!-- Remplacer le contenu actuel du modal par cette version améliorée -->
+<div id="attachmentModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay p-4">
+    <div class="bg-white rounded-xl w-full max-w-2xl mx-auto shadow-2xl flex flex-col max-h-[90vh]">
+        <!-- En-tête fixe -->
+        <div class="flex justify-between items-center p-6 pb-4 border-b sticky top-0 bg-white z-10">
             <h3 class="text-xl font-semibold text-orange-700">
                 <i class="fas fa-paperclip mr-2"></i>Attacher des Fichiers
+                <span id="fileCountBadge" class="file-count-badge hidden">0</span>
             </h3>
             <button onclick="closeAttachmentModal()" class="text-gray-500 hover:text-gray-800 text-2xl">
                 ×
             </button>
         </div>
 
-        <div class="mb-4 p-4 bg-orange-50 border-l-4 border-orange-500 rounded">
-            <div class="flex items-center">
-                <i class="fas fa-info-circle text-orange-600 mr-3"></i>
-                <div>
-                    <p class="font-medium text-orange-800">Dossier : <span id="attachmentFolder" class="font-bold"></span></p>
-                    <p class="text-sm text-orange-700 mt-1">Les fichiers seront enregistrés avec ce numéro de reçu</p>
+        <!-- Contenu scrollable -->
+        <div class="flex-1 overflow-y-auto p-6 pt-4 modal-content">
+            <div class="mb-4 p-4 bg-orange-50 border-l-4 border-orange-500 rounded">
+                <div class="flex items-center">
+                    <i class="fas fa-info-circle text-orange-600 mr-3"></i>
+                    <div class="flex-1">
+                        <p class="font-medium text-orange-800">Dossier : <span id="attachmentFolder" class="font-bold"></span></p>
+                        <p class="text-sm text-orange-700 mt-1">Formats acceptés: JPG, PNG, PDF, DOCX • Max 50MB</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zone de drop -->
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-500 transition cursor-pointer mb-6 bg-gray-50">
+                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-700 font-medium mb-2">Glissez vos fichiers ici</p>
+                <p class="text-gray-600 text-sm mb-3">ou cliquez pour parcourir</p>
+                <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx" class="hidden">
+            </div>
+
+            <!-- Liste des nouveaux fichiers -->
+            <div class="mb-6">
+                <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                    <i class="fas fa-plus-circle text-green-600 mr-2"></i>
+                    Nouveaux fichiers (<span id="selectedCount">0</span>)
+                </h4>
+                <div id="filesList" class="files-container">
+                    <!-- Les fichiers apparaîtront ici -->
+                </div>
+            </div>
+
+            <!-- Fichiers déjà attachés -->
+            <div class="mb-2">
+                <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                    <i class="fas fa-folder-open text-blue-600 mr-2"></i>
+                    Fichiers attachés
+                </h4>
+                <div id="existingFilesList" class="files-container">
+                    <p class="text-sm text-gray-500 text-center py-4">Aucun fichier attaché</p>
                 </div>
             </div>
         </div>
 
-        <!-- Zone de drop -->
-        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 transition cursor-pointer mb-4">
-            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
-            <p class="text-gray-600 mb-2">Glissez vos fichiers ici ou cliquez pour parcourir</p>
-            <p class="text-sm text-gray-500">Formats acceptés: JPG, PNG, PDF, DOCX (Max 10MB par fichier)</p>
-            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx" class="hidden">
-        </div>
-
-        <!-- Liste des fichiers sélectionnés -->
-        <div id="filesList" class="mb-4 max-h-48 overflow-y-auto"></div>
-
-        <!-- Fichiers déjà attachés -->
-        <div id="existingFiles" class="mb-4">
-            <h4 class="font-medium text-gray-700 mb-2">Fichiers déjà attachés:</h4>
-            <div id="existingFilesList" class="space-y-2"></div>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-4 border-t">
-            <button onclick="closeAttachmentModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
-                Fermer
-            </button>
-<button onclick="saveFilesToDBImproved()" id="uploadBtn" class="px-5 py-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg transition flex items-center gap-2 shadow-md">
-    <i class="fas fa-file-import mr-1"></i> 
-    <span>Uploader avec compression</span>
-</button>
+        <!-- Boutons fixes en bas -->
+        <div class="sticky-buttons px-6">
+            <div class="flex gap-3">
+                <button onclick="closeAttachmentModal()" 
+                        class="flex-1 px-5 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition font-medium">
+                    Fermer
+                </button>
+                <button onclick="saveFilesToDBImproved()" 
+                        id="uploadBtn" 
+                        class="flex-1 px-5 py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg transition font-medium flex items-center justify-center gap-2 shadow-md">
+                    <i class="fas fa-save"></i>
+                    <span class="hidden sm:inline">Enregistrer</span>
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 text-center mt-2">
+                <i class="fas fa-lightbulb mr-1"></i>
+                Les images sont automatiquement compressées
+            </p>
         </div>
     </div>
 </div>
