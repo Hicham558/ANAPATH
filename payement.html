@@ -10,7 +10,219 @@
    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-@media (max-width: 768px) {
+/* Scrollbar personnalisée */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Conteneur de fichiers amélioré */
+.files-container-improved {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fafafa;
+}
+
+.files-container-improved::-webkit-scrollbar {
+    width: 6px;
+}
+
+.files-container-improved::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.files-container-improved::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.files-container-improved::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Onglets */
+.attachment-tab {
+    color: #6b7280;
+    border-bottom-color: transparent;
+}
+
+.attachment-tab:hover {
+    color: #374151;
+    background-color: #f9fafb;
+}
+
+.attachment-tab.active {
+    color: #ea580c;
+    border-bottom-color: #ea580c;
+    background-color: #fff7ed;
+}
+
+.attachment-content {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Style compact pour les fichiers */
+.file-item-compact {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.file-item-compact:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-color: #f97316;
+}
+
+.file-item-compact .file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.file-item-compact .file-name {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    color: #374151;
+    font-weight: 500;
+}
+
+.file-item-compact .file-size {
+    font-size: 11px;
+    color: #6b7280;
+    min-width: 60px;
+    text-align: right;
+}
+
+/* Fichiers existants - Style carte */
+.existing-file-card {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.existing-file-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+}
+
+/* Badge de compteur */
+.file-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+/* Responsive mobile */
+@media (max-width: 640px) {
+    #attachmentModal .bg-white {
+        max-height: 95vh;
+        margin: 8px;
+        border-radius: 16px;
+    }
+    
+    .files-container-improved {
+        max-height: 250px;
+    }
+    
+    .file-item-compact {
+        padding: 8px 10px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .file-item-compact .file-info {
+        width: 100%;
+    }
+    
+    .file-item-compact .file-actions {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+    
+    .existing-file-card {
+        padding: 10px;
+    }
+}
+
+/* Très petits écrans */
+@media (max-width: 400px) {
+    .files-container-improved {
+        max-height: 200px;
+    }
+    
+    .file-item-compact .file-name {
+        font-size: 12px;
+    }
+}
+
+/* Animation de chargement */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+        @media (max-width: 768px) {
     #attachmentModal .bg-white {
         width: 95%;
         max-height: 90vh; /* Augmenté de 85vh à 90vh */
@@ -1713,7 +1925,30 @@ async function chargerPatientsDansSelect(preserveSelection = false) {
         infoDiv.classList.add('hidden');
     }
 }
-
+function switchAttachmentTab(tab) {
+    const newContent = document.getElementById('newFilesContent');
+    const existingContent = document.getElementById('existingFilesContent');
+    const tabNew = document.getElementById('tabNewFiles');
+    const tabExisting = document.getElementById('tabExistingFiles');
+    
+    if (tab === 'new') {
+        newContent.classList.remove('hidden');
+        existingContent.classList.add('hidden');
+        tabNew.classList.add('active');
+        tabExisting.classList.remove('active');
+    } else {
+        newContent.classList.add('hidden');
+        existingContent.classList.remove('hidden');
+        tabNew.classList.remove('active');
+        tabExisting.classList.add('active');
+    }
+}
+  function updateExistingFilesCount(count) {
+    const existingCount = document.getElementById('existingFilesCount');
+    if (existingCount) {
+        existingCount.textContent = count;
+    }
+}      
     function toggleMontantTotal() {
     const modeRadio = document.querySelector('input[name="modePaiement"]:checked');
     
@@ -5516,11 +5751,17 @@ function openAttachmentModal(paymentId, numeroCR) {
     document.getElementById('filesList').innerHTML = '';
     document.getElementById('attachmentModal').classList.remove('hidden');
     
-    // Charger les fichiers existants depuis le localStorage
+    // Basculer vers l'onglet "Fichiers existants" par défaut
+    switchAttachmentTab('existing');
+    
+    // Charger les fichiers existants
     loadExistingFilesLocal(numeroCR);
     
     // Setup drag and drop
     setupDragAndDrop();
+    
+    // Réinitialiser les compteurs
+    updateFileCount();
 }
 
 // Fermer le modal
@@ -5755,35 +5996,44 @@ function displaySelectedFiles() {
         filesList.innerHTML = `
             <div class="text-center py-8 text-gray-400">
                 <i class="fas fa-inbox text-3xl mb-3"></i>
-                <p>Aucun fichier sélectionné</p>
+                <p class="text-sm">Aucun fichier sélectionné</p>
+                <p class="text-xs mt-1">Glissez ou cliquez pour ajouter</p>
             </div>
         `;
         updateFileCount();
         return;
     }
     
-    filesList.innerHTML = selectedFiles.map((file, index) => `
-        <div class="file-item-compact">
-            <div class="file-info">
-                <i class="fas fa-file-${getFileIcon(file.name)} text-lg 
-                   ${file.name.includes('_compressed.jpg') ? 'text-green-600' : 'text-orange-600'}"></i>
-                <span class="file-name" title="${file.name}">
-                    ${file.name.length > 40 ? file.name.substring(0, 40) + '...' : file.name}
-                </span>
+    filesList.innerHTML = selectedFiles.map((file, index) => {
+        const isCompressed = file.name.includes('.jpg') && file.size < file.originalSize;
+        
+        return `
+            <div class="file-item-compact ${isCompressed ? 'border-green-300 bg-green-50' : ''}">
+                <div class="file-info">
+                    <i class="fas fa-file-${getFileIcon(file.name)} text-lg ${isCompressed ? 'text-green-600' : 'text-orange-600'}"></i>
+                    <div class="flex-1 min-w-0">
+                        <p class="file-name" title="${file.name}">${file.name}</p>
+                        ${isCompressed ? `
+                            <p class="text-xs text-green-600 mt-0.5">
+                                <i class="fas fa-check-circle mr-1"></i>Compressé
+                            </p>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="file-actions flex items-center gap-2">
+                    <span class="file-size">${formatFileSize(file.size)}</span>
+                    <button onclick="removeFile(${index})" 
+                            class="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition"
+                            title="Supprimer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="file-size">${formatFileSize(file.size)}</span>
-                <button onclick="removeFile(${index})" 
-                        class="text-red-500 hover:text-red-700 p-1">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     updateFileCount();
 }
-
 // Supprimer un fichier de la liste
 function removeFile(index) {
     selectedFiles.splice(index, 1);
@@ -6416,34 +6666,57 @@ function displayExistingFiles(files) {
     const container = document.getElementById('existingFilesList');
     
     if (!files || files.length === 0) {
-        container.innerHTML = '<p class="text-sm text-gray-500">Aucun fichier attaché</p>';
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-folder-open text-3xl mb-2"></i>
+                <p class="text-sm">Aucun fichier attaché</p>
+            </div>
+        `;
+        updateExistingFilesCount(0);
         return;
     }
     
     container.innerHTML = files.map(file => `
-        <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-file-${getFileIcon(file.nom)} text-2xl text-blue-600"></i>
-                <div>
-                    <p class="font-medium text-sm">${file.nom}</p>
-                    <p class="text-xs text-gray-500">
-                        ${formatFileSize(file.taille)} • ${new Date(file.date_upload).toLocaleDateString('fr-FR')}
-                    </p>
+        <div class="existing-file-card">
+            <div class="flex items-start gap-3">
+                <div class="shrink-0">
+                    <i class="fas fa-file-${getFileIcon(file.nom)} text-2xl text-blue-600"></i>
                 </div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="downloadFileLocal(${file.id})" class="text-blue-600 hover:text-blue-800 p-2" title="Télécharger">
-                    <i class="fas fa-download"></i>
-                </button>
-                <button onclick="viewFileLocal(${file.id})" class="text-green-600 hover:text-green-800 p-2" title="Visualiser">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button onclick="deleteFileLocal(${file.id})" class="text-red-600 hover:text-red-800 p-2" title="Supprimer">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-sm text-gray-900 break-words">${file.nom}</p>
+                    <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
+                        <span class="flex items-center gap-1">
+                            <i class="fas fa-hdd"></i>
+                            ${formatFileSize(file.taille)}
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <i class="fas fa-calendar"></i>
+                            ${new Date(file.date_upload).toLocaleDateString('fr-FR')}
+                        </span>
+                    </div>
+                </div>
+                <div class="shrink-0 flex gap-1">
+                    <button onclick="downloadFileLocal(${file.id})" 
+                            class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition" 
+                            title="Télécharger">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button onclick="viewFileLocal(${file.id})" 
+                            class="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-green-50 transition" 
+                            title="Visualiser">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="deleteFileLocal(${file.id})" 
+                            class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition" 
+                            title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </div>
         </div>
     `).join('');
+    
+    updateExistingFilesCount(files.length);
 }
 // 4. Modifier les fonctions de gestion des fichiers
 function downloadFileLocal(fichierId) {
@@ -6530,15 +6803,21 @@ async function deleteFileLocal(fichierId) {
 function updateFileCount() {
     const count = selectedFiles.length;
     const badge = document.getElementById('fileCountBadge');
-    const selectedCount = document.getElementById('selectedCount');
+    const newFilesCount = document.getElementById('newFilesCount');
     
     if (badge) {
         badge.textContent = count;
         badge.classList.toggle('hidden', count === 0);
     }
     
-    if (selectedCount) {
-        selectedCount.textContent = count;
+    if (newFilesCount) {
+        newFilesCount.textContent = count;
+    }
+    
+    // Activer/désactiver le bouton d'upload
+    const uploadBtn = document.getElementById('uploadBtn');
+    if (uploadBtn) {
+        uploadBtn.disabled = count === 0;
     }
 }
 
@@ -6605,77 +6884,115 @@ function getBadgeNumero(numeroCR) {
 }
     </script>
  <!-- Modal Attacher Fichier -->
-<!-- Modal Attacher Fichier - Version corrigée -->
-<div id="attachmentModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay p-4">
-    <div class="bg-white rounded-xl w-full max-w-2xl mx-auto shadow-2xl flex flex-col max-h-[90vh]">
+<!-- Modal Attacher Fichier - Version Améliorée et Responsive -->
+<div id="attachmentModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] hidden modal-overlay p-2 sm:p-4">
+    <div class="bg-white rounded-xl w-full max-w-4xl mx-auto shadow-2xl flex flex-col" style="max-height: 90vh;">
         <!-- En-tête fixe -->
-        <div class="flex justify-between items-center p-6 pb-4 border-b bg-white rounded-t-xl z-10">
-            <h3 class="text-xl font-semibold text-orange-700">
-                <i class="fas fa-paperclip mr-2"></i>Attacher des Fichiers
-                <span id="fileCountBadge" class="file-count-badge hidden">0</span>
-            </h3>
-            <button onclick="closeAttachmentModal()" class="text-gray-500 hover:text-gray-800 text-2xl transition">
+        <div class="flex justify-between items-center p-4 sm:p-6 pb-3 sm:pb-4 border-b bg-gradient-to-r from-orange-50 to-orange-100 rounded-t-xl shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="bg-orange-600 text-white w-10 h-10 rounded-full flex items-center justify-center">
+                    <i class="fas fa-paperclip"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg sm:text-xl font-semibold text-orange-900">
+                        Gestion des Fichiers
+                        <span id="fileCountBadge" class="file-count-badge hidden">0</span>
+                    </h3>
+                    <p class="text-xs sm:text-sm text-orange-700">Dossier : <span id="attachmentFolder" class="font-bold"></span></p>
+                </div>
+            </div>
+            <button onclick="closeAttachmentModal()" class="text-gray-500 hover:text-gray-800 text-2xl sm:text-3xl transition shrink-0 w-8 h-8 flex items-center justify-center">
                 ×
             </button>
         </div>
 
-        <!-- Contenu scrollable -->
-        <div class="flex-1 overflow-y-auto p-6 pt-4 modal-content">
-            <!-- Information sur le dossier -->
-            <div class="mb-6 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-lg">
-                <div class="flex items-center">
-                    <i class="fas fa-info-circle text-orange-600 mr-3 text-lg"></i>
-                    <div class="flex-1">
-                        <p class="font-medium text-orange-800">Dossier : <span id="attachmentFolder" class="font-bold"></span></p>
-                        <p class="text-sm text-orange-700 mt-1">Formats acceptés: JPG, PNG, PDF, DOCX • Max 50MB</p>
-                        <p class="text-xs text-orange-600 mt-1">
-                            <i class="fas fa-lightbulb mr-1"></i>
-                            Les images sont automatiquement compressées
-                        </p>
+        <!-- Contenu avec scroll personnalisé -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 modal-content custom-scrollbar" style="min-height: 0;">
+            <!-- Onglets pour basculer entre nouveaux fichiers et fichiers existants -->
+            <div class="mb-6">
+                <div class="flex border-b border-gray-200">
+                    <button onclick="switchAttachmentTab('new')" 
+                            id="tabNewFiles"
+                            class="attachment-tab active flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors">
+                        <i class="fas fa-plus-circle mr-2"></i>
+                        <span class="hidden sm:inline">Ajouter des fichiers</span>
+                        <span class="sm:hidden">Nouveau</span>
+                        <span id="newFilesCount" class="ml-2 bg-orange-100 text-orange-800 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button onclick="switchAttachmentTab('existing')" 
+                            id="tabExistingFiles"
+                            class="attachment-tab flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors">
+                        <i class="fas fa-folder-open mr-2"></i>
+                        <span class="hidden sm:inline">Fichiers attachés</span>
+                        <span class="sm:hidden">Attachés</span>
+                        <span id="existingFilesCount" class="ml-2 bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Onglet: Nouveaux fichiers -->
+            <div id="newFilesContent" class="attachment-content">
+                <!-- Information -->
+                <div class="mb-4 p-3 sm:p-4 bg-orange-50 border-l-4 border-orange-500 rounded-lg">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-orange-600 mr-2 mt-1 shrink-0"></i>
+                        <div class="flex-1 text-sm">
+                            <p class="font-medium text-orange-800 mb-1">Formats acceptés: JPG, PNG, PDF, DOCX</p>
+                            <p class="text-orange-700">Taille max: 50MB par fichier</p>
+                            <p class="text-orange-600 mt-1 flex items-center gap-1">
+                                <i class="fas fa-magic text-xs"></i>
+                                <span class="text-xs">Compression automatique des images</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zone de drop -->
+                <div id="dropZone" 
+                     class="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center hover:border-orange-500 hover:bg-orange-50 transition-all duration-300 cursor-pointer mb-4 bg-gray-50">
+                    <i class="fas fa-cloud-upload-alt text-4xl sm:text-5xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-700 font-medium text-base sm:text-lg mb-2">Glissez vos fichiers ici</p>
+                    <p class="text-gray-600 text-xs sm:text-sm mb-3">ou cliquez pour parcourir</p>
+                    <div class="flex flex-wrap justify-center gap-2 text-xs">
+                        <span class="px-2 py-1 bg-gray-200 rounded">JPG</span>
+                        <span class="px-2 py-1 bg-gray-200 rounded">PNG</span>
+                        <span class="px-2 py-1 bg-gray-200 rounded">PDF</span>
+                        <span class="px-2 py-1 bg-gray-200 rounded">DOCX</span>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx" class="hidden">
+                </div>
+
+                <!-- Liste des nouveaux fichiers -->
+                <div>
+                    <h4 class="font-medium text-gray-700 mb-3 flex items-center text-sm sm:text-base">
+                        <i class="fas fa-list text-green-600 mr-2"></i>
+                        Fichiers sélectionnés
+                    </h4>
+                    <div id="filesList" class="files-container-improved">
+                        <div class="text-center py-8 text-gray-400">
+                            <i class="fas fa-inbox text-3xl mb-3"></i>
+                            <p class="text-sm">Aucun fichier sélectionné</p>
+                            <p class="text-xs mt-1">Glissez ou cliquez pour ajouter</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Zone de drop -->
-            <div id="dropZone" 
-                 class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 hover:bg-orange-50 transition-all duration-300 cursor-pointer mb-6 bg-gray-50">
-                <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-4"></i>
-                <p class="text-gray-700 font-medium text-lg mb-2">Glissez vos fichiers ici</p>
-                <p class="text-gray-600 text-sm mb-4">ou cliquez pour parcourir</p>
-                <div class="flex justify-center gap-2 text-xs text-gray-500">
-                    <span class="px-2 py-1 bg-gray-200 rounded">JPG</span>
-                    <span class="px-2 py-1 bg-gray-200 rounded">PNG</span>
-                    <span class="px-2 py-1 bg-gray-200 rounded">PDF</span>
-                    <span class="px-2 py-1 bg-gray-200 rounded">DOCX</span>
-                </div>
-                <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx" class="hidden">
-            </div>
-
-            <!-- Liste des nouveaux fichiers (à uploader) -->
-            <div class="mb-8">
-                <h4 class="font-medium text-gray-700 mb-4 flex items-center">
-                    <i class="fas fa-plus-circle text-green-600 mr-2"></i>
-                    Nouveaux fichiers à attacher
-                    <span id="selectedCount" class="ml-2 bg-orange-100 text-orange-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
-                </h4>
-                <div id="filesList" class="files-container border border-gray-200 rounded-lg p-4 min-h-[120px]">
-                    <div class="text-center py-8 text-gray-400">
-                        <i class="fas fa-inbox text-3xl mb-3"></i>
-                        <p class="text-sm">Aucun fichier sélectionné</p>
-                        <p class="text-xs mt-1">Glissez ou cliquez pour ajouter des fichiers</p>
+            <!-- Onglet: Fichiers existants -->
+            <div id="existingFilesContent" class="attachment-content hidden">
+                <div class="mb-4 p-3 sm:p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-blue-600 mr-2 mt-1 shrink-0"></i>
+                        <div class="flex-1 text-sm">
+                            <p class="font-medium text-blue-800">Fichiers déjà attachés à ce dossier</p>
+                            <p class="text-blue-700 text-xs mt-1">Cliquez sur les icônes pour télécharger, visualiser ou supprimer</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Fichiers déjà attachés -->
-            <div class="mb-4">
-                <h4 class="font-medium text-gray-700 mb-4 flex items-center">
-                    <i class="fas fa-folder-open text-blue-600 mr-2"></i>
-                    Fichiers déjà attachés
-                </h4>
-                <div id="existingFilesList" class="files-container border border-gray-200 rounded-lg p-4 min-h-[100px]">
-                    <div class="text-center py-6 text-gray-500">
-                        <i class="fas fa-folder-open text-2xl mb-2"></i>
+                <div id="existingFilesList" class="files-container-improved">
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-folder-open text-3xl mb-2"></i>
                         <p class="text-sm">Aucun fichier attaché</p>
                     </div>
                 </div>
@@ -6683,23 +7000,24 @@ function getBadgeNumero(numeroCR) {
         </div>
 
         <!-- Boutons fixes en bas -->
-        <div class="sticky-buttons p-6 border-t border-gray-200 bg-white rounded-b-xl">
-            <div class="flex flex-col sm:flex-row gap-3">
+        <div class="sticky-buttons p-4 sm:p-6 border-t border-gray-200 bg-white rounded-b-xl shrink-0">
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button onclick="closeAttachmentModal()" 
-                        class="flex-1 px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition font-medium flex items-center justify-center gap-2">
+                        class="order-2 sm:order-1 flex-1 px-4 py-2.5 sm:py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition font-medium flex items-center justify-center gap-2 text-sm sm:text-base">
                     <i class="fas fa-times"></i>
-                    Fermer
+                    <span>Fermer</span>
                 </button>
                 <button onclick="saveFilesToDBImproved()" 
                         id="uploadBtn" 
-                        class="flex-1 px-5 py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg transition font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg">
+                        class="order-1 sm:order-2 flex-1 px-4 py-2.5 sm:py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg transition font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed">
                     <i class="fas fa-save"></i>
-                    Enregistrer les fichiers
+                    <span class="hidden sm:inline">Enregistrer les fichiers</span>
+                    <span class="sm:hidden">Enregistrer</span>
                 </button>
             </div>
-            <p class="text-xs text-gray-500 text-center mt-3">
+            <p class="text-xs text-gray-500 text-center mt-2 sm:mt-3">
                 <i class="fas fa-shield-alt mr-1"></i>
-                Les fichiers sont stockés de manière sécurisée
+                Stockage sécurisé
             </p>
         </div>
     </div>
