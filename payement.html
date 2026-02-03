@@ -5772,46 +5772,58 @@ function closeAttachmentModal() {
     selectedFiles = [];
 }
 
-// Configuration du drag and drop
-// Remplacer la section "Configuration du drag and drop"
+// Remplacer la fonction setupDragAndDrop par cette version
 function setupDragAndDrop() {
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
     
+    // ✅ CORRECTION : Supprimer les anciens listeners avant d'en ajouter de nouveaux
+    const newDropZone = dropZone.cloneNode(true);
+    dropZone.parentNode.replaceChild(newDropZone, dropZone);
+    
+    const newFileInput = fileInput.cloneNode(true);
+    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+    
+    // Récupérer les nouveaux éléments
+    const freshDropZone = document.getElementById('dropZone');
+    const freshFileInput = document.getElementById('fileInput');
+    
     // Click pour ouvrir le sélecteur
-    dropZone.onclick = () => fileInput.click();
+    freshDropZone.onclick = () => freshFileInput.click();
     
     // Drag and drop events
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
-    
     function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
     }
     
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        freshDropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
     ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.classList.add('border-orange-500', 'bg-orange-50');
+        freshDropZone.addEventListener(eventName, () => {
+            freshDropZone.classList.add('border-orange-500', 'bg-orange-50');
         }, false);
     });
     
     ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.classList.remove('border-orange-500', 'bg-orange-50');
+        freshDropZone.addEventListener(eventName, () => {
+            freshDropZone.classList.remove('border-orange-500', 'bg-orange-50');
         }, false);
     });
     
-    dropZone.addEventListener('drop', async (e) => {
+    freshDropZone.addEventListener('drop', async (e) => {
         const dt = e.dataTransfer;
         const files = dt.files;
-        await handleFiles(files);  // Attendre la fin du traitement
+        await handleFiles(files);
     }, false);
     
-    fileInput.addEventListener('change', async (e) => {
+    freshFileInput.addEventListener('change', async (e) => {
         const files = e.target.files;
-        await handleFiles(files);  // Attendre la fin du traitement
+        await handleFiles(files);
+        // ✅ Réinitialiser l'input pour permettre de sélectionner le même fichier deux fois
+        e.target.value = '';
     }, false);
 }
 // Gestion du drop
