@@ -5814,53 +5814,78 @@ async function saveFilesToDBImproved() {
     const uploadBtn = document.getElementById('uploadBtn');
     uploadBtn.disabled = true;
     
+    // Créer la barre de progression
     createProgressBar();
 
     try {
         const totalFiles = selectedFiles.length;
         let uploadedFiles = 0;
-        let totalProgress = 0;
 
+        // Upload fichier par fichier pour un meilleur contrôle
         for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
-            const fileSize = file.size / (1024 * 1024); // Taille en MB
             
+            // Mettre à jour le texte de progression
             updateProgressText(`Upload de ${file.name}... (${i + 1}/${totalFiles})`);
             
-            // Si le fichier fait plus de 5MB, utiliser l'upload par chunks
-            if (fileSize > 5) {
-                await uploadLargeFile(file, paiement.id, (fileProgress) => {
-                    const overallProgress = ((uploadedFiles + (fileProgress / 100)) / totalFiles) * 100;
-                    updateProgressBar(overallProgress);
-                });
-            } else {
-                // Upload normal pour les petits fichiers
-                const formData = new FormData();
-                formData.append('file', file);
-
-                const response = await fetch(`${API_BASE_URL}/api/paiements/${paiement.id}/fichiers`, {
-                    method: 'POST',
-                    headers: {
-                        'X-User-ID': currentUserId
-                    },
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(`Erreur sur ${file.name}: ${error.erreur || 'Erreur inconnue'}`);
+            let fileToUpload = file;
+            
+            // ✅ COMPRESSION DES IMAGES AVANT UPLOAD
+            if (isCompressibleImage(file)) {
+                try {
+                    console.log(`🔄 Compression de ${file.name} avant upload...`);
+                    
+                    const compressedBlob = await compressImage(file, 1600, 900, 0.8);
+                    const baseName = file.name.replace(/\.(png|jpg|jpeg)$/i, '');
+                    const newFileName = `${baseName}_compressed.jpg`;
+                    fileToUpload = blobToFile(compressedBlob, newFileName);
+                    
+                    const originalSize = file.size / (1024 * 1024);
+                    const compressedSize = fileToUpload.size / (1024 * 1024);
+                    const reduction = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+                    
+                    console.log(`✅ Compression réussie: ${originalSize.toFixed(2)} MB → ${compressedSize.toFixed(2)} MB (${reduction}%)`);
+                    
+                } catch (compressionError) {
+                    console.warn('⚠️ Échec compression, utilisation fichier original:', compressionError);
+                    // Continuer avec le fichier original en cas d'erreur
                 }
             }
+            
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
 
-            uploadedFiles++;
-            totalProgress = (uploadedFiles / totalFiles) * 100;
-            updateProgressBar(totalProgress);
+            const response = await fetch(`${API_BASE_URL}/api/paiements/${paiement.id}/fichiers`, {
+                method: 'POST',
+                headers: {
+                    'X-User-ID': currentUserId
+                },
+                body: formData
+            });
+
+            if (response.ok) {
+                uploadedFiles++;
+                updateProgressBar((uploadedFiles / totalFiles) * 100);
+                
+                // Afficher info compression si appliquée
+                if (fileToUpload !== file) {
+                    const originalSize = file.size / (1024 * 1024);
+                    const compressedSize = fileToUpload.size / (1024 * 1024);
+                    showToast(`${file.name}: ${originalSize.toFixed(1)} → ${compressedSize.toFixed(1)} MB (-${((1 - compressedSize / originalSize) * 100).toFixed(1)}%)`, 'info');
+                }
+            } else {
+                const error = await response.json();
+                throw new Error(`Erreur sur ${file.name}: ${error.erreur || 'Erreur inconnue'}`);
+            }
         }
 
         showToast(`${uploadedFiles} fichier(s) enregistré(s) avec succès`, 'success');
         
+        // Réinitialiser
         selectedFiles = [];
         displaySelectedFiles();
+        
+        // Recharger la liste
         await loadExistingFilesLocal(currentAttachmentNumeroCR);
         
     } catch (error) {
@@ -5872,94 +5897,185 @@ async function saveFilesToDBImproved() {
         removeProgressBar();
     }
 }
-
 // Ajouter une validation de taille améliorée
-function handleFiles(files) {
-    const maxSize = 50 * 1024 * 1024; // Augmenter à 50MB
+// Remplacer la fonction handleFiles actuelle par cette version améliorée
+async function handleFiles(files) {
+    const maxSize = 50 * 1024 * 1024; // 50MB
     const validExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
     
-    Array.from(files).forEach(file => {
-        // Vérifier la taille
-        if (file.size > maxSize) {
-            showToast(`${file.name} est trop volumineux (max 50MB)`, 'error');
-            return;
+    // Créer un indicateur de progression pour la compression
+    const compressionIndicator = document.createElement('div');
+    compressionIndicator.id = 'compressionIndicator';
+    compressionIndicator.className = 'fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 z-50 max-w-sm';
+    compressionIndicator.innerHTML = `
+        <div class="flex items-center gap-3">
+            <i class="fas fa-compress-alt text-orange-600 text-xl animate-pulse"></i>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-800">Compression en cours...</p>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div id="compressionProgress" class="bg-orange-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="compressionStatus" class="text-xs text-gray-600 mt-1">Initialisation...</p>
+            </div>
+        </div>
+    `;
+    
+    // Vérifier s'il y a des images à compresser
+    let hasImages = false;
+    for (const file of Array.from(files)) {
+        if (isCompressibleImage(file)) {
+            hasImages = true;
+            break;
+        }
+    }
+    
+    if (hasImages) {
+        document.body.appendChild(compressionIndicator);
+    }
+    
+    let processedCount = 0;
+    const totalFiles = files.length;
+    const filesArray = Array.from(files);
+    
+    // Traiter chaque fichier séquentiellement
+    for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i];
+        
+        try {
+            // Vérifier l'extension
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (!validExtensions.includes(extension)) {
+                showToast(`${file.name} - format non supporté`, 'error');
+                continue;
+            }
+            
+            let processedFile = file;
+            
+            // Mettre à jour le statut
+            const statusEl = document.getElementById('compressionStatus');
+            if (statusEl) {
+                statusEl.textContent = `Traitement de ${file.name}... (${i + 1}/${totalFiles})`;
+            }
+            
+            // ✅ COMPRESSION POUR LES IMAGES JPG ET PNG
+            if (isCompressibleImage(file)) {
+                const originalSize = file.size / (1024 * 1024); // MB
+                
+                console.log(`🔄 Compression de ${file.name} (${originalSize.toFixed(2)} MB)...`);
+                
+                try {
+                    // Paramètres de compression adaptés à la taille
+                    let maxWidth = 1920;
+                    let maxHeight = 1080;
+                    let quality = 0.85;
+                    
+                    // Compression plus agressive pour les très grandes images
+                    if (originalSize > 10) {
+                        maxWidth = 1600;
+                        maxHeight = 900;
+                        quality = 0.75;
+                        console.log('📊 Grande image détectée - compression agressive');
+                    } else if (originalSize > 5) {
+                        maxWidth = 1920;
+                        maxHeight = 1080;
+                        quality = 0.80;
+                        console.log('📊 Image moyenne - compression normale');
+                    }
+                    
+                    // ✅ APPEL DE LA COMPRESSION
+                    const compressedBlob = await compressImage(file, maxWidth, maxHeight, quality);
+                    
+                    // Créer un nouveau nom de fichier avec extension .jpg
+                    const baseName = file.name.replace(/\.(png|jpg|jpeg)$/i, '');
+                    const newFileName = `${baseName}_compressed.jpg`;
+                    processedFile = blobToFile(compressedBlob, newFileName);
+                    
+                    const compressedSize = processedFile.size / (1024 * 1024); // MB
+                    const reduction = ((1 - processedFile.size / file.size) * 100).toFixed(1);
+                    
+                    console.log(`✅ ${file.name} compressé avec succès!`);
+                    console.log(`   Avant: ${originalSize.toFixed(2)} MB`);
+                    console.log(`   Après: ${compressedSize.toFixed(2)} MB`);
+                    console.log(`   Gain: ${reduction}%`);
+                    
+                    showToast(
+                        `${file.name}: ${originalSize.toFixed(1)} MB → ${compressedSize.toFixed(1)} MB (-${reduction}%)`,
+                        'success'
+                    );
+                    
+                } catch (error) {
+                    console.error('❌ Erreur compression:', error);
+                    showToast(`Impossible de compresser ${file.name}, fichier original conservé`, 'warning');
+                    // Utiliser le fichier original en cas d'erreur
+                    processedFile = file;
+                }
+            } else {
+                console.log(`ℹ️ ${file.name} - pas une image compressible, conservation du fichier original`);
+            }
+            
+            // Vérifier la taille finale
+            if (processedFile.size > maxSize) {
+                showToast(`${file.name} est trop volumineux même après compression (max 50MB)`, 'error');
+                continue;
+            }
+            
+            // Ajouter à la liste
+            selectedFiles.push(processedFile);
+            
+            // Mettre à jour la progression
+            processedCount++;
+            if (hasImages) {
+                const progress = (processedCount / totalFiles) * 100;
+                const progressBar = document.getElementById('compressionProgress');
+                if (progressBar) {
+                    progressBar.style.width = `${progress}%`;
+                }
+            }
+            
+        } catch (error) {
+            console.error(`❌ Erreur traitement ${file.name}:`, error);
+            showToast(`Erreur lors du traitement de ${file.name}`, 'error');
+        }
+    }
+    
+    // Supprimer l'indicateur de compression
+    if (hasImages) {
+        const statusEl = document.getElementById('compressionStatus');
+        if (statusEl) {
+            statusEl.textContent = 'Compression terminée !';
         }
         
-        // Vérifier l'extension
-        const extension = file.name.split('.').pop().toLowerCase();
-        if (!validExtensions.includes(extension)) {
-            showToast(`${file.name} - format non supporté`, 'error');
-            return;
-        }
-        
-        // Avertissement pour les fichiers > 10MB
-        const fileSize = file.size / (1024 * 1024);
-        if (fileSize > 10) {
-            showToast(`${file.name} (${fileSize.toFixed(2)}MB) - L'upload peut prendre du temps`, 'warning');
-        }
-        
-        selectedFiles.push(file);
-    });
+        setTimeout(() => {
+            const indicator = document.getElementById('compressionIndicator');
+            if (indicator) {
+                indicator.style.opacity = '0';
+                indicator.style.transform = 'translateX(100%)';
+                setTimeout(() => indicator.remove(), 300);
+            }
+        }, 1500);
+    }
     
     displaySelectedFiles();
 }
-    async function saveFilesLocally() {
-    if (selectedFiles.length === 0) {
-        showToast('Aucun fichier à enregistrer', 'warning');
-        return;
-    }
+function showCompressionStats(originalFile, compressedFile) {
+    const originalSize = originalFile.size;
+    const compressedSize = compressedFile.size;
+    const reduction = ((1 - compressedSize / originalSize) * 100).toFixed(1);
     
-    const uploadBtn = document.getElementById('uploadBtn');
-    uploadBtn.disabled = true;
-    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enregistrement...';
-    
-    try {
-        // Récupérer les fichiers existants du localStorage
-        const storageKey = `fichiers_${currentAttachmentNumeroCR}`;
-        let fichiers = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        
-        // Convertir chaque fichier en base64 et l'ajouter
-        for (const file of selectedFiles) {
-            const base64 = await convertFileToBase64(file);
-            
-            fichiers.push({
-                id: Date.now() + Math.random(), // ID unique
-                nom: file.name,
-                type: file.type,
-                taille: file.size,
-                data: base64,
-                date_upload: new Date().toISOString(),
-                numero_cr: currentAttachmentNumeroCR,
-                payment_id: currentAttachmentPaymentId
-            });
-        }
-        
-        // Sauvegarder dans le localStorage
-        localStorage.setItem(storageKey, JSON.stringify(fichiers));
-        
-        showToast(`${selectedFiles.length} fichier(s) enregistré(s) localement`, 'success');
-        
-        // Réinitialiser la sélection
-        selectedFiles = [];
-        displaySelectedFiles();
-        
-        // Recharger la liste des fichiers existants
-        loadExistingFilesLocal(currentAttachmentNumeroCR);
-        
-    } catch (error) {
-        console.error('Erreur sauvegarde locale:', error);
-        
-        if (error.name === 'QuotaExceededError') {
-            showToast('Espace de stockage insuffisant. Supprimez des anciens fichiers.', 'error');
-        } else {
-            showToast('Erreur lors de l\'enregistrement des fichiers', 'error');
-        }
-    } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer localement';
-    }
+    return `
+        <div class="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 mt-2">
+            <div class="flex items-center justify-between text-sm">
+                <div>
+                    <span class="font-medium text-green-700">Compression réussie:</span>
+                    <span class="ml-2">-${reduction}%</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-green-600">${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)}</span>
+                </div>
+            </div>
+        </div>
+    `;
 }
-
 // Convertir un fichier en base64
 function convertFileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -6304,8 +6420,10 @@ function getBadgeNumero(numeroCR) {
             <button onclick="closeAttachmentModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
                 Fermer
             </button>
-          <button onclick="saveFilesToDBImproved()" id="uploadBtn" class="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition flex items-center gap-2">
-    <i class="fas fa-save"></i> Enregistrer
+       // Dans le HTML du modal, modifier le bouton :
+<button onclick="saveFilesToDBImproved()" id="uploadBtn" class="px-5 py-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg transition flex items-center gap-2 shadow-md">
+    <i class="fas fa-file-import mr-1"></i> 
+    <span>Uploader avec compression</span>
 </button>
         </div>
     </div>
