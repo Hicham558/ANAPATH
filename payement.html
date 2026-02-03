@@ -5434,7 +5434,7 @@ async function handleFiles(files) {
                     
                     // Créer un nouveau nom de fichier avec extension .jpg
                     const baseName = file.name.replace(/\.(png|jpg|jpeg)$/i, '');
-                    const newFileName = `${baseName}_compressed.jpg`;
+                    const newFileName = `${baseName}.jpg`;
                     processedFile = blobToFile(compressedBlob, newFileName);
                     
                     const compressedSize = processedFile.size / (1024 * 1024); // MB
@@ -5837,7 +5837,7 @@ async function saveFilesToDBImproved() {
                     
                     const compressedBlob = await compressImage(file, 1600, 900, 0.8);
                     const baseName = file.name.replace(/\.(png|jpg|jpeg)$/i, '');
-                    const newFileName = `${baseName}_compressed.jpg`;
+                    const newFileName = `${baseName}.jpg`;
                     fileToUpload = blobToFile(compressedBlob, newFileName);
                     
                     const originalSize = file.size / (1024 * 1024);
@@ -5987,7 +5987,7 @@ async function handleFiles(files) {
                     
                     // Créer un nouveau nom de fichier avec extension .jpg
                     const baseName = file.name.replace(/\.(png|jpg|jpeg)$/i, '');
-                    const newFileName = `${baseName}_compressed.jpg`;
+                    const newFileName = `${baseName}.jpg`;
                     processedFile = blobToFile(compressedBlob, newFileName);
                     
                     const compressedSize = processedFile.size / (1024 * 1024); // MB
@@ -6420,7 +6420,6 @@ function getBadgeNumero(numeroCR) {
             <button onclick="closeAttachmentModal()" class="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition">
                 Fermer
             </button>
-       // Dans le HTML du modal, modifier le bouton :
 <button onclick="saveFilesToDBImproved()" id="uploadBtn" class="px-5 py-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg transition flex items-center gap-2 shadow-md">
     <i class="fas fa-file-import mr-1"></i> 
     <span>Uploader avec compression</span>
