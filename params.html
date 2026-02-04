@@ -20,82 +20,20 @@
     .card-animated:nth-child(4) { animation-delay: 0.4s; }
     .card-animated:nth-child(5) { animation-delay: 0.5s; }
     
-    .icon-button {
-      width: 80px;
-      height: 80px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-      animation: pulse 2s infinite ease-in-out;
-    }
-    
-    @media (min-width: 768px) {
-      .icon-button {
-        width: 96px;
-        height: 96px;
-      }
-    }
-    
-    .icon-button:hover {
-      transform: scale(1.1) translateY(-4px);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    }
-    
-    .kpi-card {
-      transition: all 0.4s ease;
-    }
-    
-    .kpi-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-    }
-
-    @keyframes modalFadeIn {
-      from {
-        opacity: 0;
-        transform: scale(0.9) translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-      }
-    }
-
-    #certModal > div, #qrModal > div, #backupModal > div {
-      animation: modalFadeIn 0.3s ease-out;
-    }
-
-    #certModal ol li {
-      transition: all 0.2s ease;
-    }
-
-    #certModal ol li:hover {
-      transform: translateX(5px);
-      background-color: rgba(79, 70, 229, 0.05);
-      padding-left: 8px;
-      border-radius: 8px;
-    }
-
-    #qrCodeContainer {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .backup-item {
-      transition: all 0.2s ease;
-    }
-
-    .backup-item:hover {
-      background-color: #f3f4f6;
-      transform: translateX(4px);
-    }
+    .icon-button { width: 80px; height: 80px; display: flex; justify-content: center; align-items: center; border-radius: 50%; transition: all 0.3s ease; animation: pulse 2s infinite ease-in-out; }
+    @media (min-width: 768px) { .icon-button { width: 96px; height: 96px; } }
+    .icon-button:hover { transform: scale(1.1) translateY(-4px); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); }
+    .kpi-card { transition: all 0.4s ease; }
+    .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1); }
+    @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.9) translateY(-20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    #certModal > div, #qrModal > div, #restoreModal > div { animation: modalFadeIn 0.3s ease-out; }
+    #certModal ol li { transition: all 0.2s ease; }
+    #certModal ol li:hover { transform: translateX(5px); background-color: rgba(79, 70, 229, 0.05); padding-left: 8px; border-radius: 8px; }
+    #qrCodeContainer { display: flex; justify-content: center; align-items: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+    .backup-item { transition: all 0.2s ease; }
+    .backup-item:hover { background-color: #f3f4f6; transform: translateX(4px); }
+    #dropZone { border: 2px dashed #cbd5e0; transition: all 0.3s ease; }
+    #dropZone.drag-over { border-color: #4f46e5; background-color: #eef2ff; }
   </style>
 </head>
 <body class="bg-gray-100">
@@ -109,10 +47,8 @@
         <span id="userDisplay" class="text-xs mt-1 hidden text-indigo-100"></span>
       </div>
       <div class="flex gap-2 items-center">
-        <a href="index.html" class="hover:text-indigo-200 transition flex items-center">
-          <i class="fas fa-home mr-1"></i>
-        </a>
-        <button id="logoutButton" onclick="logout()" class="bg-red-500 px-3 py-2 rounded-md hover:bg-red-600 transition">
+        <a href="index.html" class="hover:text-indigo-200 transition flex items-center"><i class="fas fa-home mr-1"></i></a>
+        <button onclick="logout()" class="bg-red-500 px-3 py-2 rounded-md hover:bg-red-600 transition">
           <i class="fas fa-sign-out-alt mr-1"></i>Déconnexion
         </button>
       </div>
@@ -126,65 +62,52 @@
         <i class="fas fa-server mr-2 text-indigo-600"></i> Configuration API
       </h3>
       <div class="space-y-4">
-        
         <div class="grid grid-cols-2 md:flex md:justify-center gap-3 md:gap-4 mb-6">
-          <button onclick="generateQrCodeFromLocalIP()" class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Générer QR code avec IP locale">
-            <i class="fas fa-qrcode mr-2 text-lg md:text-xl"></i>
-            <span class="font-medium text-sm md:text-base">QR IP Locale</span>
+          <button onclick="generateQrCodeFromLocalIP()" class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">
+            <i class="fas fa-qrcode mr-2"></i><span class="font-medium text-sm md:text-base">QR IP</span>
           </button>
-          
-          <button onclick="openApiUrlInBrowser()" class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Ouvrir l'URL dans le navigateur">
-            <i class="fas fa-external-link-alt mr-2 text-lg md:text-xl"></i>
-            <span class="font-medium text-sm md:text-base">Ouvrir URL</span>
+          <button onclick="openApiUrlInBrowser()" class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition">
+            <i class="fas fa-external-link-alt mr-2"></i><span class="font-medium text-sm md:text-base">Ouvrir</span>
           </button>
-          
-          <button onclick="scanQrCode()" class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Scanner un QR code">
-            <i class="fas fa-camera mr-2 text-lg md:text-xl"></i>
-            <span class="font-medium text-sm md:text-base">Scanner QR</span>
+          <button onclick="scanQrCode()" class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition">
+            <i class="fas fa-camera mr-2"></i><span class="font-medium text-sm md:text-base">Scanner</span>
           </button>
-          
-          <button onclick="testConnection()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg" title="Tester la connexion">
-            <i class="fas fa-plug mr-2 text-lg md:text-xl"></i>
-            <span class="font-medium text-sm md:text-base">Tester</span>
+          <button onclick="testConnection()" class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">
+            <i class="fas fa-plug mr-2"></i><span class="font-medium text-sm md:text-base">Tester</span>
           </button>
         </div>
-
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">URL de l'API</label>
-          <input id="apiBaseUrl" type="text" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="https://anapath.onrender.com">
+          <input id="apiBaseUrl" type="text" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg" placeholder="https://anapath.onrender.com">
         </div>
-        
         <div class="flex flex-wrap justify-center gap-4 md:gap-6 mt-6">
           <div class="flex flex-col items-center">
-            <button onclick="setLocalMode()" class="icon-button bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800">
+            <button onclick="setLocalMode()" class="icon-button bg-gradient-to-r from-gray-600 to-gray-700 text-white">
               <i class="fas fa-mobile text-3xl md:text-4xl"></i>
             </button>
             <span class="mt-2 text-xs md:text-sm font-medium text-gray-700">Mode Local</span>
           </div>
-          
           <div class="flex flex-col items-center">
-            <button onclick="setCloudMode()" class="icon-button bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800">
+            <button onclick="setCloudMode()" class="icon-button bg-gradient-to-r from-blue-600 to-blue-700 text-white">
               <i class="fas fa-cloud text-3xl md:text-4xl"></i>
             </button>
-            <span class="mt-2 text-xs md:text-sm font-medium text-gray-700">Supabase Cloud</span>
+            <span class="mt-2 text-xs md:text-sm font-medium text-gray-700">Cloud</span>
           </div>
-          
           <div class="flex flex-col items-center">
-            <button onclick="setServerMode()" class="icon-button bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800">
+            <button onclick="setServerMode()" class="icon-button bg-gradient-to-r from-purple-600 to-purple-700 text-white">
               <i class="fas fa-server text-3xl md:text-4xl"></i>
             </button>
-            <span class="mt-2 text-xs md:text-sm font-medium text-gray-700">Serveur Local</span>
+            <span class="mt-2 text-xs md:text-sm font-medium text-gray-700">Serveur</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ✅ NOUVELLE SECTION: Sauvegarde et Restauration -->
+    <!-- Sauvegarde et Restauration -->
     <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
       <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i class="fas fa-database mr-2 text-green-600"></i> Sauvegarde et Restauration
+        <i class="fas fa-database mr-2 text-green-600"></i> Sauvegarde / Restauration
       </h3>
-      
       <div class="space-y-4">
         <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
           <div class="flex items-start">
@@ -192,119 +115,59 @@
             <div>
               <p class="text-sm font-medium text-yellow-800">Important</p>
               <p class="text-xs text-yellow-700 mt-1">
-                Créez régulièrement des sauvegardes de votre base de données. 
-                Lors du passage du mode Cloud vers Local, vous pourrez restaurer vos données.
+                <strong>Créez une sauvegarde avant de changer d'API.</strong> Cloud → Local = besoin de restaurer vos données.
               </p>
             </div>
           </div>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button onclick="createBackup()" class="bg-green-600 text-white px-6 py-4 rounded-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg">
+          <button onclick="createBackup()" class="bg-green-600 text-white px-6 py-4 rounded-lg hover:bg-green-700 transition flex items-center justify-center">
             <i class="fas fa-download mr-3 text-xl"></i>
             <div class="text-left">
-              <div class="font-bold">Créer une sauvegarde</div>
-              <div class="text-xs opacity-90">Télécharger la BDD actuelle</div>
+              <div class="font-bold">Sauvegarder</div>
+              <div class="text-xs opacity-90">Télécharger mes données</div>
             </div>
           </button>
-
-          <button onclick="openBackupManager()" class="bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg">
-            <i class="fas fa-list mr-3 text-xl"></i>
+          <button onclick="openRestoreModal()" class="bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+            <i class="fas fa-upload mr-3 text-xl"></i>
             <div class="text-left">
-              <div class="font-bold">Gérer les sauvegardes</div>
-              <div class="text-xs opacity-90">Voir et restaurer</div>
+              <div class="font-bold">Restaurer</div>
+              <div class="text-xs opacity-90">Importer une sauvegarde</div>
             </div>
           </button>
         </div>
-
-        <div id="backupStatus" class="hidden mt-4">
+        <div id="backupStatus" class="hidden">
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div class="flex items-center">
               <i class="fas fa-spinner fa-spin text-blue-600 mr-3"></i>
-              <span class="text-sm text-blue-800" id="backupStatusText">Création de la sauvegarde...</span>
+              <span class="text-sm text-blue-800" id="backupStatusText">Opération en cours...</span>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Informations Laboratoire -->
+    <!-- Reste du HTML inchangé... -->
     <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
       <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
         <i class="fas fa-hospital mr-2 text-indigo-600"></i> Informations Laboratoire
       </h3>
       <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Nom du Laboratoire</label>
-          <input id="labName" type="text" value="ANAPATH ELYOUSR" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Médecin Responsable</label>
-          <input id="labDoctor" type="text" value="Dr. BENFOULA Amel épouse ERROUANE" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
-          <input id="labAddress" type="text" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-        </div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-2">Nom du Laboratoire</label>
+          <input id="labName" type="text" value="ANAPATH ELYOUSR" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-2">Médecin Responsable</label>
+          <input id="labDoctor" type="text" value="Dr. BENFOULA Amel épouse ERROUANE" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
+          <input id="labAddress" type="text" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"></div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
-            <input id="labPhone" type="tel" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input id="labEmail" type="email" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+            <input id="labPhone" type="tel" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <input id="labEmail" type="email" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"></div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Logo du Laboratoire</label>
+        <div><label class="block text-sm font-medium text-gray-700 mb-2">Logo</label>
           <input id="labLogo" type="file" accept="image/*" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg">
-          <img id="logoPreview" class="mt-3 max-w-[200px] rounded-lg shadow-md hidden" alt="Logo">
-        </div>
-      </div>
-    </div>
-
-    <!-- Préférences d'Impression -->
-    <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
-      <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i class="fas fa-print mr-2 text-indigo-600"></i> Préférences d'Impression
-      </h3>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Format Papier</label>
-          <select id="printFormat" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-            <option value="A4">A4</option>
-            <option value="Letter">Letter</option>
-          </select>
-        </div>
-        <div class="flex items-center">
-          <input id="printLogo" type="checkbox" checked class="w-5 h-5 text-indigo-600 border-gray-300 rounded">
-          <label for="printLogo" class="ml-3 text-sm font-medium text-gray-700">Inclure le logo</label>
-        </div>
-        <div class="flex items-center">
-          <input id="printWatermark" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded">
-          <label for="printWatermark" class="ml-3 text-sm font-medium text-gray-700">Filigrane "CONFIDENTIEL"</label>
-        </div>
-      </div>
-    </div>
-
-    <!-- Classifications -->
-    <div class="kpi-card bg-white shadow-xl rounded-2xl p-6 mb-6 card-animated">
-      <h3 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i class="fas fa-list-ul mr-2 text-indigo-600"></i> Classifications Pré-définies
-      </h3>
-      <div class="space-y-3">
-        <div class="p-3 bg-gray-50 rounded-lg">
-          <h4 class="font-medium mb-2">Classification BETHESDA 2017</h4>
-          <div class="text-sm text-gray-600">
-            <p>• Catégorie I - Non diagnostique</p>
-            <p>• Catégorie II - Bénin</p>
-            <p>• Catégorie III - Atypie de signification indéterminée</p>
-            <p>• Catégorie IV - Néoplasme folliculaire</p>
-            <p>• Catégorie V - Suspect de malignité</p>
-            <p>• Catégorie VI - Malin</p>
-          </div>
-        </div>
+          <img id="logoPreview" class="mt-3 max-w-[200px] rounded-lg shadow-md hidden" alt="Logo"></div>
       </div>
     </div>
 
@@ -318,128 +181,57 @@
     </div>
   </main>
 
-  <!-- Toast notification -->
-  <div id="toast" class="fixed bottom-4 right-4 hidden">
+  <div id="toast" class="fixed bottom-4 right-4 hidden z-50">
     <div class="flex items-center px-6 py-3 rounded-md shadow-lg">
-      <i id="toastIcon" class="mr-2"></i>
-      <span id="toastMessage"></span>
+      <i id="toastIcon" class="mr-2"></i><span id="toastMessage"></span>
     </div>
   </div>
 
-  <!-- Modal QR Code -->
-  <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl p-8 max-w-lg mx-4 shadow-2xl">
-      <div class="text-center">
-        <div class="flex justify-between items-center mb-6">
-          <h3 class="text-2xl font-bold text-gray-800">QR Code de Connexion</h3>
-          <button onclick="closeQrModal()" class="text-gray-500 hover:text-gray-700 transition">
-            <i class="fas fa-times text-2xl"></i>
-          </button>
-        </div>
-        
-        <div id="qrCodeContainer" class="mb-6"></div>
-        
-        <div class="bg-indigo-50 p-4 rounded-lg mb-4">
-          <p class="text-sm font-medium text-indigo-900 mb-2">URL du serveur :</p>
-          <p id="qrUrlDisplay" class="text-lg font-mono text-indigo-700 break-all"></p>
-        </div>
-        
-        <div class="text-left text-sm text-gray-600 bg-gray-50 p-4 rounded-lg space-y-2">
-          <p class="font-semibold text-gray-800 mb-3">📱 Pour vous connecter depuis votre mobile :</p>
-          <ol class="space-y-2 ml-4">
-            <li class="flex items-start">
-              <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">1</span>
-              <span>Ouvrez l'application ANAPATH sur votre mobile</span>
-            </li>
-            <li class="flex items-start">
-              <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">2</span>
-              <span>Scannez ce QR code avec la caméra de votre téléphone</span>
-            </li>
-            <li class="flex items-start">
-              <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">3</span>
-              <span>Acceptez le certificat si demandé (cliquez sur "Avancé" puis "Continuer")</span>
-            </li>
-          </ol>
-        </div>
-        
-        <div class="flex gap-3 mt-6">
-          <button onclick="downloadQrCode()" class="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition shadow-md hover:shadow-lg">
-            <i class="fas fa-download mr-2"></i>Télécharger
-          </button>
-          <button onclick="closeQrModal()" class="flex-1 bg-gray-500 text-white px-4 py-3 rounded-lg hover:bg-gray-600 transition shadow-md hover:shadow-lg">
-            <i class="fas fa-times mr-2"></i>Fermer
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal pour accepter le certificat -->
-  <div id="certModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
-      <div class="text-center">
-        <i class="fas fa-shield-alt text-6xl text-yellow-500 mb-4 animate-pulse"></i>
-        <h3 class="text-2xl font-bold mb-4 text-gray-800">Accepter le certificat</h3>
-        <p class="text-gray-600 mb-4">Pour connecter votre mobile au serveur local :</p>
-        <ol class="text-left text-sm text-gray-700 space-y-3 mb-6 bg-gray-50 p-4 rounded-lg">
-          <li class="flex items-start">
-            <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">1</span>
-            <span>Cliquez sur <strong>"Ouvrir"</strong> ci-dessous</span>
-          </li>
-          <li class="flex items-start">
-            <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">2</span>
-            <span>Dans la nouvelle page, cliquez sur <strong class="text-indigo-600">"Avancé"</strong> ou <strong class="text-indigo-600">"Advanced"</strong></span>
-          </li>
-          <li class="flex items-start">
-            <span class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">3</span>
-            <span>Puis sur <strong class="text-indigo-600">"Continuer vers le site"</strong> ou <strong class="text-indigo-600">"Proceed to..."</strong></span>
-          </li>
-          <li class="flex items-start">
-            <span class="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 font-bold">✓</span>
-            <span>Fermez l'onglet et utilisez l'application normalement</span>
-          </li>
-        </ol>
-        <div class="flex gap-3">
-          <button onclick="closeModal()" class="flex-1 bg-gray-500 text-white px-4 py-3 rounded-lg hover:bg-gray-600 transition-all duration-300 shadow-md hover:shadow-lg">
-            <i class="fas fa-times mr-2"></i>Annuler
-          </button>
-          <button onclick="confirmOpenUrl()" class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg">
-            <i class="fas fa-external-link-alt mr-2"></i>Ouvrir
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ✅ NOUVEAU: Modal Gestionnaire de Sauvegardes -->
-  <div id="backupModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+  <!-- Modal Restauration -->
+  <div id="restoreModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl p-8 max-w-xl w-full mx-4 shadow-2xl">
       <div class="flex justify-between items-center mb-6">
-        <h3 class="text-2xl font-bold text-gray-800">
-          <i class="fas fa-database mr-2 text-green-600"></i>
-          Gestionnaire de Sauvegardes
-        </h3>
-        <button onclick="closeBackupModal()" class="text-gray-500 hover:text-gray-700 transition">
-          <i class="fas fa-times text-2xl"></i>
-        </button>
+        <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-upload mr-2 text-blue-600"></i>Restaurer</h3>
+        <button onclick="closeRestoreModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-2xl"></i></button>
       </div>
-
-      <div class="mb-4">
-        <button onclick="createBackup()" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition">
-          <i class="fas fa-plus mr-2"></i>Créer une nouvelle sauvegarde
-        </button>
-      </div>
-
-      <div id="backupsList" class="space-y-3">
-        <div class="text-center text-gray-500 py-8">
-          <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
-          <p>Chargement des sauvegardes...</p>
+      <div class="space-y-4">
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+          <div class="flex items-start">
+            <i class="fas fa-exclamation-triangle text-red-600 mt-1 mr-3"></i>
+            <div>
+              <p class="text-sm font-medium text-red-800">⚠️ Attention</p>
+              <p class="text-xs text-red-700 mt-1">Cette action va <strong>remplacer toutes vos données actuelles</strong>. Irréversible.</p>
+            </div>
+          </div>
+        </div>
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-indigo-500 transition">
+          <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-4"></i>
+          <p class="text-gray-600 mb-2">Glissez votre fichier .sql ici</p>
+          <p class="text-sm text-gray-500 mb-4">ou</p>
+          <button onclick="document.getElementById('sqlFileInput').click()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+            <i class="fas fa-folder-open mr-2"></i>Parcourir
+          </button>
+          <input type="file" id="sqlFileInput" accept=".sql" class="hidden">
+        </div>
+        <div id="selectedFileInfo" class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <i class="fas fa-file-code text-green-600 text-2xl mr-3"></i>
+              <div>
+                <p class="font-semibold text-green-800" id="selectedFileName"></p>
+                <p class="text-sm text-green-600" id="selectedFileSize"></p>
+              </div>
+            </div>
+            <button onclick="clearSelectedFile()" class="text-red-600 hover:text-red-800"><i class="fas fa-times"></i></button>
+          </div>
         </div>
       </div>
-
-      <div class="mt-6 flex justify-end">
-        <button onclick="closeBackupModal()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition">
-          <i class="fas fa-times mr-2"></i>Fermer
+      <div class="mt-6 flex gap-3">
+        <button onclick="closeRestoreModal()" class="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition">
+          <i class="fas fa-times mr-2"></i>Annuler
+        </button>
+        <button onclick="executeRestore()" id="restoreBtn" disabled class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed">
+          <i class="fas fa-upload mr-2"></i>Restaurer
         </button>
       </div>
     </div>
@@ -447,373 +239,108 @@
 
   <script>
     const DEFAULT_API = 'https://anapath.onrender.com';
-    let pendingUrl = null;
-    let stream = null;
-    let currentQrCode = null;
+    let selectedSqlFile = null;
 
-    // ================================================
-    // FONCTIONS BACKUP/RESTORE
-    // ================================================
-    
     async function createBackup() {
       const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
       const userId = localStorage.getItem('userId');
-      
-      if (!userId) {
-        showToast('Utilisateur non connecté', true);
-        return;
-      }
+      if (!userId) { showToast('Non connecté', true); return; }
 
-      // Afficher le statut
       const statusDiv = document.getElementById('backupStatus');
       const statusText = document.getElementById('backupStatusText');
       statusDiv.classList.remove('hidden');
-      statusText.textContent = 'Création de la sauvegarde en cours...';
+      statusText.textContent = 'Création...';
 
       try {
         const response = await fetch(`${apiUrl}/api/database/backup`, {
           method: 'POST',
-          headers: {
-            'X-User-ID': userId,
-            'Content-Type': 'application/json'
-          }
+          headers: { 'X-User-ID': userId, 'Content-Type': 'application/json' }
         });
-
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Erreur ${response.status}`);
         const data = await response.json();
-
-        // Décoder le base64 et créer le fichier
-        const sqlContent = atob(data.sql_base64);
-        const blob = new Blob([sqlContent], { type: 'application/sql' });
+        const blob = new Blob([atob(data.sql_base64)], { type: 'application/sql' });
         const url = URL.createObjectURL(blob);
-        
-        // Télécharger automatiquement
         const a = document.createElement('a');
-        a.href = url;
-        a.download = data.filename;
-        a.click();
+        a.href = url; a.download = data.filename; a.click();
         URL.revokeObjectURL(url);
-
-        statusText.textContent = `✅ Sauvegarde créée: ${data.filename} (${(data.size / 1024 / 1024).toFixed(2)} MB)`;
-        showToast(`Sauvegarde créée et téléchargée: ${data.filename}`);
-
-        // Cacher le statut après 3 secondes
-        setTimeout(() => {
-          statusDiv.classList.add('hidden');
-        }, 3000);
-
-      } catch (error) {
-        console.error('Erreur backup:', error);
-        statusText.textContent = '❌ Erreur lors de la création de la sauvegarde';
-        showToast('Erreur lors de la création de la sauvegarde', true);
-        
-        setTimeout(() => {
-          statusDiv.classList.add('hidden');
-        }, 3000);
-      }
-    }
-
-    async function openBackupManager() {
-      document.getElementById('backupModal').classList.remove('hidden');
-      await loadBackupsList();
-    }
-
-    function closeBackupModal() {
-      document.getElementById('backupModal').classList.add('hidden');
-    }
-
-    async function loadBackupsList() {
-      const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
-      const userId = localStorage.getItem('userId');
-      
-      const listContainer = document.getElementById('backupsList');
-      listContainer.innerHTML = '<div class="text-center text-gray-500 py-8"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p>Chargement...</p></div>';
-
-      try {
-        const response = await fetch(`${apiUrl}/api/database/backups`, {
-          headers: {
-            'X-User-ID': userId
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}`);
-        }
-
-        const backups = await response.json();
-
-        if (backups.length === 0) {
-          listContainer.innerHTML = `
-            <div class="text-center text-gray-500 py-8">
-              <i class="fas fa-inbox text-4xl mb-3"></i>
-              <p>Aucune sauvegarde disponible</p>
-              <p class="text-sm mt-2">Créez votre première sauvegarde pour sécuriser vos données</p>
-            </div>
-          `;
-          return;
-        }
-
-        listContainer.innerHTML = backups.map(backup => `
-          <div class="backup-item border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-            <div class="flex-1">
-              <div class="flex items-center">
-                <i class="fas fa-database text-green-600 mr-3 text-xl"></i>
-                <div>
-                  <h4 class="font-semibold text-gray-800">${backup.filename}</h4>
-                  <div class="text-sm text-gray-600 mt-1">
-                    <span class="mr-4">
-                      <i class="fas fa-calendar mr-1"></i>
-                      ${new Date(backup.created_at).toLocaleString('fr-FR')}
-                    </span>
-                    <span>
-                      <i class="fas fa-hdd mr-1"></i>
-                      ${backup.size_mb} MB
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="downloadBackup(${backup.id})" 
-                      class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 transition"
-                      title="Télécharger">
-                <i class="fas fa-download"></i>
-              </button>
-              <button onclick="restoreBackup(${backup.id}, '${backup.filename}')" 
-                      class="bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 transition"
-                      title="Restaurer">
-                <i class="fas fa-undo"></i>
-              </button>
-              <button onclick="deleteBackup(${backup.id})" 
-                      class="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition"
-                      title="Supprimer">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
-          </div>
-        `).join('');
-
-      } catch (error) {
-        console.error('Erreur chargement backups:', error);
-        listContainer.innerHTML = `
-          <div class="text-center text-red-500 py-8">
-            <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
-            <p>Erreur lors du chargement des sauvegardes</p>
-          </div>
-        `;
-      }
-    }
-
-    async function downloadBackup(backupId) {
-      const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
-      const userId = localStorage.getItem('userId');
-
-      try {
-        const response = await fetch(`${apiUrl}/api/database/backups/${backupId}/download`, {
-          headers: {
-            'X-User-ID': userId
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        
-        const filename = response.headers.get('Content-Disposition')
-          ?.split('filename=')[1]
-          ?.replace(/"/g, '') || `backup_${backupId}.sql`;
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-
+        statusText.textContent = `✅ ${data.filename} (${(data.size / 1024).toFixed(1)} KB)`;
         showToast('Sauvegarde téléchargée');
-
+        setTimeout(() => statusDiv.classList.add('hidden'), 3000);
       } catch (error) {
-        console.error('Erreur téléchargement:', error);
-        showToast('Erreur lors du téléchargement', true);
+        statusText.textContent = '❌ Erreur';
+        showToast(`Erreur: ${error.message}`, true);
+        setTimeout(() => statusDiv.classList.add('hidden'), 3000);
       }
     }
 
-    async function restoreBackup(backupId, filename) {
-      if (!confirm(`⚠️ ATTENTION !\n\nVoulez-vous vraiment restaurer la sauvegarde "${filename}" ?\n\nCette action va REMPLACER toutes vos données actuelles par celles de cette sauvegarde.\n\nCette opération est IRRÉVERSIBLE.`)) {
-        return;
-      }
+    function openRestoreModal() {
+      document.getElementById('restoreModal').classList.remove('hidden');
+      setupDropZone();
+    }
+
+    function closeRestoreModal() {
+      document.getElementById('restoreModal').classList.add('hidden');
+      clearSelectedFile();
+    }
+
+    function setupDropZone() {
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('sqlFileInput');
+      dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+      dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
+      dropZone.ondrop = (e) => {
+        e.preventDefault(); dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]?.name.endsWith('.sql')) handleFileSelect(e.dataTransfer.files[0]);
+        else showToast('Fichier .sql requis', true);
+      };
+      fileInput.onchange = (e) => { if (e.target.files[0]) handleFileSelect(e.target.files[0]); };
+    }
+
+    function handleFileSelect(file) {
+      selectedSqlFile = file;
+      document.getElementById('selectedFileName').textContent = file.name;
+      document.getElementById('selectedFileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+      document.getElementById('selectedFileInfo').classList.remove('hidden');
+      document.getElementById('restoreBtn').disabled = false;
+    }
+
+    function clearSelectedFile() {
+      selectedSqlFile = null;
+      document.getElementById('selectedFileInfo').classList.add('hidden');
+      document.getElementById('restoreBtn').disabled = true;
+      document.getElementById('sqlFileInput').value = '';
+    }
+
+    async function executeRestore() {
+      if (!selectedSqlFile) { showToast('Aucun fichier', true); return; }
+      if (!confirm('⚠️ Remplacer TOUTES vos données par cette sauvegarde ?\n\nIRRÉVERSIBLE.')) return;
 
       const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
       const userId = localStorage.getItem('userId');
-
-      showToast('Restauration en cours...', false);
+      const statusDiv = document.getElementById('backupStatus');
+      const statusText = document.getElementById('backupStatusText');
+      statusDiv.classList.remove('hidden');
+      statusText.textContent = 'Restauration...';
+      closeRestoreModal();
 
       try {
-        const response = await fetch(`${apiUrl}/api/database/restore/${backupId}`, {
+        const sqlContent = await selectedSqlFile.text();
+        const response = await fetch(`${apiUrl}/api/database/restore`, {
           method: 'POST',
-          headers: {
-            'X-User-ID': userId,
-            'Content-Type': 'application/json'
-          }
+          headers: { 'X-User-ID': userId, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql_content: btoa(sqlContent) })
         });
-
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        showToast('✅ Base de données restaurée avec succès');
-        
-        // Fermer le modal après 2 secondes
+        if (!response.ok) throw new Error((await response.json()).erreur);
+        statusText.textContent = '✅ Restauration réussie';
+        showToast('✅ Base restaurée');
         setTimeout(() => {
-          closeBackupModal();
-          // Proposer de recharger la page
-          if (confirm('Base de données restaurée.\n\nVoulez-vous recharger la page pour voir les modifications ?')) {
-            window.location.reload();
-          }
+          statusDiv.classList.add('hidden');
+          if (confirm('Recharger la page ?')) window.location.reload();
         }, 2000);
-
       } catch (error) {
-        console.error('Erreur restauration:', error);
-        showToast('❌ Erreur lors de la restauration', true);
-      }
-    }
-
-    async function deleteBackup(backupId) {
-      if (!confirm('Voulez-vous vraiment supprimer cette sauvegarde ?')) {
-        return;
-      }
-
-      const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
-      const userId = localStorage.getItem('userId');
-
-      try {
-        const response = await fetch(`${apiUrl}/api/database/backups/${backupId}`, {
-          method: 'DELETE',
-          headers: {
-            'X-User-ID': userId
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}`);
-        }
-
-        showToast('Sauvegarde supprimée');
-        await loadBackupsList();
-
-      } catch (error) {
-        console.error('Erreur suppression:', error);
-        showToast('Erreur lors de la suppression', true);
-      }
-    }
-
-    // ================================================
-    // FONCTIONS EXISTANTES (QR Code, etc.)
-    // ================================================
-    
-    async function getLocalIPAddress() {
-      return new Promise((resolve, reject) => {
-        const pc = new RTCPeerConnection({
-          iceServers: []
-        });
-        
-        pc.createDataChannel('');
-        
-        pc.createOffer().then(offer => pc.setLocalDescription(offer));
-        
-        pc.onicecandidate = (ice) => {
-          if (!ice || !ice.candidate || !ice.candidate.candidate) {
-            return;
-          }
-          
-          const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
-          const match = ipRegex.exec(ice.candidate.candidate);
-          
-          if (match) {
-            const ip = match[1];
-            if (!ip.startsWith('127.')) {
-              pc.close();
-              resolve(ip);
-            }
-          }
-        };
-        
-        setTimeout(() => {
-          pc.close();
-          reject(new Error('Impossible de détecter l\'IP locale'));
-        }, 3000);
-      });
-    }
-
-    async function generateQrCodeFromLocalIP() {
-      showToast('🔍 Détection de l\'IP locale...', false);
-      
-      try {
-        const localIP = await getLocalIPAddress();
-        const port = prompt('Port du serveur local ?', '5000');
-        
-        if (!port) {
-          showToast('Port requis pour générer le QR code', true);
-          return;
-        }
-        
-        const localUrl = `https://${localIP}:${port}`;
-        
-        document.getElementById('apiBaseUrl').value = localUrl;
-        saveSettings();
-        
-        generateQrCodeWithUrl(localUrl);
-        
-        showToast(`✅ IP détectée: ${localIP}`, false);
-        
-      } catch (error) {
-        console.error('Erreur détection IP:', error);
-        showToast('❌ Impossible de détecter l\'IP locale. Utilisez le mode manuel.', true);
-        
-        const manualIP = prompt('Entrez l\'IP locale manuellement (ex: 192.168.1.135)');
-        if (manualIP) {
-          const port = prompt('Port du serveur ?', '5000');
-          if (port) {
-            const localUrl = `https://${manualIP}:${port}`;
-            document.getElementById('apiBaseUrl').value = localUrl;
-            saveSettings();
-            generateQrCodeWithUrl(localUrl);
-          }
-        }
-      }
-    }
-
-    function generateQrCodeWithUrl(url) {
-      const container = document.getElementById('qrCodeContainer');
-      container.innerHTML = '';
-      
-      document.getElementById('qrModal').classList.remove('hidden');
-      document.getElementById('qrUrlDisplay').textContent = url;
-      
-      try {
-        currentQrCode = new QRCode(container, {
-          text: url,
-          width: 256,
-          height: 256,
-          colorDark: "#4F46E5",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
-        
-        showToast('QR Code généré avec succès');
-        console.log('QR Code généré pour:', url);
-        
-      } catch (error) {
-        showToast('Erreur lors de la génération du QR code', true);
-        console.error('Erreur QR code:', error);
-        closeQrModal();
+        statusText.textContent = `❌ ${error.message}`;
+        showToast(`Erreur: ${error.message}`, true);
+        setTimeout(() => statusDiv.classList.add('hidden'), 5000);
       }
     }
 
@@ -821,235 +348,24 @@
       const toast = document.getElementById('toast');
       const icon = document.getElementById('toastIcon');
       const msg = document.getElementById('toastMessage');
-      
       const container = toast.querySelector('div');
       container.className = `flex items-center px-6 py-3 rounded-md shadow-lg ${isError ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`;
       icon.className = `fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2`;
       msg.textContent = message;
-      
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 3000);
     }
 
-    function downloadQrCode() {
-      const container = document.getElementById('qrCodeContainer');
-      const canvas = container.querySelector('canvas');
-      
-      if (canvas) {
-        const url = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = 'anapath-qrcode.png';
-        link.href = url;
-        link.click();
-        showToast('QR Code téléchargé');
-      } else {
-        showToast('Erreur: QR Code non trouvé', true);
-      }
-    }
-
-    function closeQrModal() {
-      document.getElementById('qrModal').classList.add('hidden');
-      const container = document.getElementById('qrCodeContainer');
-      container.innerHTML = '';
-      currentQrCode = null;
-    }
-
-    function openApiUrlInBrowser() {
-      const apiBaseUrlInput = document.getElementById('apiBaseUrl');
-      const apiUrl = apiBaseUrlInput.value.trim();
-      
-      if (!apiUrl) {
-        showToast('Veuillez saisir une URL valide', true);
-        return;
-      }
-      
-      try {
-        const url = new URL(apiUrl);
-        
-        if (url.protocol === 'https:' && 
-            (url.hostname.startsWith('192.168.') || 
-             url.hostname.startsWith('10.') || 
-             url.hostname.startsWith('172.') ||
-             url.hostname === 'localhost' ||
-             url.port === '5000')) {
-          pendingUrl = url.toString();
-          document.getElementById('certModal').classList.remove('hidden');
-        } else {
-          window.open(url.toString(), '_blank', 'noopener,noreferrer');
-          showToast(`Ouverture de ${apiUrl}`);
-        }
-        
-        console.log('URL préparée:', apiUrl);
-        
-      } catch (error) {
-        showToast('URL invalide. Format attendu: https://192.168.1.135:5000', true);
-        console.error('URL invalide:', apiUrl, error);
-      }
-    }
-
-    function closeModal() {
-      document.getElementById('certModal').classList.add('hidden');
-      pendingUrl = null;
-    }
-
-    function confirmOpenUrl() {
-      if (pendingUrl) {
-        window.open(pendingUrl, '_blank', 'noopener,noreferrer');
-        showToast('✅ Suivez les 4 étapes dans le nouvel onglet');
-        
-        setTimeout(() => {
-          showToast('💡 Après avoir accepté le certificat, fermez l\'onglet', false);
-        }, 3000);
-        
-        closeModal();
-      }
-    }
-
-    async function scanQrCode() {
-      if (!('BarcodeDetector' in window)) {
-        showToast('Le scan de QR code n\'est pas pris en charge par ce navigateur', true);
-        return;
-      }
-      
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        });
-        
-        const cameraModal = document.createElement('div');
-        cameraModal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
-        cameraModal.innerHTML = `
-          <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="text-xl font-bold">Scanner un QR code</h3>
-              <button onclick="stopCamera()" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times text-2xl"></i>
-              </button>
-            </div>
-            <div class="relative">
-              <video id="cameraView" class="w-full h-64 object-cover rounded-lg bg-black"></video>
-              <div class="absolute inset-0 border-2 border-green-500 rounded-lg pointer-events-none"></div>
-            </div>
-            <p class="text-center text-sm text-gray-600 mt-4">Pointez la caméra vers un QR code contenant une URL</p>
-          </div>
-        `;
-        
-        document.body.appendChild(cameraModal);
-        
-        const video = document.getElementById('cameraView');
-        video.srcObject = stream;
-        video.play();
-        
-        const barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
-        
-        const scanInterval = setInterval(async () => {
-          try {
-            const barcodes = await barcodeDetector.detect(video);
-            if (barcodes.length > 0) {
-              const qrCodeValue = barcodes[0].rawValue;
-              
-              try {
-                const url = new URL(qrCodeValue);
-                document.getElementById('apiBaseUrl').value = qrCodeValue;
-                saveSettings();
-                showToast(`QR code scanné: ${qrCodeValue}`);
-                
-                clearInterval(scanInterval);
-                stopCamera();
-                cameraModal.remove();
-                
-                if (confirm(`URL détectée: ${qrCodeValue}\nVoulez-vous ouvrir cette URL dans un nouvel onglet ?`)) {
-                  pendingUrl = qrCodeValue;
-                  document.getElementById('certModal').classList.remove('hidden');
-                }
-              } catch (e) {
-                showToast('Le QR code ne contient pas une URL valide', true);
-              }
-            }
-          } catch (error) {
-            console.error('Erreur de scan:', error);
-          }
-        }, 1000);
-        
-        setTimeout(() => {
-          if (stream) {
-            clearInterval(scanInterval);
-            stopCamera();
-            cameraModal.remove();
-            showToast('Temps de scan écoulé', true);
-          }
-        }, 30000);
-        
-      } catch (error) {
-        showToast(`Erreur d'accès à la caméra: ${error.message}`, true);
-        console.error('Erreur caméra:', error);
-      }
-    }
-
-    function stopCamera() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-    }
-
-    document.addEventListener('click', function(event) {
-      const certModal = document.getElementById('certModal');
-      const qrModal = document.getElementById('qrModal');
-      const backupModal = document.getElementById('backupModal');
-      
-      if (event.target === certModal) {
-        closeModal();
-      }
-      if (event.target === qrModal) {
-        closeQrModal();
-      }
-      if (event.target === backupModal) {
-        closeBackupModal();
-      }
-    });
-
-    function setLocalMode() {
-      document.getElementById('apiBaseUrl').value = '/api';
-      localStorage.setItem('apiBaseUrl', '/api');
-      showToast('Mode local activé');
-    }
-
-    function setCloudMode() {
-      document.getElementById('apiBaseUrl').value = DEFAULT_API;
-      localStorage.setItem('apiBaseUrl', DEFAULT_API);
-      showToast('Mode cloud activé');
-    }
-
-    function setServerMode() {
-      const serverUrl = prompt('URL serveur local (ex: https://192.168.1.10:5000)');
-      if (serverUrl) {
-        document.getElementById('apiBaseUrl').value = serverUrl;
-        localStorage.setItem('apiBaseUrl', serverUrl);
-        showToast('Serveur local configuré');
-        
-        if (confirm('Voulez-vous générer un QR code pour cette URL ?')) {
-          generateQrCodeWithUrl(serverUrl);
-        }
-      }
-    }
-
+    function setLocalMode() { document.getElementById('apiBaseUrl').value = '/api'; localStorage.setItem('apiBaseUrl', '/api'); showToast('Mode local'); }
+    function setCloudMode() { document.getElementById('apiBaseUrl').value = DEFAULT_API; localStorage.setItem('apiBaseUrl', DEFAULT_API); showToast('Mode cloud'); }
+    function setServerMode() { const url = prompt('URL serveur (ex: https://192.168.1.10:5000)'); if (url) { document.getElementById('apiBaseUrl').value = url; localStorage.setItem('apiBaseUrl', url); showToast('Serveur configuré'); } }
+    
     async function testConnection() {
       const url = document.getElementById('apiBaseUrl').value;
       try {
         const response = await fetch(`${url}/`, { method: 'GET' });
-        if (response.ok) {
-          showToast('✅ Connexion réussie');
-        } else {
-          showToast('❌ Erreur de connexion', true);
-        }
-      } catch (error) {
-        showToast('❌ Impossible de se connecter', true);
-      }
+        showToast(response.ok ? '✅ Connexion OK' : '❌ Erreur', !response.ok);
+      } catch { showToast('❌ Connexion impossible', true); }
     }
 
     function saveSettings() {
@@ -1059,77 +375,36 @@
         labDoctor: document.getElementById('labDoctor').value,
         labAddress: document.getElementById('labAddress').value,
         labPhone: document.getElementById('labPhone').value,
-        labEmail: document.getElementById('labEmail').value,
-        printFormat: document.getElementById('printFormat').value,
-        printLogo: document.getElementById('printLogo').checked,
-        printWatermark: document.getElementById('printWatermark').checked
+        labEmail: document.getElementById('labEmail').value
       };
-      
       localStorage.setItem('anapathSettings', JSON.stringify(settings));
       localStorage.setItem('apiBaseUrl', settings.apiBaseUrl);
-      showToast('Paramètres sauvegardés');
+      showToast('Sauvegardé');
     }
 
     function loadSettings() {
       const settings = JSON.parse(localStorage.getItem('anapathSettings') || '{}');
-      
       document.getElementById('apiBaseUrl').value = settings.apiBaseUrl || DEFAULT_API;
       document.getElementById('labName').value = settings.labName || 'ANAPATH ELYOUSR';
       document.getElementById('labDoctor').value = settings.labDoctor || 'Dr. BENFOULA Amel épouse ERROUANE';
       document.getElementById('labAddress').value = settings.labAddress || '';
       document.getElementById('labPhone').value = settings.labPhone || '';
       document.getElementById('labEmail').value = settings.labEmail || '';
-      document.getElementById('printFormat').value = settings.printFormat || 'A4';
-      document.getElementById('printLogo').checked = settings.printLogo !== false;
-      document.getElementById('printWatermark').checked = settings.printWatermark || false;
     }
 
-    function resetSettings() {
-      if (confirm('Réinitialiser tous les paramètres ?')) {
-        localStorage.removeItem('anapathSettings');
-        loadSettings();
-        showToast('Paramètres réinitialisés');
-      }
-    }
-
-    function logout() {
-      localStorage.removeItem('userId');
-      localStorage.removeItem('userEmail');
-      window.location.href = 'index.html';
-    }
-
-    document.getElementById('labLogo')?.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const preview = document.getElementById('logoPreview');
-          preview.src = reader.result;
-          preview.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    document.querySelectorAll('input, select').forEach(el => {
-      el.addEventListener('change', () => {
-        setTimeout(saveSettings, 300);
-      });
-    });
+    function resetSettings() { if (confirm('Réinitialiser ?')) { localStorage.removeItem('anapathSettings'); loadSettings(); showToast('Réinitialisé'); } }
+    function logout() { localStorage.removeItem('userId'); localStorage.removeItem('userEmail'); window.location.href = 'index.html'; }
 
     document.addEventListener('DOMContentLoaded', () => {
       const userId = localStorage.getItem('userId');
       const userEmail = localStorage.getItem('userEmail');
-      
-      if (!userId || !userEmail) {
-        window.location.href = 'index.html';
-        return;
-      }
-      
+      if (!userId || !userEmail) { window.location.href = 'index.html'; return; }
       document.getElementById('userDisplay').textContent = userEmail;
       document.getElementById('userDisplay').classList.remove('hidden');
       loadSettings();
     });
+
+    document.getElementById('restoreModal').onclick = (e) => { if (e.target.id === 'restoreModal') closeRestoreModal(); };
   </script>
 </body>
 </html>
