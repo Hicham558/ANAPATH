@@ -497,116 +497,267 @@
       clearSelectedFile();
     }
 
-    function setupDropZone() {
-      const dropZone = document.getElementById('dropZone');
-      const fileInput = document.getElementById('sqlFileInput');
+  function setupDropZone() {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('sqlFileInput');
 
-      dropZone.ondragover = (e) => {
-        e.preventDefault();
-        dropZone.classList.add('drag-over');
-      };
+  if (!dropZone || !fileInput) {
+    console.error('Éléments dropZone ou fileInput non trouvés');
+    return;
+  }
 
-      dropZone.ondragleave = () => {
-        dropZone.classList.remove('drag-over');
-      };
+  dropZone.ondragover = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.add('drag-over');
+  };
 
-      dropZone.ondrop = (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('drag-over');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0 && files[0].name.endsWith('.sql')) {
-          handleFileSelect(files[0]);
-        } else {
-          showToast('Veuillez sélectionner un fichier .sql', true);
-        }
-      };
+  dropZone.ondragleave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+  };
 
-      fileInput.onchange = (e) => {
-        if (e.target.files.length > 0) {
-          handleFileSelect(e.target.files[0]);
-        }
-      };
+  dropZone.ondrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+    
+    const files = e.dataTransfer.files;
+    console.log('Fichiers déposés:', files);
+    
+    if (files.length > 0) {
+      handleFileSelect(files[0]);
     }
+  };
 
-    function handleFileSelect(file) {
-      selectedSqlFile = file;
-      
-      document.getElementById('selectedFileName').textContent = file.name;
-      document.getElementById('selectedFileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
-      document.getElementById('selectedFileInfo').classList.remove('hidden');
-      document.getElementById('restoreBtn').disabled = false;
+  fileInput.onchange = (e) => {
+    console.log('Fichier sélectionné via input:', e.target.files);
+    if (e.target.files.length > 0) {
+      handleFileSelect(e.target.files[0]);
     }
+  };
 
-    function clearSelectedFile() {
-      selectedSqlFile = null;
-      document.getElementById('selectedFileInfo').classList.add('hidden');
-      document.getElementById('restoreBtn').disabled = true;
-      document.getElementById('sqlFileInput').value = '';
-    }
+  dropZoneInitialized = true;
+  console.log('Drop zone initialisée');
+}
+  function handleFileSelect(file) {
+  console.log('Fichier sélectionné:', file.name, 'taille:', file.size);
+  
+  // Vérification du type de fichier
+  if (!file.name.toLowerCase().endsWith('.sql')) {
+    showToast('❌ Veuillez sélectionner un fichier .sql', true);
+    return;
+  }
+  
+  // Vérification de la taille
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('❌ Fichier trop volumineux (max 10MB)', true);
+    return;
+  }
+  
+  if (file.size === 0) {
+    showToast('❌ Fichier vide', true);
+    return;
+  }
+  
+  selectedSqlFile = file;
+  
+  // Mettre à jour l'interface
+  document.getElementById('selectedFileName').textContent = file.name;
+  document.getElementById('selectedFileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+  document.getElementById('selectedFileInfo').classList.remove('hidden');
+  document.getElementById('restoreBtn').disabled = false;
+  
+  console.log('Fichier enregistré dans selectedSqlFile:', selectedSqlFile);
+}
+
+// Fonction clearSelectedFile corrigée
+function clearSelectedFile() {
+  console.log('clearSelectedFile appelée');
+  
+  selectedSqlFile = null;
+  document.getElementById('selectedFileInfo').classList.add('hidden');
+  document.getElementById('restoreBtn').disabled = true;
+  document.getElementById('sqlFileInput').value = '';
+  
+  // Réinitialiser aussi la zone de drop
+  const dropZone = document.getElementById('dropZone');
+  if (dropZone) {
+    dropZone.classList.remove('drag-over');
+  }
+  
+  console.log('Fichier réinitialisé, selectedSqlFile:', selectedSqlFile);
+}
+
 
     async function executeRestore() {
-      if (!selectedSqlFile) {
-        showToast('Aucun fichier sélectionné', true);
-        return;
-      }
+  // Vérification approfondie avant de procéder
+  console.log('executeRestore appelée, selectedSqlFile:', selectedSqlFile);
+  
+  if (!selectedSqlFile || selectedSqlFile === null || selectedSqlFile === undefined) {
+    showToast('❌ Aucun fichier sélectionné', true);
+    
+    // Réinitialiser l'interface pour éviter toute confusion
+    clearSelectedFile();
+    document.getElementById('restoreBtn').disabled = true;
+    
+    return;
+  }
 
-      if (!confirm('⚠️ CONFIRMATION REQUISE\n\nÊtes-vous absolument certain de vouloir restaurer cette sauvegarde ?\n\nToutes vos données actuelles seront DÉFINITIVEMENT REMPLACÉES.\n\nCette action est IRRÉVERSIBLE.')) {
-        return;
-      }
+  // Vérifier que c'est bien un fichier .sql
+  if (!selectedSqlFile.name.toLowerCase().endsWith('.sql')) {
+    showToast('❌ Le fichier doit être un fichier .sql', true);
+    clearSelectedFile();
+    return;
+  }
 
-      const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
-      const userId = localStorage.getItem('userId');
+  // Vérifier la taille du fichier (limite à 10MB pour éviter les problèmes)
+  if (selectedSqlFile.size > 10 * 1024 * 1024) {
+    showToast('❌ Fichier trop volumineux (max 10MB)', true);
+    clearSelectedFile();
+    return;
+  }
 
-      const statusDiv = document.getElementById('backupStatus');
-      const statusText = document.getElementById('backupStatusText');
-      statusDiv.classList.remove('hidden');
-      statusText.textContent = 'Restauration en cours...';
+  // Confirmation finale
+  if (!confirm('⚠️ CONFIRMATION REQUISE\n\nÊtes-vous absolument certain de vouloir restaurer cette sauvegarde ?\n\nToutes vos données actuelles seront DÉFINITIVEMENT REMPLACÉES.\n\nCette action est IRRÉVERSIBLE.')) {
+    return;
+  }
 
-      closeRestoreModal();
+  const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
+  const userId = localStorage.getItem('userId');
 
-      try {
-        const sqlContent = await selectedSqlFile.text();
-        const sqlBase64 = btoa(unescape(encodeURIComponent(sqlContent)));
+  if (!userId) {
+    showToast('❌ Utilisateur non connecté', true);
+    return;
+  }
 
-        const response = await fetch(`${apiUrl}/api/database/restore`, {
-          method: 'POST',
-          headers: {
-            'X-User-ID': userId,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sql_content: sqlBase64
-          })
-        });
+  const statusDiv = document.getElementById('backupStatus');
+  const statusText = document.getElementById('backupStatusText');
+  statusDiv.classList.remove('hidden');
+  statusText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Restauration en cours...';
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.erreur || `Erreur ${response.status}`);
-        }
+  closeRestoreModal();
 
-        const data = await response.json();
-        
-        statusText.textContent = '✅ Base de données restaurée avec succès';
-        showToast('✅ Restauration réussie');
-
-        setTimeout(() => {
-          statusDiv.classList.add('hidden');
-          if (confirm('Voulez-vous recharger la page pour voir les modifications ?')) {
-            window.location.reload();
-          }
-        }, 2000);
-
-      } catch (error) {
-        console.error('Erreur restauration:', error);
-        statusText.textContent = `❌ Erreur: ${error.message}`;
-        showToast(`Erreur: ${error.message}`, true);
-        
-        setTimeout(() => {
-          statusDiv.classList.add('hidden');
-        }, 5000);
-      }
+  try {
+    // Lire le contenu du fichier
+    console.log('Lecture du fichier:', selectedSqlFile.name, 'taille:', selectedSqlFile.size);
+    
+    const sqlContent = await readFileAsText(selectedSqlFile);
+    console.log('Contenu SQL lu, longueur:', sqlContent.length, 'premiers caractères:', sqlContent.substring(0, 100));
+    
+    if (!sqlContent || sqlContent.trim().length === 0) {
+      throw new Error('Le fichier est vide');
     }
+
+    // Vérifier que c'est bien un fichier SQL (contient des mots-clés SQL)
+    if (!isValidSqlContent(sqlContent)) {
+      throw new Error('Le fichier ne semble pas être un fichier SQL valide');
+    }
+
+    // Encoder en base64
+    const sqlBase64 = btoa(unescape(encodeURIComponent(sqlContent)));
+    
+    console.log('Envoi de la requête à:', `${apiUrl}/api/database/restore`);
+    
+    // Envoyer la requête au serveur
+    const response = await fetch(`${apiUrl}/api/database/restore`, {
+      method: 'POST',
+      headers: {
+        'X-User-ID': userId,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sql_content: sqlBase64,
+        filename: selectedSqlFile.name
+      })
+    });
+
+    console.log('Réponse reçue, statut:', response.status);
+
+    if (!response.ok) {
+      let errorMessage = `Erreur ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.erreur || errorData.message || errorMessage;
+      } catch (e) {
+        // Si la réponse n'est pas du JSON, lire le texte
+        const text = await response.text();
+        if (text) errorMessage = text.substring(0, 100);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    
+    statusText.innerHTML = '<i class="fas fa-check-circle mr-2 text-green-600"></i> ✅ Base de données restaurée avec succès';
+    showToast('✅ Restauration réussie !');
+
+    // Réinitialiser après succès
+    clearSelectedFile();
+    
+    setTimeout(() => {
+      statusDiv.classList.add('hidden');
+      if (confirm('✅ Restauration terminée avec succès !\n\nVoulez-vous recharger la page pour voir les modifications ?')) {
+        window.location.reload();
+      }
+    }, 3000);
+
+  } catch (error) {
+    console.error('Erreur restauration:', error);
+    
+    // Message d'erreur plus clair
+    let errorMessage = error.message;
+    if (errorMessage.includes('Failed to fetch')) {
+      errorMessage = 'Impossible de se connecter au serveur. Vérifiez l\'URL API.';
+    } else if (errorMessage.includes('Network Error')) {
+      errorMessage = 'Erreur réseau. Vérifiez votre connexion internet.';
+    }
+    
+    statusText.innerHTML = `<i class="fas fa-exclamation-triangle mr-2 text-red-600"></i> ❌ Erreur: ${errorMessage}`;
+    showToast(`❌ Erreur: ${errorMessage}`, true);
+    
+    setTimeout(() => {
+      statusDiv.classList.add('hidden');
+    }, 5000);
+  }
+}
+// Fonction pour lire un fichier comme texte
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      resolve(event.target.result);
+    };
+    
+    reader.onerror = (event) => {
+      reject(new Error('Erreur lors de la lecture du fichier'));
+    };
+    
+    reader.readAsText(file);
+  });
+}
+
+// Fonction pour valider le contenu SQL
+function isValidSqlContent(content) {
+  const sqlKeywords = [
+    'CREATE TABLE', 'INSERT INTO', 'DROP TABLE', 'ALTER TABLE',
+    'SELECT', 'UPDATE', 'DELETE', 'VALUES',
+    'PRIMARY KEY', 'FOREIGN KEY', 'REFERENCES'
+  ];
+  
+  const contentUpper = content.toUpperCase();
+  
+  // Vérifier si au moins un mot-clé SQL est présent
+  for (const keyword of sqlKeywords) {
+    if (contentUpper.includes(keyword)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
     // ================================================
     // FONCTIONS QR CODE & CONFIGURATION
