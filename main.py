@@ -11,6 +11,9 @@ import tempfile
 import shutil
 from werkzeug.utils import secure_filename
 from flask import Response, stream_with_context
+import subprocess
+import base64
+from urllib.parse import urlparse
 
 
 app = Flask(__name__)
@@ -331,6 +334,265 @@ def test_db():
             'status': 'error',
             'message': str(e)
         }), 500
+
+
+# ================================================
+# BACKUP & RESTORE DATABASE - SANS TABLE
+# ================================================
+
+
+@app.route('/api/database/backup', methods=['POST'])
+def backup_database():
+    """Crée une sauvegarde complète de la base de données et la retourne directement"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    try:
+        # Parser l'URL de la base de données
+        url = urlparse(DATABASE_URL)
+        
+        # Nom du fichier backup
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_filename = f"anapath_backup_{user_id}_{timestamp}.sql"
+        
+        # Commande pg_dump pour extraire uniquement les données de l'utilisateur
+        dump_command = [
+            'pg_dump',
+            '--host', url.hostname,
+            '--port', str(url.port or 5432),
+            '--username', url.username,
+            '--dbname', url.path[1:],
+            '--no-password',
+            '--format', 'plain',
+            '--data-only',  # Seulement les données, pas la structure
+            '--no-owner',
+            '--no-privileges',
+            '--inserts',  # Format INSERT au lieu de COPY
+        ]
+        
+        # Variables d'environnement pour le mot de passe
+        env = os.environ.copy()
+        if url.password:
+            env['PGPASSWORD'] = url.password
+        
+        # Exécuter pg_dump
+        result = subprocess.run(
+            dump_command,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutes max
+        )
+        
+        if result.returncode != 0:
+            print(f"❌ Erreur pg_dump: {result.stderr}")
+            return jsonify({'erreur': f'Erreur backup: {result.stderr}'}), 500
+        
+        sql_content = result.stdout
+        
+        # Filtrer uniquement les données de l'utilisateur
+        filtered_sql = filter_user_data(sql_content, user_id)
+        
+        # Encoder en base64
+        sql_base64 = base64.b64encode(filtered_sql.encode('utf-8')).decode('utf-8')
+        
+        return jsonify({
+            'success': True,
+            'filename': backup_filename,
+            'size': len(filtered_sql.encode('utf-8')),
+            'created_at': datetime.now().isoformat(),
+            'sql_base64': sql_base64
+        })
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({'erreur': 'Timeout - la sauvegarde a pris trop de temps'}), 500
+    except Exception as e:
+        print(f"❌ Erreur backup_database: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'erreur': str(e)}), 500
+
+
+def filter_user_data(sql_content, user_id):
+    """
+    Filtre le SQL pour ne garder que les données de l'utilisateur
+    (Cette fonction peut être adaptée selon vos besoins)
+    """
+    lines = sql_content.split('\n')
+    filtered_lines = []
+    
+    for line in lines:
+        # Garder seulement les INSERT qui contiennent le user_id
+        if line.strip().startswith('INSERT'):
+            if f"'{user_id}'" in line or f'"{user_id}"' in line:
+                filtered_lines.append(line)
+        # Garder aussi les commentaires et SET
+        elif line.strip().startswith('--') or line.strip().startswith('SET'):
+            filtered_lines.append(line)
+    
+    return '\n'.join(filtered_lines)
+
+
+@app.route('/api/database/restore', methods=['POST'])
+def restore_database():
+    """Restaure une base de données depuis un fichier SQL uploadé"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    try:
+        # Récupérer le fichier SQL depuis le body
+        data = request.json
+        
+        if not data or 'sql_content' not in data:
+            return jsonify({'erreur': 'Contenu SQL manquant'}), 400
+        
+        # Décoder le base64
+        try:
+            sql_content = base64.b64decode(data['sql_content']).decode('utf-8')
+        except:
+            # Si ce n'est pas du base64, utiliser tel quel
+            sql_content = data['sql_content']
+        
+        # Vérifier que le SQL contient bien des données de cet utilisateur
+        if user_id not in sql_content:
+            return jsonify({'erreur': 'Cette sauvegarde ne contient pas vos données'}), 400
+        
+        # Parser l'URL de la base de données
+        url = urlparse(DATABASE_URL)
+        
+        # Créer un fichier temporaire avec le SQL
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as tmp:
+            tmp.write(sql_content)
+            tmp_path = tmp.name
+        
+        try:
+            # Variables d'environnement
+            env = os.environ.copy()
+            if url.password:
+                env['PGPASSWORD'] = url.password
+            
+            # IMPORTANT: Supprimer d'abord les données existantes de l'utilisateur
+            conn = get_db()
+            cur = conn.cursor()
+            
+            # Lister toutes les tables à nettoyer
+            tables_to_clean = [
+                'comptes_rendus',
+                'paiements',
+                'patients',
+                'medecins',
+                'utilisateurs',
+                'fichiers_paiements',
+                'compteurs_recus'
+            ]
+            
+            for table in tables_to_clean:
+                try:
+                    cur.execute(f'DELETE FROM {table} WHERE user_id = %s', (user_id,))
+                except Exception as e:
+                    print(f"⚠️ Erreur nettoyage {table}: {str(e)}")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            # Commande psql pour exécuter le SQL
+            restore_command = [
+                'psql',
+                '--host', url.hostname,
+                '--port', str(url.port or 5432),
+                '--username', url.username,
+                '--dbname', url.path[1:],
+                '--file', tmp_path,
+                '--quiet'
+            ]
+            
+            # Exécuter psql
+            result = subprocess.run(
+                restore_command,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            
+            if result.returncode != 0:
+                print(f"❌ Erreur psql: {result.stderr}")
+                return jsonify({'erreur': f'Erreur restauration: {result.stderr}'}), 500
+            
+            return jsonify({
+                'success': True,
+                'message': 'Base de données restaurée avec succès',
+                'restored_at': datetime.now().isoformat()
+            })
+            
+        finally:
+            # Supprimer le fichier temporaire
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({'erreur': 'Timeout - la restauration a pris trop de temps'}), 500
+    except Exception as e:
+        print(f"❌ Erreur restore_database: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'erreur': str(e)}), 500
+
+
+@app.route('/api/database/backup-structure', methods=['POST'])
+def backup_structure():
+    """Sauvegarde uniquement la structure de la base (pour migration)"""
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        return jsonify({'erreur': 'X-User-ID manquant'}), 401
+    
+    try:
+        url = urlparse(DATABASE_URL)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # pg_dump avec --schema-only
+        dump_command = [
+            'pg_dump',
+            '--host', url.hostname,
+            '--port', str(url.port or 5432),
+            '--username', url.username,
+            '--dbname', url.path[1:],
+            '--no-password',
+            '--schema-only',  # Seulement la structure
+            '--no-owner',
+            '--no-privileges'
+        ]
+        
+        env = os.environ.copy()
+        if url.password:
+            env['PGPASSWORD'] = url.password
+        
+        result = subprocess.run(
+            dump_command,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            return jsonify({'erreur': f'Erreur: {result.stderr}'}), 500
+        
+        sql_base64 = base64.b64encode(result.stdout.encode('utf-8')).decode('utf-8')
+        
+        return jsonify({
+            'success': True,
+            'filename': f'anapath_structure_{timestamp}.sql',
+            'sql_base64': sql_base64
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur backup_structure: {str(e)}")
+        return jsonify({'erreur': str(e)}), 500
+
 # ================================================
 # GESTION DES FICHIERS ATTACHES - POSTGRESQL
 # ================================================
