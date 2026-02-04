@@ -413,13 +413,14 @@
     </div>
   </div>
 
-  <script>
+ <script>
     const DEFAULT_API = 'https://anapath.onrender.com';
     let pendingUrl = null;
     let stream = null;
     let currentQrCode = null;
     let selectedSqlFile = null;
     let dropZoneInitialized = false;
+
     // ================================================
     // FONCTIONS BACKUP/RESTORE
     // ================================================
@@ -482,57 +483,52 @@
       }
     }
 
-  let dropZoneInitialized = false; // ✅ Variable globale
-
-function openRestoreModal() {
-  document.getElementById('restoreModal').classList.remove('hidden');
-  
-  // ✅ N'initialiser le drop zone qu'une seule fois
-  if (!dropZoneInitialized) {
-    setupDropZone();
-    dropZoneInitialized = true;
-  }
-}
-
-function setupDropZone() {
-  const dropZone = document.getElementById('dropZone');
-  const fileInput = document.getElementById('sqlFileInput');
-
-  // ✅ Supprimer les anciens listeners pour éviter les doublons
-  dropZone.ondragover = (e) => {
-    e.preventDefault();
-    dropZone.classList.add('drag-over');
-  };
-
-  dropZone.ondragleave = () => {
-    dropZone.classList.remove('drag-over');
-  };
-
-  dropZone.ondrop = (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].name.endsWith('.sql')) {
-      handleFileSelect(files[0]);
-    } else {
-      showToast('Veuillez sélectionner un fichier .sql', true);
+    function openRestoreModal() {
+      document.getElementById('restoreModal').classList.remove('hidden');
+      
+      if (!dropZoneInitialized) {
+        setupDropZone();
+        dropZoneInitialized = true;
+      }
     }
-  };
-
-  fileInput.onchange = (e) => {
-    if (e.target.files.length > 0) {
-      handleFileSelect(e.target.files[0]);
-    }
-  };
-}
 
     function closeRestoreModal() {
       document.getElementById('restoreModal').classList.add('hidden');
       clearSelectedFile();
     }
 
-   
+    function setupDropZone() {
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('sqlFileInput');
+
+      dropZone.ondragover = (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+      };
+
+      dropZone.ondragleave = () => {
+        dropZone.classList.remove('drag-over');
+      };
+
+      dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].name.endsWith('.sql')) {
+          handleFileSelect(files[0]);
+        } else {
+          showToast('Veuillez sélectionner un fichier .sql', true);
+        }
+      };
+
+      fileInput.onchange = (e) => {
+        if (e.target.files.length > 0) {
+          handleFileSelect(e.target.files[0]);
+        }
+      };
+    }
+
     function handleFileSelect(file) {
       selectedSqlFile = file;
       
@@ -549,68 +545,68 @@ function setupDropZone() {
       document.getElementById('sqlFileInput').value = '';
     }
 
-   async function executeRestore() {
-  if (!selectedSqlFile) {
-    showToast('Aucun fichier sélectionné', true);
-    return;
-  }
-
-  if (!confirm('⚠️ CONFIRMATION REQUISE\n\nÊtes-vous absolument certain de vouloir restaurer cette sauvegarde ?\n\nToutes vos données actuelles seront DÉFINITIVEMENT REMPLACÉES.\n\nCette action est IRRÉVERSIBLE.')) {
-    return;
-  }
-
-  const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
-  const userId = localStorage.getItem('userId');
-
-  const statusDiv = document.getElementById('backupStatus');
-  const statusText = document.getElementById('backupStatusText');
-  statusDiv.classList.remove('hidden');
-  statusText.textContent = 'Restauration en cours...';
-
-  closeRestoreModal();
-
-  try {
-    const sqlContent = await selectedSqlFile.text();
-    const sqlBase64 = btoa(unescape(encodeURIComponent(sqlContent))); // ✅ Correction encodage UTF-8
-
-    const response = await fetch(`${apiUrl}/api/database/restore`, {
-      method: 'POST',
-      headers: {
-        'X-User-ID': userId,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        sql_content: sqlBase64
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.erreur || `Erreur ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    statusText.textContent = '✅ Base de données restaurée avec succès';
-    showToast('✅ Restauration réussie');
-
-    setTimeout(() => {
-      statusDiv.classList.add('hidden');
-      if (confirm('Voulez-vous recharger la page pour voir les modifications ?')) {
-        window.location.reload();
+    async function executeRestore() {
+      if (!selectedSqlFile) {
+        showToast('Aucun fichier sélectionné', true);
+        return;
       }
-    }, 2000);
 
-  } catch (error) {
-    console.error('Erreur restauration:', error);
-    statusText.textContent = `❌ Erreur: ${error.message}`;
-    showToast(`Erreur: ${error.message}`, true);
-    
-    setTimeout(() => {
-      statusDiv.classList.add('hidden');
-    }, 5000);
-  }
-}
+      if (!confirm('⚠️ CONFIRMATION REQUISE\n\nÊtes-vous absolument certain de vouloir restaurer cette sauvegarde ?\n\nToutes vos données actuelles seront DÉFINITIVEMENT REMPLACÉES.\n\nCette action est IRRÉVERSIBLE.')) {
+        return;
+      }
+
+      const apiUrl = document.getElementById('apiBaseUrl').value || DEFAULT_API;
+      const userId = localStorage.getItem('userId');
+
+      const statusDiv = document.getElementById('backupStatus');
+      const statusText = document.getElementById('backupStatusText');
+      statusDiv.classList.remove('hidden');
+      statusText.textContent = 'Restauration en cours...';
+
+      closeRestoreModal();
+
+      try {
+        const sqlContent = await selectedSqlFile.text();
+        const sqlBase64 = btoa(unescape(encodeURIComponent(sqlContent)));
+
+        const response = await fetch(`${apiUrl}/api/database/restore`, {
+          method: 'POST',
+          headers: {
+            'X-User-ID': userId,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sql_content: sqlBase64
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.erreur || `Erreur ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        statusText.textContent = '✅ Base de données restaurée avec succès';
+        showToast('✅ Restauration réussie');
+
+        setTimeout(() => {
+          statusDiv.classList.add('hidden');
+          if (confirm('Voulez-vous recharger la page pour voir les modifications ?')) {
+            window.location.reload();
+          }
+        }, 2000);
+
+      } catch (error) {
+        console.error('Erreur restauration:', error);
+        statusText.textContent = `❌ Erreur: ${error.message}`;
+        showToast(`Erreur: ${error.message}`, true);
+        
+        setTimeout(() => {
+          statusDiv.classList.add('hidden');
+        }, 5000);
+      }
+    }
 
     // ================================================
     // FONCTIONS QR CODE & CONFIGURATION
