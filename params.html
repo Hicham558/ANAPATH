@@ -592,20 +592,28 @@ function clearSelectedFile() {
 
 
   async function executeRestore() {
-  // Vérification SIMPLE et CLAIRE
-  if (!selectedSqlFile) {
-    showToast('❌ Veuillez d\'abord sélectionner un fichier', true);
+  console.log('Début executeRestore');
+  console.log('selectedSqlFile:', selectedSqlFile);
+  
+  // Vérification RENFORCÉE
+  if (!selectedSqlFile || 
+      typeof selectedSqlFile !== 'object' || 
+      !(selectedSqlFile instanceof File) ||
+      !selectedSqlFile.name) {
+    showToast('❌ Fichier invalide. Veuillez en sélectionner un nouveau.', true);
+    clearSelectedFile();
     return;
   }
 
-  // Vérification de base
-  if (!selectedSqlFile.name.endsWith('.sql')) {
+  // Vérification .sql
+  if (!selectedSqlFile.name.toLowerCase().endsWith('.sql')) {
     showToast('❌ Le fichier doit être un fichier .sql', true);
+    clearSelectedFile();
     return;
   }
 
   // Confirmation simple
-  if (!confirm('⚠️ Toutes vos données actuelles seront remplacées.\n\nVoulez-vous continuer ?')) {
+  if (!confirm('⚠️ Voulez-vous vraiment restaurer cette sauvegarde ?')) {
     return;
   }
 
@@ -623,20 +631,49 @@ function clearSelectedFile() {
   statusDiv.classList.remove('hidden');
   statusText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Restauration en cours...';
   
-  closeRestoreModal();
+  // Fermer le modal MAIS garder le fichier
+  document.getElementById('restoreModal').classList.add('hidden');
 
   try {
-    // Lire le fichier simplement
-    const sqlContent = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = () => reject(new Error('Erreur lecture fichier'));
-      reader.readAsText(selectedSqlFile);
-    });
-
-    // Encoder et envoyer
-    const sqlBase64 = btoa(sqlContent);
+    // Méthode alternative pour lire le fichier
+    console.log('Lecture du fichier:', selectedSqlFile.name);
     
+    let sqlContent;
+    
+    // Option 1: Lire avec FileReader
+    try {
+      sqlContent = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          console.log('Fichier lu avec succès');
+          resolve(e.target.result);
+        };
+        reader.onerror = function() {
+          console.error('Erreur FileReader');
+          reject(new Error('Impossible de lire le fichier'));
+        };
+        reader.readAsText(selectedSqlFile);
+      });
+    } catch (readError) {
+      // Option 2: Si FileReader échoue, récupérer directement le contenu
+      console.log('Tentative méthode alternative');
+      if (selectedSqlFile.text) {
+        sqlContent = await selectedSqlFile.text();
+      } else {
+        throw readError;
+      }
+    }
+
+    if (!sqlContent || sqlContent.trim().length === 0) {
+      throw new Error('Le fichier est vide');
+    }
+
+    console.log('Contenu lu, longueur:', sqlContent.length);
+    
+    // Encoder en base64
+    const sqlBase64 = btoa(unescape(encodeURIComponent(sqlContent)));
+    
+    // Envoyer au serveur
     const response = await fetch(`${apiUrl}/api/database/restore`, {
       method: 'POST',
       headers: {
@@ -650,31 +687,43 @@ function clearSelectedFile() {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.erreur || `Erreur ${response.status}`);
+      const errorText = await response.text();
+      let errorMessage = `Erreur ${response.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.erreur || errorData.message || errorMessage;
+      } catch {
+        if (errorText) errorMessage = errorText.substring(0, 100);
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
     
     statusText.innerHTML = '<i class="fas fa-check-circle mr-2 text-green-600"></i> ✅ Restauration réussie !';
-    showToast('✅ Base de données restaurée');
+    showToast('✅ Base de données restaurée avec succès');
 
-    // Réinitialiser
+    // Réinitialiser complètement
     clearSelectedFile();
     
     setTimeout(() => {
       statusDiv.classList.add('hidden');
-      window.location.reload();
+      if (confirm('✅ Restauration terminée ! Recharger la page ?')) {
+        window.location.reload();
+      }
     }, 2000);
 
   } catch (error) {
-    console.error('Erreur:', error);
+    console.error('Erreur complète:', error);
     statusText.innerHTML = `<i class="fas fa-exclamation-triangle mr-2 text-red-600"></i> ❌ Erreur: ${error.message}`;
     showToast(`❌ ${error.message}`, true);
     
+    // Réinitialiser aussi en cas d'erreur
+    clearSelectedFile();
+    
     setTimeout(() => {
       statusDiv.classList.add('hidden');
-    }, 3000);
+    }, 5000);
   }
 }
 // Fonction pour lire un fichier comme texte
