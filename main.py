@@ -391,7 +391,6 @@ def backup_database():
             '--no-owner',
             '--no-privileges',
             '--inserts',  # Format INSERT au lieu de COPY
-            '--disable-triggers',  # Désactiver les triggers pendant l'import
             '--column-inserts'  # Spécifier les noms de colonnes (plus sûr)
         ]
         
@@ -418,20 +417,13 @@ def backup_database():
         # Filtrer uniquement les données de l'utilisateur
         filtered_sql = filter_user_data(sql_content, user_id)
         
-        # AJOUTER les commandes pour désactiver les contraintes temporairement
-        final_sql = "-- Désactiver les contraintes de clés étrangères\n"
-        final_sql += "SET session_replication_role = 'replica';\n\n"
-        final_sql += filtered_sql
-        final_sql += "\n\n-- Réactiver les contraintes de clés étrangères\n"
-        final_sql += "SET session_replication_role = 'origin';\n"
-        
         # Encoder en base64
-        sql_base64 = base64.b64encode(final_sql.encode('utf-8')).decode('utf-8')
+        sql_base64 = base64.b64encode(filtered_sql.encode('utf-8')).decode('utf-8')
         
         return jsonify({
             'success': True,
             'filename': backup_filename,
-            'size': len(final_sql.encode('utf-8')),
+            'size': len(filtered_sql.encode('utf-8')),
             'created_at': datetime.now().isoformat(),
             'sql_base64': sql_base64
         })
@@ -473,12 +465,8 @@ def restore_database():
         url = urlparse(DATABASE_URL)
         
         # IMPORTANT: Supprimer d'abord les données existantes de l'utilisateur
-        # MAIS PAS les données 'systeme'
         conn = get_db()
         cur = conn.cursor()
-        
-        # Désactiver temporairement les contraintes de clés étrangères
-        cur.execute("SET session_replication_role = 'replica';")
         
         # Lister toutes les tables à nettoyer DANS LE BON ORDRE
         # (d'abord les tables enfants, puis les tables parents)
@@ -499,9 +487,6 @@ def restore_database():
                 print(f"✅ Nettoyé {table}: {cur.rowcount} lignes supprimées")
             except Exception as e:
                 print(f"⚠️ Erreur nettoyage {table}: {str(e)}")
-        
-        # Réactiver les contraintes
-        cur.execute("SET session_replication_role = 'origin';")
         
         conn.commit()
         cur.close()
@@ -526,8 +511,7 @@ def restore_database():
                 '--username', url.username,
                 '--dbname', url.path[1:],
                 '--file', tmp_path,
-                '--quiet',
-                '--variable', 'ON_ERROR_STOP=1'  # Arrêter en cas d'erreur
+                '--quiet'
             ]
             
             # Exécuter psql
