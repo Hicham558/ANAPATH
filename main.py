@@ -337,8 +337,30 @@ def test_db():
 
 
 # ================================================
-# BACKUP & RESTORE DATABASE - SANS TABLE
+# BACKUP & RESTORE DATABASE - COMPLET
 # ================================================
+
+def filter_user_data(sql_content, user_id):
+    """
+    Filtre le SQL pour garder:
+    1. Les données de l'utilisateur (user_id)
+    2. Les données système (user_id = 'systeme')
+    """
+    lines = sql_content.split('\n')
+    filtered_lines = []
+    
+    for line in lines:
+        # Garder seulement les INSERT qui contiennent le user_id OU 'systeme'
+        if line.strip().startswith('INSERT'):
+            # Vérifier si la ligne contient le user_id de l'utilisateur OU 'systeme'
+            if (f"'{user_id}'" in line or f'"{user_id}"' in line or 
+                "'systeme'" in line or '"systeme"' in line):
+                filtered_lines.append(line)
+        # Garder aussi les commentaires et SET
+        elif line.strip().startswith('--') or line.strip().startswith('SET'):
+            filtered_lines.append(line)
+    
+    return '\n'.join(filtered_lines)
 
 
 @app.route('/api/database/backup', methods=['POST'])
@@ -369,6 +391,8 @@ def backup_database():
             '--no-owner',
             '--no-privileges',
             '--inserts',  # Format INSERT au lieu de COPY
+            '--disable-triggers',  # Désactiver les triggers pendant l'import
+            '--column-inserts'  # Spécifier les noms de colonnes (plus sûr)
         ]
         
         # Variables d'environnement pour le mot de passe
@@ -394,13 +418,20 @@ def backup_database():
         # Filtrer uniquement les données de l'utilisateur
         filtered_sql = filter_user_data(sql_content, user_id)
         
+        # AJOUTER les commandes pour désactiver les contraintes temporairement
+        final_sql = "-- Désactiver les contraintes de clés étrangères\n"
+        final_sql += "SET session_replication_role = 'replica';\n\n"
+        final_sql += filtered_sql
+        final_sql += "\n\n-- Réactiver les contraintes de clés étrangères\n"
+        final_sql += "SET session_replication_role = 'origin';\n"
+        
         # Encoder en base64
-        sql_base64 = base64.b64encode(filtered_sql.encode('utf-8')).decode('utf-8')
+        sql_base64 = base64.b64encode(final_sql.encode('utf-8')).decode('utf-8')
         
         return jsonify({
             'success': True,
             'filename': backup_filename,
-            'size': len(filtered_sql.encode('utf-8')),
+            'size': len(final_sql.encode('utf-8')),
             'created_at': datetime.now().isoformat(),
             'sql_base64': sql_base64
         })
@@ -412,28 +443,6 @@ def backup_database():
         traceback.print_exc()
         return jsonify({'erreur': str(e)}), 500
 
-
-def filter_user_data(sql_content, user_id):
-    """
-    Filtre le SQL pour garder:
-    1. Les données de l'utilisateur (user_id)
-    2. Les données système (user_id = 'systeme')
-    """
-    lines = sql_content.split('\n')
-    filtered_lines = []
-    
-    for line in lines:
-        # Garder seulement les INSERT qui contiennent le user_id OU 'systeme'
-        if line.strip().startswith('INSERT'):
-            # Vérifier si la ligne contient le user_id de l'utilisateur OU 'systeme'
-            if (f"'{user_id}'" in line or f'"{user_id}"' in line or 
-                "'systeme'" in line or '"systeme"' in line):
-                filtered_lines.append(line)
-        # Garder aussi les commentaires et SET
-        elif line.strip().startswith('--') or line.strip().startswith('SET'):
-            filtered_lines.append(line)
-    
-    return '\n'.join(filtered_lines)
 
 @app.route('/api/database/restore', methods=['POST'])
 def restore_database():
@@ -463,6 +472,41 @@ def restore_database():
         # Parser l'URL de la base de données
         url = urlparse(DATABASE_URL)
         
+        # IMPORTANT: Supprimer d'abord les données existantes de l'utilisateur
+        # MAIS PAS les données 'systeme'
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Désactiver temporairement les contraintes de clés étrangères
+        cur.execute("SET session_replication_role = 'replica';")
+        
+        # Lister toutes les tables à nettoyer DANS LE BON ORDRE
+        # (d'abord les tables enfants, puis les tables parents)
+        tables_to_clean = [
+            'fichiers_paiements',  # D'abord les enfants
+            'paiements',
+            'comptes_rendus',
+            'patients',
+            'medecins',
+            'compteurs_recus',
+            'utilisateurs'
+        ]
+        
+        for table in tables_to_clean:
+            try:
+                # Ne supprimer QUE les données de l'utilisateur, pas 'systeme'
+                cur.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
+                print(f"✅ Nettoyé {table}: {cur.rowcount} lignes supprimées")
+            except Exception as e:
+                print(f"⚠️ Erreur nettoyage {table}: {str(e)}")
+        
+        # Réactiver les contraintes
+        cur.execute("SET session_replication_role = 'origin';")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
         # Créer un fichier temporaire avec le SQL
         with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as tmp:
             tmp.write(sql_content)
@@ -474,34 +518,6 @@ def restore_database():
             if url.password:
                 env['PGPASSWORD'] = url.password
             
-            # IMPORTANT: Supprimer d'abord les données existantes de l'utilisateur
-            conn = get_db()
-            cur = conn.cursor()
-            
-            # Lister toutes les tables à nettoyer
-           tables_to_clean = [
-    'comptes_rendus',
-    'paiements',
-    'patients',
-    'medecins',
-    'utilisateurs',
-    'fichiers_paiements',
-    'compteurs_recus',
-    'sous_famille',  # Ajouter tes tables
-    'template'       # qui ont des données système
-]
-            
-         for table in tables_to_clean:
-    try:
-        # Ne supprimer QUE les données de l'utilisateur, pas 'systeme'
-        cur.execute(f"DELETE FROM {table} WHERE user_id = %s AND user_id != 'systeme'", (user_id,))
-    except Exception as e:
-        print(f"⚠️ Erreur nettoyage {table}: {str(e)}")
-            
-            conn.commit()
-            cur.close()
-            conn.close()
-            
             # Commande psql pour exécuter le SQL
             restore_command = [
                 'psql',
@@ -510,7 +526,8 @@ def restore_database():
                 '--username', url.username,
                 '--dbname', url.path[1:],
                 '--file', tmp_path,
-                '--quiet'
+                '--quiet',
+                '--variable', 'ON_ERROR_STOP=1'  # Arrêter en cas d'erreur
             ]
             
             # Exécuter psql
@@ -597,7 +614,6 @@ def backup_structure():
     except Exception as e:
         print(f"❌ Erreur backup_structure: {str(e)}")
         return jsonify({'erreur': str(e)}), 500
-
 # ================================================
 # GESTION DES FICHIERS ATTACHES - POSTGRESQL
 # ================================================
