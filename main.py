@@ -337,7 +337,7 @@ def test_db():
 
 
 # ================================================
-# BACKUP & RESTORE DATABASE - VERSION CORRIGÉE
+# BACKUP & RESTORE DATABASE - VERSION FINALE CORRIGÉE
 # ================================================
 
 def filter_user_data(sql_content, user_id):
@@ -345,52 +345,22 @@ def filter_user_data(sql_content, user_id):
     Filtre le SQL pour garder:
     1. Les données de l'utilisateur (user_id)
     2. Les données système (user_id = 'systeme')
-    
-    GÈRE les INSERT multi-lignes (importantes pour bytea, texte long, etc.)
     """
     lines = sql_content.split('\n')
     filtered_lines = []
-    current_insert = []
-    in_insert = False
-    keep_current = False
     
     for line in lines:
-        # Début d'un INSERT
-        if line.strip().startswith('INSERT INTO'):
-            in_insert = True
-            current_insert = [line]
-            # Vérifier si c'est un INSERT sur une seule ligne
-            if ';' in line:
-                # INSERT complet sur une ligne
-                if (f"'{user_id}'" in line or f'"{user_id}"' in line or 
-                    "'systeme'" in line or '"systeme"' in line):
-                    filtered_lines.append(line)
-                in_insert = False
-                current_insert = []
-            else:
-                # Vérifier si on doit garder cet INSERT
-                keep_current = (f"'{user_id}'" in line or f'"{user_id}"' in line or 
-                               "'systeme'" in line or '"systeme"' in line)
-        
-        # Continuation d'un INSERT multi-lignes
-        elif in_insert:
-            current_insert.append(line)
-            
-            # Vérifier aussi dans les lignes suivantes
-            if not keep_current:
-                keep_current = (f"'{user_id}'" in line or f'"{user_id}"' in line or 
-                               "'systeme'" in line or '"systeme"' in line)
-            
-            # Fin de l'INSERT (ligne se termine par ;)
-            if line.strip().endswith(';'):
-                if keep_current:
-                    filtered_lines.extend(current_insert)
-                in_insert = False
-                current_insert = []
-                keep_current = False
-        
-        # Commentaires et SET
-        elif line.strip().startswith('--') or line.strip().startswith('SET') or line.strip().startswith('SELECT'):
+        # Les INSERT (avec --inserts simple, tout est sur une ligne)
+        if line.strip().startswith('INSERT'):
+            # Vérifier si la ligne contient le user_id de l'utilisateur OU 'systeme'
+            if (f"'{user_id}'" in line or f'"{user_id}"' in line or 
+                "'systeme'" in line or '"systeme"' in line):
+                filtered_lines.append(line)
+        # Garder aussi les commentaires, SET et SELECT
+        elif (line.strip().startswith('--') or 
+              line.strip().startswith('SET') or 
+              line.strip().startswith('SELECT') or
+              line.strip() == ''):
             filtered_lines.append(line)
     
     return '\n'.join(filtered_lines)
@@ -411,7 +381,7 @@ def backup_database():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_filename = f"anapath_backup_{user_id}_{timestamp}.sql"
         
-        # Commande pg_dump pour extraire uniquement les données de l'utilisateur
+        # Commande pg_dump - SANS --column-inserts pour avoir des INSERT sur UNE LIGNE
         dump_command = [
             'pg_dump',
             '--host', url.hostname,
@@ -420,11 +390,10 @@ def backup_database():
             '--dbname', url.path[1:],
             '--no-password',
             '--format', 'plain',
-            '--data-only',  # Seulement les données, pas la structure
+            '--data-only',
             '--no-owner',
             '--no-privileges',
-            '--inserts',  # Format INSERT au lieu de COPY
-            '--column-inserts'  # Spécifier les noms de colonnes (plus sûr)
+            '--inserts'  # Format INSERT simple (tout sur une ligne)
         ]
         
         # Variables d'environnement pour le mot de passe
