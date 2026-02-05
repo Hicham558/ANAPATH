@@ -337,7 +337,7 @@ def test_db():
 
 
 # ================================================
-# BACKUP & RESTORE DATABASE - COMPLET
+# BACKUP & RESTORE DATABASE - VERSION CORRIGÉE
 # ================================================
 
 def filter_user_data(sql_content, user_id):
@@ -345,19 +345,52 @@ def filter_user_data(sql_content, user_id):
     Filtre le SQL pour garder:
     1. Les données de l'utilisateur (user_id)
     2. Les données système (user_id = 'systeme')
+    
+    GÈRE les INSERT multi-lignes (importantes pour bytea, texte long, etc.)
     """
     lines = sql_content.split('\n')
     filtered_lines = []
+    current_insert = []
+    in_insert = False
+    keep_current = False
     
     for line in lines:
-        # Garder seulement les INSERT qui contiennent le user_id OU 'systeme'
-        if line.strip().startswith('INSERT'):
-            # Vérifier si la ligne contient le user_id de l'utilisateur OU 'systeme'
-            if (f"'{user_id}'" in line or f'"{user_id}"' in line or 
-                "'systeme'" in line or '"systeme"' in line):
-                filtered_lines.append(line)
-        # Garder aussi les commentaires et SET
-        elif line.strip().startswith('--') or line.strip().startswith('SET'):
+        # Début d'un INSERT
+        if line.strip().startswith('INSERT INTO'):
+            in_insert = True
+            current_insert = [line]
+            # Vérifier si c'est un INSERT sur une seule ligne
+            if ';' in line:
+                # INSERT complet sur une ligne
+                if (f"'{user_id}'" in line or f'"{user_id}"' in line or 
+                    "'systeme'" in line or '"systeme"' in line):
+                    filtered_lines.append(line)
+                in_insert = False
+                current_insert = []
+            else:
+                # Vérifier si on doit garder cet INSERT
+                keep_current = (f"'{user_id}'" in line or f'"{user_id}"' in line or 
+                               "'systeme'" in line or '"systeme"' in line)
+        
+        # Continuation d'un INSERT multi-lignes
+        elif in_insert:
+            current_insert.append(line)
+            
+            # Vérifier aussi dans les lignes suivantes
+            if not keep_current:
+                keep_current = (f"'{user_id}'" in line or f'"{user_id}"' in line or 
+                               "'systeme'" in line or '"systeme"' in line)
+            
+            # Fin de l'INSERT (ligne se termine par ;)
+            if line.strip().endswith(';'):
+                if keep_current:
+                    filtered_lines.extend(current_insert)
+                in_insert = False
+                current_insert = []
+                keep_current = False
+        
+        # Commentaires et SET
+        elif line.strip().startswith('--') or line.strip().startswith('SET') or line.strip().startswith('SELECT'):
             filtered_lines.append(line)
     
     return '\n'.join(filtered_lines)
@@ -484,7 +517,8 @@ def restore_database():
             try:
                 # Ne supprimer QUE les données de l'utilisateur, pas 'systeme'
                 cur.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
-                print(f"✅ Nettoyé {table}: {cur.rowcount} lignes supprimées")
+                deleted_count = cur.rowcount
+                print(f"✅ Nettoyé {table}: {deleted_count} lignes supprimées")
             except Exception as e:
                 print(f"⚠️ Erreur nettoyage {table}: {str(e)}")
         
@@ -493,7 +527,7 @@ def restore_database():
         conn.close()
         
         # Créer un fichier temporaire avec le SQL
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False, encoding='utf-8') as tmp:
             tmp.write(sql_content)
             tmp_path = tmp.name
         
@@ -525,7 +559,10 @@ def restore_database():
             
             if result.returncode != 0:
                 print(f"❌ Erreur psql: {result.stderr}")
+                print(f"📄 Stdout: {result.stdout}")
                 return jsonify({'erreur': f'Erreur restauration: {result.stderr}'}), 500
+            
+            print(f"✅ Restauration réussie")
             
             return jsonify({
                 'success': True,
