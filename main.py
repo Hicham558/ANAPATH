@@ -415,23 +415,25 @@ def backup_database():
 
 def filter_user_data(sql_content, user_id):
     """
-    Filtre le SQL pour ne garder que les données de l'utilisateur
-    (Cette fonction peut être adaptée selon vos besoins)
+    Filtre le SQL pour garder:
+    1. Les données de l'utilisateur (user_id)
+    2. Les données système (user_id = 'systeme')
     """
     lines = sql_content.split('\n')
     filtered_lines = []
     
     for line in lines:
-        # Garder seulement les INSERT qui contiennent le user_id
+        # Garder seulement les INSERT qui contiennent le user_id OU 'systeme'
         if line.strip().startswith('INSERT'):
-            if f"'{user_id}'" in line or f'"{user_id}"' in line:
+            # Vérifier si la ligne contient le user_id de l'utilisateur OU 'systeme'
+            if (f"'{user_id}'" in line or f'"{user_id}"' in line or 
+                "'systeme'" in line or '"systeme"' in line):
                 filtered_lines.append(line)
         # Garder aussi les commentaires et SET
         elif line.strip().startswith('--') or line.strip().startswith('SET'):
             filtered_lines.append(line)
     
     return '\n'.join(filtered_lines)
-
 
 @app.route('/api/database/restore', methods=['POST'])
 def restore_database():
@@ -477,21 +479,24 @@ def restore_database():
             cur = conn.cursor()
             
             # Lister toutes les tables à nettoyer
-            tables_to_clean = [
-                'comptes_rendus',
-                'paiements',
-                'patients',
-                'medecins',
-                'utilisateurs',
-                'fichiers_paiements',
-                'compteurs_recus'
-            ]
+           tables_to_clean = [
+    'comptes_rendus',
+    'paiements',
+    'patients',
+    'medecins',
+    'utilisateurs',
+    'fichiers_paiements',
+    'compteurs_recus',
+    'sous_famille',  # Ajouter tes tables
+    'template'       # qui ont des données système
+]
             
-            for table in tables_to_clean:
-                try:
-                    cur.execute(f'DELETE FROM {table} WHERE user_id = %s', (user_id,))
-                except Exception as e:
-                    print(f"⚠️ Erreur nettoyage {table}: {str(e)}")
+         for table in tables_to_clean:
+    try:
+        # Ne supprimer QUE les données de l'utilisateur, pas 'systeme'
+        cur.execute(f"DELETE FROM {table} WHERE user_id = %s AND user_id != 'systeme'", (user_id,))
+    except Exception as e:
+        print(f"⚠️ Erreur nettoyage {table}: {str(e)}")
             
             conn.commit()
             cur.close()
