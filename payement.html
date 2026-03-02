@@ -2308,6 +2308,7 @@ async function enregistrerPaiement() {
         }
     }
 }
+        
        async function loadPaiements() {
     try {
         // Construire l'URL avec les filtres
@@ -3825,10 +3826,34 @@ function imprimerListe() {
         }
  
         // Variables globales pour l'impression
+// Variable globale pour stocker le paiement en cours (déjà existante, on l'enrichit)
 let paiementEnCours = null;
+let crDepuisPaiementData = null; // ← NOUVEAU
 
 function afficherModalChoixImpression(paiementInfo) {
     paiementEnCours = paiementInfo;
+
+    // ── NOUVEAU : Afficher d'abord le questionnaire CR ──────────────
+    crDepuisPaiementData = paiementInfo;
+    document.getElementById('crQuestionNumeroCR').textContent = paiementInfo.numero_cr || '—';
+    document.getElementById('modalQuestionCR').classList.remove('hidden');
+    // ────────────────────────────────────────────────────────────────
+}
+
+function refuserCreationCR() {
+    // L'utilisateur ne veut pas créer de CR → on passe directement au choix impression
+    document.getElementById('modalQuestionCR').classList.add('hidden');
+    _afficherChoixImpression();
+}
+
+function accepterCreationCR() {
+    // L'utilisateur veut créer un CR → ouvrir le modal minimal
+    document.getElementById('modalQuestionCR').classList.add('hidden');
+    ouvrirModalCreerCR(crDepuisPaiementData);
+}
+
+// Ancienne logique d'impression déplacée dans cette fonction privée
+function _afficherChoixImpression() {
     document.getElementById('modalChoixImpression').classList.remove('hidden');
 }
 
@@ -6894,6 +6919,231 @@ function getBadgeNumero(numeroCR) {
         </div>
     `;
 }
+// ═══════════════════════════════════════════════════════════════
+// CRÉATION COMPTE RENDU DEPUIS PAIEMENT
+// ═══════════════════════════════════════════════════════════════
+
+// Suggestions de nature par type d'examen
+const natureSuggestions = {
+    'histologie':           ['Biopsie cutanée', 'Biopsie osseuse', 'Pièce opératoire'],
+    'biopsie':              ['Biopsie hépatique', 'Biopsie rénale', 'Biopsie prostatique', 'Biopsie endométriale'],
+    'cytologie':            ['Liquide pleural', 'Liquide ascitique', 'Ponction ganglionnaire'],
+    'fcv':                  ['Frottis cervico-vaginal', 'FCV de dépistage'],
+    'immuno-histochimie':   ['Marqueurs tumoraux', 'Récepteurs hormonaux', 'Profil immunohistochimique'],
+};
+
+async function ouvrirModalCreerCR(paiementInfo) {
+    // Pré-remplir les champs
+    const today = new Date().toISOString().split('T')[0];
+
+    document.getElementById('crModalNumero').value          = paiementInfo.numero_cr || '';
+    document.getElementById('crModalDateCR').value          = today;
+    document.getElementById('crModalDatePrelevement').value = today;
+    document.getElementById('crModalPatientNom').textContent = paiementInfo.patient_nom || '—';
+    document.getElementById('crModalPatientId').value       = paiementInfo.patient_id || '';
+    document.getElementById('crModalRenseignements').value  = '';
+    document.getElementById('crModalNature').value          = '';
+
+    // Utilisateur sélectionné
+    const selectedUser = JSON.parse(localStorage.getItem('selectedUtilisateur') || '{}');
+    document.getElementById('crModalUtilisateurId').value   = selectedUser.numero || '';
+
+    // Suggestions selon le type d'examen du paiement
+    const typeExamen = (paiementInfo.type_paiement || '').toLowerCase();
+    const suggestions = natureSuggestions[typeExamen] || [];
+    const suggestionsContainer = document.getElementById('crNatureSuggestions');
+
+    if (suggestions.length > 0) {
+        suggestionsContainer.innerHTML = suggestions.map(s => `
+            <button type="button"
+                    onclick="document.getElementById('crModalNature').value='${s}'; this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('bg-indigo-600','text-white')); this.classList.add('bg-indigo-600','text-white');"
+                    class="px-2 py-1 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg transition">
+                ${s}
+            </button>
+        `).join('');
+        suggestionsContainer.classList.remove('hidden');
+    } else {
+        suggestionsContainer.classList.add('hidden');
+    }
+
+    // Charger la liste des médecins
+    await chargerMedecinsPourCR();
+
+    // Afficher le modal
+    document.getElementById('modalCreerCR').classList.remove('hidden');
+}
+
+async function chargerMedecinsPourCR() {
+    const select = document.getElementById('crModalMedecin');
+    select.innerHTML = '<option value="">Chargement...</option>';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/medecins`, {
+            headers: { 'X-User-ID': currentUserId }
+        });
+
+        if (response.ok) {
+            const medecins = await response.json();
+            const medecinsList = Array.isArray(medecins) ? medecins : (medecins.medecins || []);
+
+            select.innerHTML = '<option value="">Sélectionner un médecin...</option>' +
+                medecinsList.map(m =>
+                    `<option value="${m.id}">${m.nom}${m.specialite ? ' — ' + m.specialite : ''}</option>`
+                ).join('');
+        } else {
+            select.innerHTML = '<option value="">Erreur de chargement</option>';
+        }
+    } catch (err) {
+        console.error('Erreur chargement médecins CR:', err);
+        select.innerHTML = '<option value="">Erreur réseau</option>';
+    }
+}
+
+function ouvrirAjoutRapideMedecinCR() {
+    // Réutiliser le modal quickMedecinModal d'index.html n'est pas disponible ici
+    // On crée un prompt simple
+    const nom = prompt('Nom du nouveau médecin :');
+    if (!nom || !nom.trim()) return;
+
+    const specialite = prompt('Spécialité (optionnel) :') || '';
+
+    fetch(`${API_BASE_URL}/medecins`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': currentUserId
+        },
+        body: JSON.stringify({ nom: nom.trim(), specialite: specialite.trim() })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.id) {
+            // Ajouter au select et sélectionner
+            const select = document.getElementById('crModalMedecin');
+            const option = document.createElement('option');
+            option.value = result.id;
+            option.textContent = `${nom.trim()}${specialite ? ' — ' + specialite : ''}`;
+            select.appendChild(option);
+            select.value = result.id;
+            showToast('Médecin ajouté', 'success');
+        }
+    })
+    .catch(() => showToast('Erreur ajout médecin', 'error'));
+}
+
+async function sauvegarderCRDepuisPaiement() {
+    // Récupérer les valeurs
+    const numero        = document.getElementById('crModalNumero').value.trim();
+    const dateCR        = document.getElementById('crModalDateCR').value;
+    const medecinId     = document.getElementById('crModalMedecin').value;
+    const nature        = document.getElementById('crModalNature').value.trim();
+    const datePrelev    = document.getElementById('crModalDatePrelevement').value;
+    const renseign      = document.getElementById('crModalRenseignements').value.trim();
+    const patientId     = document.getElementById('crModalPatientId').value;
+    const utilisateurId = document.getElementById('crModalUtilisateurId').value;
+
+    // Validation
+    if (!medecinId) {
+        showToast('Veuillez sélectionner un médecin', 'error');
+        document.getElementById('crModalMedecin').focus();
+        return;
+    }
+    if (!nature) {
+        showToast('La nature du prélèvement est obligatoire', 'error');
+        document.getElementById('crModalNature').focus();
+        return;
+    }
+    if (!datePrelev) {
+        showToast('La date de prélèvement est obligatoire', 'error');
+        document.getElementById('crModalDatePrelevement').focus();
+        return;
+    }
+    if (!dateCR) {
+        showToast('La date du compte rendu est obligatoire', 'error');
+        document.getElementById('crModalDateCR').focus();
+        return;
+    }
+    if (!patientId) {
+        showToast('Patient non identifié', 'error');
+        return;
+    }
+    if (!utilisateurId) {
+        showToast('Aucun utilisateur sélectionné. Allez sur la page de sélection.', 'error');
+        return;
+    }
+
+    // Construction du payload
+    const payload = {
+        numero_enregistrement:   numero,
+        date_compte_rendu:       dateCR,
+        utilisateur_id:          parseInt(utilisateurId, 10),
+        medecin_id:              parseInt(medecinId, 10),
+        patient_id:              parseInt(patientId, 10),
+        nature_prelevement:      nature,
+        date_prelevement:        datePrelev,
+        renseignements_cliniques: renseign,
+        service_hospitalier:     '',
+        macroscopie:             '',
+        microscopie:             '',
+        conclusion:              '',
+        statut:                  'en_cours'
+    };
+
+    // Désactiver le bouton pendant l'envoi
+    const btn = document.querySelector('#modalCreerCR button[onclick="sauvegarderCRDepuisPaiement()"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Création...';
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/comptes-rendus`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-ID': currentUserId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showToast(`✅ Compte rendu créé — N° ${numero}`, 'success');
+            fermerModalCreerCR();
+
+            // Proposer d'aller sur index.html pour compléter le CR
+            setTimeout(() => {
+                if (confirm('Compte rendu créé avec succès !\n\nVoulez-vous aller sur la page principale pour le compléter (Macroscopie, Microscopie, Conclusion) ?')) {
+                    window.location.href = 'index.html';
+                } else {
+                    // Sinon, ouvrir le choix d'impression du paiement
+                    _afficherChoixImpression();
+                }
+            }, 400);
+
+        } else {
+            const err = await response.json();
+            showToast(err.erreur || 'Erreur lors de la création du CR', 'error');
+        }
+
+    } catch (err) {
+        console.error('Erreur création CR:', err);
+        showToast('Erreur réseau lors de la création du CR', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save mr-2"></i>Créer le CR';
+        }
+    }
+}
+
+function fermerModalCreerCR() {
+    document.getElementById('modalCreerCR').classList.add('hidden');
+    // Après fermeture du CR, proposer l'impression du paiement
+    _afficherChoixImpression();
+}
+
+    
     </script>
  <!-- Modal Attacher Fichier -->
 <!-- Modal Attacher Fichier - Version Améliorée et Responsive -->
@@ -7034,5 +7284,171 @@ function getBadgeNumero(numeroCR) {
         </div>
     </div>
 </div>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MODAL QUESTIONNAIRE : Créer un Compte Rendu après paiement     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="modalQuestionCR" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-5 text-white text-center">
+            <i class="fas fa-file-medical text-4xl mb-2"></i>
+            <h3 class="text-lg font-bold">Créer un Compte Rendu ?</h3>
+            <p class="text-sm opacity-90 mt-1">Paiement enregistré avec succès</p>
+            <div class="mt-2 bg-white/20 rounded-lg px-3 py-1 inline-block">
+                <span class="text-sm font-mono font-bold" id="crQuestionNumeroCR">—</span>
+            </div>
+        </div>
+        <div class="p-6">
+            <p class="text-gray-600 text-sm text-center mb-6">
+                Voulez-vous créer un compte rendu cyto-pathologique pour ce patient ?
+            </p>
+            <div class="flex gap-3">
+                <button onclick="refuserCreationCR()" 
+                        class="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition font-medium flex items-center justify-center gap-2">
+                    <i class="fas fa-times"></i> Non
+                </button>
+                <button onclick="accepterCreationCR()" 
+                        class="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition font-medium flex items-center justify-center gap-2 shadow-md">
+                    <i class="fas fa-plus-circle"></i> Oui
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MODAL CRÉATION COMPTE RENDU MINIMAL (depuis Paiement)          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="modalCreerCR" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4" style="max-height: 92vh; display: flex; flex-direction: column;">
+
+        <!-- En-tête -->
+        <div class="bg-gradient-to-r from-indigo-700 to-purple-700 p-5 text-white rounded-t-2xl shrink-0">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fas fa-file-medical-alt"></i>
+                        Nouveau Compte Rendu
+                    </h3>
+                    <p class="text-sm opacity-80 mt-1">
+                        Patient : <span id="crModalPatientNom" class="font-semibold"></span>
+                    </p>
+                </div>
+                <button onclick="fermerModalCreerCR()" 
+                        class="text-white/70 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition">
+                    ×
+                </button>
+            </div>
+        </div>
+
+        <!-- Formulaire scrollable -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-4">
+
+            <!-- Infos pré-remplies (readonly) -->
+            <div class="grid grid-cols-2 gap-3 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                <div>
+                    <label class="block text-xs font-semibold text-indigo-600 mb-1 uppercase tracking-wide">
+                        N° Enregistrement
+                    </label>
+                    <input type="text" id="crModalNumero" readonly
+                           class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-lg text-sm font-mono font-bold text-indigo-700 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-indigo-600 mb-1 uppercase tracking-wide">
+                        Date Compte Rendu *
+                    </label>
+                    <input type="date" id="crModalDateCR"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+            </div>
+
+            <!-- Médecin demandeur -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-user-md mr-1 text-indigo-500"></i>
+                    Médecin Demandeur *
+                </label>
+                <div class="flex gap-2">
+                    <select id="crModalMedecin"
+                            class="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="">Chargement...</option>
+                    </select>
+                    <button type="button" onclick="ouvrirAjoutRapideMedecinCR()"
+                            class="bg-green-100 hover:bg-green-200 text-green-800 px-3 py-2.5 rounded-lg transition text-sm font-medium whitespace-nowrap"
+                            title="Nouveau médecin">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Nature du prélèvement -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-vials mr-1 text-purple-500"></i>
+                    Nature / Siège du Prélèvement *
+                </label>
+                <input type="text" id="crModalNature" 
+                       placeholder="Ex: Nodule thyroïdien, Biopsie hépatique..."
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                <!-- Suggestion rapide basée sur type d'examen -->
+                <div id="crNatureSuggestions" class="flex flex-wrap gap-1 mt-2 hidden">
+                </div>
+            </div>
+
+            <!-- Date de prélèvement -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-calendar-alt mr-1 text-blue-500"></i>
+                    Date de Prélèvement *
+                </label>
+                <input type="date" id="crModalDatePrelevement"
+                       class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            </div>
+
+            <!-- Renseignements cliniques (optionnel) -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-clipboard-list mr-1 text-gray-500"></i>
+                    Renseignements Cliniques
+                    <span class="text-xs font-normal text-gray-400 ml-1">(optionnel)</span>
+                </label>
+                <textarea id="crModalRenseignements" rows="2"
+                          placeholder="Antécédents, symptômes..."
+                          class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"></textarea>
+            </div>
+
+            <!-- Statut (readonly = En cours) -->
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3">
+                <div class="bg-amber-200 rounded-full p-2">
+                    <i class="fas fa-clock text-amber-700"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-amber-600 font-semibold uppercase tracking-wide">Statut</p>
+                    <p class="text-sm font-bold text-amber-800">En cours</p>
+                </div>
+                <input type="hidden" id="crModalStatut" value="en_cours">
+            </div>
+
+            <!-- Champs cachés -->
+            <input type="hidden" id="crModalPatientId">
+            <input type="hidden" id="crModalUtilisateurId">
+
+        </div>
+
+        <!-- Boutons fixes en bas -->
+        <div class="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl shrink-0">
+            <div class="flex gap-3">
+                <button onclick="fermerModalCreerCR()" 
+                        class="flex-1 px-4 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl transition font-medium text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button onclick="sauvegarderCRDepuisPaiement()"
+                        class="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition font-medium text-sm flex items-center justify-center gap-2 shadow-md">
+                    <i class="fas fa-save"></i> Créer le CR
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
+
 </html>
