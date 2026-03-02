@@ -2201,20 +2201,21 @@ async function enregistrerPaiement() {
             showToast(message, 'success');
             
             // Préparer les informations pour l'impression
-            const paiementInfo = {
-                id: result.paiement_id || result.id,
-                patient_nom: document.getElementById('patientSelect').selectedOptions[0].text.split('(')[0].trim(),
-                patient_id: patientId,
-                montant: montantPaye,
-                montant_total: mode === 'a_terme' ? montantTotal : (sousFamilleInfo ? sousFamilleInfo.prix : null),
-                mode_paiement: mode,
-                type_paiement: typeExamen,
-                sous_famille: sousFamilleInfo ? sousFamilleInfo.designation : null,
-                prix_sous_famille: sousFamilleInfo ? sousFamilleInfo.prix : null,
-                numero_cr: result.numero_cr || numeroCR,
-                notes: notes,
-                date_paiement: new Date().toISOString()
-            };
+         const paiementInfo = {
+    id: result.paiement_id || result.id,
+    patient_nom: document.getElementById('patientSelect').selectedOptions[0].text.split('(')[0].trim(),
+    patient_id: patientId,
+    montant: montantPaye,
+    montant_total: mode === 'a_terme' ? montantTotal : (sousFamilleInfo ? sousFamilleInfo.prix : null),
+    mode_paiement: mode,
+    type_paiement: typeExamen,
+    sous_famille: sousFamilleInfo ? sousFamilleInfo.designation : null,
+    prix_sous_famille: sousFamilleInfo ? sousFamilleInfo.prix : null,
+    numero_cr: result.numero_cr || numeroCR,
+    notes: notes,
+    date_paiement: new Date().toISOString(),
+    prix_manuel: !sousFamilleInfo   // ✅ true = prix saisi manuellement
+};
             
             // Afficher la modal pour imprimer le reçu
             afficherModalChoixImpression(paiementInfo);
@@ -3829,15 +3830,19 @@ function imprimerListe() {
 // Variable globale pour stocker le paiement en cours (déjà existante, on l'enrichit)
 let paiementEnCours = null;
 let crDepuisPaiementData = null; // ← NOUVEAU
-
 function afficherModalChoixImpression(paiementInfo) {
     paiementEnCours = paiementInfo;
-
-    // ── NOUVEAU : Afficher d'abord le questionnaire CR ──────────────
     crDepuisPaiementData = paiementInfo;
+
+    // ✅ Si prix manuel → pas de questionnaire, direct impression
+    if (paiementInfo.prix_manuel) {
+        _afficherChoixImpression();
+        return;
+    }
+
+    // Type d'examen sélectionné → proposer la création du CR
     document.getElementById('crQuestionNumeroCR').textContent = paiementInfo.numero_cr || '—';
     document.getElementById('modalQuestionCR').classList.remove('hidden');
-    // ────────────────────────────────────────────────────────────────
 }
 
 function refuserCreationCR() {
