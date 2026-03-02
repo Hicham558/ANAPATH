@@ -7111,15 +7111,9 @@ async function sauvegarderCRDepuisPaiement() {
             showToast(`✅ Compte rendu créé — N° ${numero}`, 'success');
             fermerModalCreerCR();
 
-            // Proposer d'aller sur index.html pour compléter le CR
-            setTimeout(() => {
-                if (confirm('Compte rendu créé avec succès !\n\nVoulez-vous aller sur la page principale pour le compléter (Macroscopie, Microscopie, Conclusion) ?')) {
-                    window.location.href = 'index.html';
-                } else {
-                    // Sinon, ouvrir le choix d'impression du paiement
-                    _afficherChoixImpression();
-                }
-            }, 400);
+         // ✅ REMPLACER PAR
+showToast(`✅ Compte rendu créé — N° ${numero}`, 'success');
+fermerModalCreerCR();
 
         } else {
             const err = await response.json();
@@ -7139,7 +7133,6 @@ async function sauvegarderCRDepuisPaiement() {
 
 function fermerModalCreerCR() {
     document.getElementById('modalCreerCR').classList.add('hidden');
-    // Après fermeture du CR, proposer l'impression du paiement
     _afficherChoixImpression();
 }
 
