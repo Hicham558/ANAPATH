@@ -1674,20 +1674,23 @@ if (!form.classList.contains('open')) {
             <td class="px-6 py-4 text-sm">
               <span class="status-badge status-${r.statut}">${r.statut}</span>
             </td>
-            <td class="px-6 py-4 text-sm">
-              <button onclick='viewReportById(${r.id})' class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
-                <i class="fas fa-eye"></i>
-              </button>
-              <button onclick='editReportById(${r.id})' class="text-green-600 hover:text-green-800 mr-2" title="Modifier">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button onclick="printReport(${r.id})" class="text-purple-600 hover:text-purple-800 mr-2" title="Imprimer">
-                <i class="fas fa-print"></i>
-              </button>
-              <button onclick="deleteReport(${r.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
-                <i class="fas fa-trash"></i>
-              </button>
-            </td>
+           <td class="px-6 py-4 text-sm">
+  <button onclick='viewReportById(${r.id})' class="text-blue-600 hover:text-blue-800 mr-2" title="Voir">
+    <i class="fas fa-eye"></i>
+  </button>
+  <button onclick='editReportById(${r.id})' class="text-green-600 hover:text-green-800 mr-2" title="Modifier">
+    <i class="fas fa-edit"></i>
+  </button>
+  <button onclick="printReport(${r.id})" class="text-purple-600 hover:text-purple-800 mr-2" title="Imprimer">
+    <i class="fas fa-print"></i>
+  </button>
+  <button onclick="sendWhatsApp(${r.id})" class="text-[#25D366] hover:text-[#128C7E] mr-2" title="Envoyer WhatsApp">
+    <i class="fab fa-whatsapp fa-lg"></i>
+  </button>
+  <button onclick="deleteReport(${r.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
+    <i class="fas fa-trash"></i>
+  </button>
+</td>
           </tr>
         `;
       }).join('');
@@ -2032,6 +2035,145 @@ if (patient) {
         showToast(err.message, 'error');
       }
     }
+
+    // ────────────────────────────────────────────
+// ENVOI WHATSAPP AU PATIENT
+// ────────────────────────────────────────────
+function sendWhatsApp(reportId) {
+  const report = allReports.find(r => r.id === reportId);
+  if (!report) {
+    showToast('Compte rendu introuvable', 'error');
+    return;
+  }
+
+  // Récupérer le téléphone du patient
+  const patient = allPatients.find(p => p.id === report.patient_id);
+  const telephone = patient?.telephone || '';
+
+  // Nettoyer le numéro : garder uniquement les chiffres et le +
+  let phoneClean = telephone.replace(/[\s\-().]/g, '');
+
+  // Construire le message professionnel
+  const patientNom = report.patient_nom || 'Monsieur/Madame';
+  const numero = report.numero_enregistrement || '';
+  const datePrelevement = report.date_prelevement
+    ? new Date(report.date_prelevement).toLocaleDateString('fr-FR')
+    : '';
+
+  const message =
+    `Bonjour ${patientNom},\n\n` +
+    `Nous vous informons que votre compte rendu d'anatomie et cytologie pathologiques ` +
+    `portant le numéro *${numero}*${datePrelevement ? ` (prélèvement du ${datePrelevement})` : ''} ` +
+    `est désormais disponible.\n\n` +
+    `Vous pouvez venir le récupérer au laboratoire aux heures d'ouverture.\n\n` +
+    `Cordialement,\n` +
+    `*Dr. BENFOULA Amel épouse ERROUANE*\n` +
+    `Laboratoire ANAPATH ELYOUSR`;
+
+  const messageEncoded = encodeURIComponent(message);
+
+  // Si numéro disponible → ouvrir directement
+  if (phoneClean && phoneClean.length >= 9) {
+    // Ajouter le préfixe Algérie si nécessaire
+    if (!phoneClean.startsWith('+') && !phoneClean.startsWith('213')) {
+      if (phoneClean.startsWith('0')) {
+        phoneClean = '213' + phoneClean.substring(1);
+      } else {
+        phoneClean = '213' + phoneClean;
+      }
+    }
+    window.open(`https://wa.me/${phoneClean}?text=${messageEncoded}`, '_blank');
+  } else {
+    // Pas de numéro → ouvrir modal pour saisir le numéro
+    openWhatsAppModal(report, message, messageEncoded);
+  }
+}
+
+function openWhatsAppModal(report, message, messageEncoded) {
+  // Supprimer ancien modal si existe
+  const old = document.getElementById('whatsappModal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'whatsappModal';
+  modal.className = 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70]';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+      <div class="flex items-center gap-3 mb-5 pb-4 border-b">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:#25D366">
+          <i class="fab fa-whatsapp text-white text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-gray-800">Envoyer via WhatsApp</h3>
+          <p class="text-xs text-gray-500">Patient : <strong>${report.patient_nom || '-'}</strong> | N° : <strong>${report.numero_enregistrement}</strong></p>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <i class="fas fa-phone mr-1 text-green-600"></i> Numéro WhatsApp du patient
+        </label>
+        <div class="flex gap-2">
+          <span class="flex items-center px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-600 font-medium">🇩🇿 +213</span>
+          <input type="tel" id="waPhoneInput"
+            placeholder="0XXXXXXXXX"
+            class="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 text-sm"
+            onkeydown="if(event.key==='Enter') confirmSendWhatsApp('${messageEncoded}')">
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Exemple : 0555123456</p>
+      </div>
+
+      <div class="mb-5">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <i class="fas fa-comment-dots mr-1 text-green-600"></i> Message
+        </label>
+        <textarea id="waMessagePreview" rows="7"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-700 focus:ring-2 focus:ring-green-400 focus:border-green-400 resize-none"
+          style="font-family: monospace; line-height: 1.6">${message}</textarea>
+      </div>
+
+      <div class="flex gap-3 justify-end">
+        <button onclick="document.getElementById('whatsappModal').remove()"
+          class="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition text-sm">
+          Annuler
+        </button>
+        <button onclick="confirmSendWhatsApp()"
+          class="px-5 py-2 text-white rounded-lg font-semibold transition text-sm flex items-center gap-2"
+          style="background:#25D366" onmouseover="this.style.background='#128C7E'" onmouseout="this.style.background='#25D366'">
+          <i class="fab fa-whatsapp"></i> Envoyer
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Focus sur le champ téléphone
+  setTimeout(() => document.getElementById('waPhoneInput')?.focus(), 100);
+}
+
+function confirmSendWhatsApp() {
+  let phone = (document.getElementById('waPhoneInput')?.value || '').replace(/[\s\-().]/g, '');
+  const message = document.getElementById('waMessagePreview')?.value || '';
+  const messageEncoded = encodeURIComponent(message);
+
+  if (!phone || phone.length < 9) {
+    showToast('Veuillez saisir un numéro valide', 'error');
+    return;
+  }
+
+  // Formater pour l'Algérie
+  if (!phone.startsWith('+') && !phone.startsWith('213')) {
+    if (phone.startsWith('0')) {
+      phone = '213' + phone.substring(1);
+    } else {
+      phone = '213' + phone;
+    }
+  }
+
+  window.open(`https://wa.me/${phone}?text=${messageEncoded}`, '_blank');
+  document.getElementById('whatsappModal')?.remove();
+  showToast('Ouverture de WhatsApp...', 'success');
+}
     // ────────────────────────────────────────────
     // FONCTIONS POUR LES TEMPLATES
     // ────────────────────────────────────────────
