@@ -1684,9 +1684,11 @@ if (!form.classList.contains('open')) {
   <button onclick="printReport(${r.id})" class="text-purple-600 hover:text-purple-800 mr-2" title="Imprimer">
     <i class="fas fa-print"></i>
   </button>
+ ${r.statut !== 'en_cours' ? `
   <button onclick="sendWhatsApp(${r.id})" class="text-[#25D366] hover:text-[#128C7E] mr-2" title="Envoyer WhatsApp">
     <i class="fab fa-whatsapp fa-lg"></i>
   </button>
+` : '<span class="mr-2 inline-block" style="width:20px"></span>'}
   <button onclick="deleteReport(${r.id})" class="text-red-600 hover:text-red-800" title="Supprimer">
     <i class="fas fa-trash"></i>
   </button>
