@@ -2568,20 +2568,28 @@ window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${messageEncoded}
                             </div>
                           </div>
                         </div>
-                        <div class="flex gap-2 ml-4">
-                          <button onclick="handleSearchResult(${itemId}, '${itemType}', 'view')"
-                            class="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
-                            title="Voir le détail">
-                            <i class="fas fa-eye"></i>
-                            <span class="text-xs">Voir</span>
-                          </button>
-                          <button onclick="handleSearchResult(${itemId}, '${itemType}', 'edit')"
-                            class="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
-                            title="Éditer">
-                            <i class="fas fa-edit"></i>
-                            <span class="text-xs">Éditer</span>
-                          </button>
-                        </div>
+                       <div class="flex gap-2 ml-4">
+  <button onclick="handleSearchResult(${itemId}, '${itemType}', 'view')"
+    class="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-md transition"
+    title="Voir le détail">
+    <i class="fas fa-eye"></i>
+    <span class="text-xs">Voir</span>
+  </button>
+  <button onclick="handleSearchResult(${itemId}, '${itemType}', 'edit')"
+    class="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2 rounded-md transition"
+    title="Éditer">
+    <i class="fas fa-edit"></i>
+    <span class="text-xs">Éditer</span>
+  </button>
+  ${itemType === 'report' && item.statut !== 'en_cours' ? `
+  <button onclick="sendWhatsApp(${itemId})"
+    class="flex items-center gap-1 px-3 py-2 rounded-md transition"
+    style="background:#f0fdf4; color:#25D366"
+    title="Envoyer WhatsApp">
+    <i class="fab fa-whatsapp"></i>
+    <span class="text-xs">WhatsApp</span>
+  </button>` : ''}
+</div>
                       </div>
                     </div>
                   `;
