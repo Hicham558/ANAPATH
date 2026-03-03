@@ -2082,7 +2082,7 @@ function sendWhatsApp(reportId) {
         phoneClean = '213' + phoneClean;
       }
     }
-    window.open(`https://wa.me/${phoneClean}?text=${messageEncoded}`, '_blank');
+    window.open(`https://web.whatsapp.com/send?phone=${phoneClean}&text=${messageEncoded}`, '_blank');
   } else {
     // Pas de numéro → ouvrir modal pour saisir le numéro
     openWhatsAppModal(report, message, messageEncoded);
@@ -2170,7 +2170,7 @@ function confirmSendWhatsApp() {
     }
   }
 
-  window.open(`https://wa.me/${phone}?text=${messageEncoded}`, '_blank');
+window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${messageEncoded}`, '_blank');
   document.getElementById('whatsappModal')?.remove();
   showToast('Ouverture de WhatsApp...', 'success');
 }
