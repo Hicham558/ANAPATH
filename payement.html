@@ -4506,9 +4506,9 @@ function genererRecuTicket(paiement) {
 function genererRecuVignette(paiement) {
     const dateObj = new Date(paiement.date_paiement);
     const date = dateObj.toLocaleDateString('fr-FR');
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(paiement.numero_cr || 'N/A')}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(paiement.numero_cr || 'N/A')}`;
 
-    const printWindow = window.open('', '_blank', 'width=300,height=200,menubar=no,toolbar=no,location=no,status=no');
+    const printWindow = window.open('', '_blank', 'width=300,height=250,menubar=no,toolbar=no,location=no,status=no');
 
     const html = `<!DOCTYPE html>
 <html>
@@ -4516,31 +4516,27 @@ function genererRecuVignette(paiement) {
 <meta charset="UTF-8">
 <title></title>
 <style>
-@page {
-    size: 60mm 40mm;
-    margin: 0 !important;
-}
-* { margin:0 !important; padding:0 !important; box-sizing:border-box !important; }
-html {
-    width: 60mm;
+@page { size: 60mm 40mm; margin: 0; }
+html, body { 
+    width: 60mm; 
     height: 40mm;
-}
-body {
-    width: 60mm;
-    height: 40mm;
+    max-height: 40mm;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
     font-family: Arial, sans-serif;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
 }
 .v {
+    position: absolute;
+    top: 0; left: 0;
     width: 60mm;
     height: 40mm;
-    padding: 1.2mm !important;
     border: 0.4mm solid #000;
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
+    display: grid;
+    grid-template-rows: 8mm 1fr;
+    padding: 1mm;
+    gap: 0;
 }
 .h {
     font-size: 6.5pt;
@@ -4548,22 +4544,29 @@ body {
     color: #1e40af;
     text-align: center;
     border-bottom: 0.3mm solid #000;
-    padding-bottom: 0.8mm !important;
-    margin-bottom: 0.8mm !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
     white-space: nowrap;
+    height: 7mm;
 }
 .b {
     display: flex;
-    flex: 1;
-    gap: 1mm !important;
+    height: 29mm;
     align-items: center;
+    overflow: hidden;
+    padding-top: 1mm;
+    gap: 1mm;
 }
 .l {
     flex: 1;
     overflow: hidden;
+    height: 28mm;
     display: flex;
     flex-direction: column;
-    gap: 0.8mm !important;
+    justify-content: center;
+    gap: 1mm;
 }
 .nom {
     font-size: 7pt;
@@ -4571,6 +4574,7 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 32mm;
 }
 .mt {
     font-size: 9pt;
@@ -4579,28 +4583,30 @@ body {
 }
 .info {
     font-size: 5.5pt;
-    color: #444;
-    line-height: 1.4;
+    color: #555;
+    line-height: 1.5;
 }
 .r {
-    width: 22mm;
+    width: 23mm;
+    height: 28mm;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5mm !important;
+    justify-content: center;
+    gap: 0.5mm;
 }
 .r img {
-    width: 21mm;
-    height: 21mm;
+    width: 22mm;
+    height: 22mm;
     display: block;
 }
 .nr {
-    font-size: 5pt;
+    font-size: 4.5pt;
     font-weight: bold;
     color: #1e40af;
     font-family: monospace;
-    text-align: center;
+    white-space: nowrap;
 }
 </style>
 </head>
@@ -4609,32 +4615,30 @@ body {
     <div class="h">ANAPATH ELYOUSR</div>
     <div class="b">
         <div class="l">
-            <div class="nom">${paiement.patient_nom.substring(0,22)}</div>
+            <div class="nom">${paiement.patient_nom.substring(0,20)}</div>
             <div class="mt">${parseFloat(paiement.montant).toFixed(2)} DA</div>
-            <div class="info">${date}<br>${(paiement.type_paiement||'—').substring(0,18)}</div>
+            <div class="info">${date}<br>${(paiement.type_paiement||'—').substring(0,16)}</div>
         </div>
         <div class="r">
-            <img src="${qrUrl}" alt="QR"
-                 onerror="this.style.background='#eee';this.style.display='flex';">
+            <img src="${qrUrl}" alt="QR">
             <div class="nr">N° ${paiement.numero_cr||'N/A'}</div>
         </div>
     </div>
 </div>
 <script>
-    // Attendre chargement QR puis imprimer
-    var img = document.querySelector('img');
-    function doPrint() {
-        window.focus();
-        window.print();
-        setTimeout(function(){ window.close(); }, 1000);
-    }
-    if (img) {
-        img.onload = doPrint;
-        img.onerror = doPrint;
-        if (img.complete && img.naturalWidth > 0) doPrint();
-    } else {
-        setTimeout(doPrint, 500);
-    }
+var img = document.querySelector('img');
+function doPrint(){
+    window.focus();
+    window.print();
+    setTimeout(function(){ window.close(); },1500);
+}
+if(img){
+    img.onload = doPrint;
+    img.onerror = doPrint;
+    if(img.complete && img.naturalWidth > 0) doPrint();
+} else {
+    setTimeout(doPrint, 600);
+}
 <\/script>
 </body>
 </html>`;
