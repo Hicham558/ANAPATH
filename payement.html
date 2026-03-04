@@ -4506,42 +4506,37 @@ function genererRecuTicket(paiement) {
 function genererRecuVignette(paiement) {
     const dateObj = new Date(paiement.date_paiement);
     const date = dateObj.toLocaleDateString('fr-FR');
-    
-    const qrContent = paiement.numero_cr || 'N/A';
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(qrContent)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(paiement.numero_cr || 'N/A')}`;
 
-    // Supprimer un iframe précédent s'il existe
-    const oldFrame = document.getElementById('vignetteFrame');
-    if (oldFrame) oldFrame.remove();
-
-    // Créer un iframe caché
-    const iframe = document.createElement('iframe');
-    iframe.id = 'vignetteFrame';
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
-    document.body.appendChild(iframe);
+    const printWindow = window.open('', '_blank', 'width=300,height=200,menubar=no,toolbar=no,location=no,status=no');
 
     const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<title></title>
 <style>
 @page {
     size: 60mm 40mm;
-    margin: 0;
+    margin: 0 !important;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body {
+* { margin:0 !important; padding:0 !important; box-sizing:border-box !important; }
+html {
+    width: 60mm;
+    height: 40mm;
+}
+body {
     width: 60mm;
     height: 40mm;
     overflow: hidden;
     font-family: Arial, sans-serif;
-    background: white;
-    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 .v {
     width: 60mm;
     height: 40mm;
-    padding: 1.2mm;
+    padding: 1.2mm !important;
     border: 0.4mm solid #000;
     display: flex;
     flex-direction: column;
@@ -4553,15 +4548,14 @@ html, body {
     color: #1e40af;
     text-align: center;
     border-bottom: 0.3mm solid #000;
-    padding-bottom: 0.8mm;
-    margin-bottom: 0.8mm;
+    padding-bottom: 0.8mm !important;
+    margin-bottom: 0.8mm !important;
     white-space: nowrap;
 }
 .b {
     display: flex;
     flex: 1;
-    gap: 1mm;
-    overflow: hidden;
+    gap: 1mm !important;
     align-items: center;
 }
 .l {
@@ -4569,7 +4563,7 @@ html, body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 0.5mm;
+    gap: 0.8mm !important;
 }
 .nom {
     font-size: 7pt;
@@ -4579,7 +4573,7 @@ html, body {
     text-overflow: ellipsis;
 }
 .mt {
-    font-size: 8.5pt;
+    font-size: 9pt;
     font-weight: bold;
     color: #059669;
 }
@@ -4589,24 +4583,24 @@ html, body {
     line-height: 1.4;
 }
 .r {
-    width: 21mm;
+    width: 22mm;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5mm;
+    gap: 0.5mm !important;
 }
 .r img {
     width: 21mm;
     height: 21mm;
+    display: block;
 }
 .nr {
-    font-size: 4.5pt;
+    font-size: 5pt;
     font-weight: bold;
     color: #1e40af;
     font-family: monospace;
     text-align: center;
-    white-space: nowrap;
 }
 </style>
 </head>
@@ -4620,36 +4614,34 @@ html, body {
             <div class="info">${date}<br>${(paiement.type_paiement||'—').substring(0,18)}</div>
         </div>
         <div class="r">
-            <img src="${qrUrl}" alt="QR">
+            <img src="${qrUrl}" alt="QR"
+                 onerror="this.style.background='#eee';this.style.display='flex';">
             <div class="nr">N° ${paiement.numero_cr||'N/A'}</div>
         </div>
     </div>
 </div>
+<script>
+    // Attendre chargement QR puis imprimer
+    var img = document.querySelector('img');
+    function doPrint() {
+        window.focus();
+        window.print();
+        setTimeout(function(){ window.close(); }, 1000);
+    }
+    if (img) {
+        img.onload = doPrint;
+        img.onerror = doPrint;
+        if (img.complete && img.naturalWidth > 0) doPrint();
+    } else {
+        setTimeout(doPrint, 500);
+    }
+<\/script>
 </body>
 </html>`;
 
-    iframe.onload = function() {
-        // Attendre que le QR code se charge
-        const img = iframe.contentDocument.querySelector('img');
-        const doPrint = () => {
-            setTimeout(() => {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-                setTimeout(() => iframe.remove(), 2000);
-            }, 300);
-        };
-
-        if (img) {
-            img.onload = doPrint;
-            img.onerror = doPrint;
-            // Fallback si déjà chargé
-            if (img.complete) doPrint();
-        } else {
-            doPrint();
-        }
-    };
-
-    iframe.srcdoc = html;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
 }
         // Fonction pour imprimer le rapport journalier
 async function imprimerRapportJournalier() {
