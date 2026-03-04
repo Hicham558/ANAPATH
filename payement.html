@@ -4509,177 +4509,147 @@ function genererRecuVignette(paiement) {
     
     const qrContent = paiement.numero_cr || 'N/A';
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(qrContent)}`;
-    
-    // 60mm x 40mm @ 96dpi = 227px x 151px
-    const printWindow = window.open('', '', 'width=400,height=300');
-    
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Vignette 60x40 - ${paiement.numero_cr || 'N/A'}</title>
-            <style>
-                @page {
-                    size: 60mm 40mm;
-                    margin: 0mm;
-                }
-                * { margin:0; padding:0; box-sizing:border-box; }
-                
-                html, body {
-                    width: 227px;
-                    height: 151px;
-                    max-width: 227px;
-                    max-height: 151px;
-                    overflow: hidden;
-                    font-family: Arial, sans-serif;
-                    font-size: 8px;
-                    background: white;
-                }
 
-                .vignette {
-                    width: 227px;
-                    height: 151px;
-                    border: 1px solid #000;
-                    padding: 4px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
+    // Supprimer un iframe précédent s'il existe
+    const oldFrame = document.getElementById('vignetteFrame');
+    if (oldFrame) oldFrame.remove();
 
-                .header {
-                    font-size: 8px;
-                    font-weight: bold;
-                    color: #1e40af;
-                    text-align: center;
-                    border-bottom: 1px solid #000;
-                    padding-bottom: 2px;
-                    margin-bottom: 3px;
-                    white-space: nowrap;
-                }
+    // Créer un iframe caché
+    const iframe = document.createElement('iframe');
+    iframe.id = 'vignetteFrame';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
+    document.body.appendChild(iframe);
 
-                .body {
-                    display: flex;
-                    flex: 1;
-                    gap: 4px;
-                    overflow: hidden;
-                }
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@page {
+    size: 60mm 40mm;
+    margin: 0;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+    width: 60mm;
+    height: 40mm;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: white;
+    color: #000;
+}
+.v {
+    width: 60mm;
+    height: 40mm;
+    padding: 1.2mm;
+    border: 0.4mm solid #000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.h {
+    font-size: 6.5pt;
+    font-weight: bold;
+    color: #1e40af;
+    text-align: center;
+    border-bottom: 0.3mm solid #000;
+    padding-bottom: 0.8mm;
+    margin-bottom: 0.8mm;
+    white-space: nowrap;
+}
+.b {
+    display: flex;
+    flex: 1;
+    gap: 1mm;
+    overflow: hidden;
+    align-items: center;
+}
+.l {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5mm;
+}
+.nom {
+    font-size: 7pt;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mt {
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #059669;
+}
+.info {
+    font-size: 5.5pt;
+    color: #444;
+    line-height: 1.4;
+}
+.r {
+    width: 21mm;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5mm;
+}
+.r img {
+    width: 21mm;
+    height: 21mm;
+}
+.nr {
+    font-size: 4.5pt;
+    font-weight: bold;
+    color: #1e40af;
+    font-family: monospace;
+    text-align: center;
+    white-space: nowrap;
+}
+</style>
+</head>
+<body>
+<div class="v">
+    <div class="h">ANAPATH ELYOUSR</div>
+    <div class="b">
+        <div class="l">
+            <div class="nom">${paiement.patient_nom.substring(0,22)}</div>
+            <div class="mt">${parseFloat(paiement.montant).toFixed(2)} DA</div>
+            <div class="info">${date}<br>${(paiement.type_paiement||'—').substring(0,18)}</div>
+        </div>
+        <div class="r">
+            <img src="${qrUrl}" alt="QR">
+            <div class="nr">N° ${paiement.numero_cr||'N/A'}</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>`;
 
-                .left {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-around;
-                    overflow: hidden;
-                }
+    iframe.onload = function() {
+        // Attendre que le QR code se charge
+        const img = iframe.contentDocument.querySelector('img');
+        const doPrint = () => {
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                setTimeout(() => iframe.remove(), 2000);
+            }, 300);
+        };
 
-                .patient-nom {
-                    font-size: 8px;
-                    font-weight: bold;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
+        if (img) {
+            img.onload = doPrint;
+            img.onerror = doPrint;
+            // Fallback si déjà chargé
+            if (img.complete) doPrint();
+        } else {
+            doPrint();
+        }
+    };
 
-                .montant {
-                    font-size: 10px;
-                    font-weight: bold;
-                    color: #059669;
-                }
-
-                .meta {
-                    font-size: 7px;
-                    color: #555;
-                    line-height: 1.4;
-                }
-
-                .right {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 2px;
-                    flex-shrink: 0;
-                    width: 95px;
-                }
-
-                .qr-img {
-                    width: 85px;
-                    height: 85px;
-                    display: block;
-                }
-
-                .numero {
-                    font-size: 7px;
-                    font-weight: bold;
-                    color: #1e40af;
-                    font-family: monospace;
-                    text-align: center;
-                }
-
-                @media screen {
-                    html, body { background: #eee; }
-                    .vignette { 
-                        margin: 20px auto; 
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                    }
-                    .btn-print {
-                        display: block;
-                        margin: 8px auto;
-                        background: #4f46e5;
-                        color: white;
-                        border: none;
-                        padding: 6px 16px;
-                        cursor: pointer;
-                        font-size: 13px;
-                        border-radius: 4px;
-                    }
-                }
-
-                @media print {
-                    html, body {
-                        width: 60mm;
-                        height: 40mm;
-                        max-width: 60mm;
-                        max-height: 40mm;
-                    }
-                    .vignette {
-                        width: 60mm;
-                        height: 40mm;
-                        border: 0.3mm solid #000;
-                        padding: 1mm;
-                    }
-                    .btn-print { display: none; }
-                }
-            </style>
-        </head>
-        <body>
-            <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
-            
-            <div class="vignette">
-                <div class="header">ANAPATH ELYOUSR</div>
-                <div class="body">
-                    <div class="left">
-                        <div class="patient-nom">${paiement.patient_nom.substring(0, 20)}</div>
-                        <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
-                        <div class="meta">
-                            ${date}<br>
-                            ${(paiement.type_paiement || '—').substring(0, 18)}
-                        </div>
-                    </div>
-                    <div class="right">
-                        <img class="qr-img" src="${qrUrl}" alt="QR"
-                             onerror="this.parentElement.innerHTML='<div style=\\'width:85px;height:85px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:7px;\\'>QR</div><div class=\\"numero\\">N° ${paiement.numero_cr || 'N/A'}</div>'">
-                        <div class="numero">N° ${paiement.numero_cr || 'N/A'}</div>
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
-    
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    iframe.srcdoc = html;
 }
         // Fonction pour imprimer le rapport journalier
 async function imprimerRapportJournalier() {
