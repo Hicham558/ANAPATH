@@ -3333,51 +3333,17 @@ function ouvrirModalHistorique(paiements, nomPatient) {
         showToast('Impossible de charger les détails du paiement', 'error');
     }
 }
-        async function prepareAndShowPrintModal(paymentId) {
-    try {
-        const res = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
-            headers: { 'X-User-ID': currentUserId }
-        });
-
-        if (!res.ok) throw new Error("Erreur chargement paiement");
-
-        const paiement = await res.json();
-
-        // Format compatible avec afficherModalChoixImpression()
-        const paiementInfo = {
-            id: paiement.id,
-            patient_nom: paiement.patient_nom_complet || paiement.patient_nom || "—",
-            montant: paiement.montant,
-            montant_total: paiement.montant_total || null,
-            mode_paiement: paiement.mode_paiement,
-            type_paiement: paiement.type_paiement || "—",
-            numero_cr: paiement.numero_cr || "—",
-            notes: paiement.notes || "",
-            date_paiement: paiement.date_paiement || new Date().toISOString()
-        };
-
-        // On réutilise exactement le même modal de choix que pour les nouveaux paiements
-        afficherModalChoixImpression(paiementInfo);
-
-    } catch (err) {
-        console.error("Erreur préparation modal impression:", err);
-        showToast("Impossible de préparer l'impression", "error");
-    }
-}
+       
 async function prepareAndShowPrintModal(paymentId) {
     try {
-        // Récupérer les données complètes du paiement
         const res = await fetch(`${API_BASE_URL}/paiements/${paymentId}`, {
             headers: { 'X-User-ID': currentUserId }
         });
 
-        if (!res.ok) {
-            throw new Error("Impossible de charger les détails du paiement");
-        }
+        if (!res.ok) throw new Error("Impossible de charger les détails du paiement");
 
         const paiement = await res.json();
 
-        // Format compatible avec ce que attend genererRecuA4 / genererRecuTicket
         const paiementInfo = {
             id: paiement.id,
             patient_nom: paiement.patient_nom_complet || paiement.patient_nom || "—",
@@ -3390,8 +3356,9 @@ async function prepareAndShowPrintModal(paymentId) {
             date_paiement: paiement.date_paiement || new Date().toISOString()
         };
 
-        // → On réutilise exactement la même logique que après l'enregistrement
-        afficherModalChoixImpression(paiementInfo);
+        // Depuis la liste : direct vers impression, sans questionnaire CR
+        paiementEnCours = paiementInfo;
+        _afficherChoixImpression();
 
     } catch (err) {
         console.error("Erreur préparation impression:", err);
