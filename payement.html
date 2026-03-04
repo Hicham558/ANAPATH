@@ -4507,11 +4507,10 @@ function genererRecuVignette(paiement) {
     const dateObj = new Date(paiement.date_paiement);
     const date = dateObj.toLocaleDateString('fr-FR');
     
-    // QR code contient le numéro de reçu
     const qrContent = paiement.numero_cr || 'N/A';
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrContent)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrContent)}`;
     
-    const printWindow = window.open('', '', 'height=600,width=400');
+    const printWindow = window.open('', '', 'height=400,width=320');
     
     const htmlContent = `
         <!DOCTYPE html>
@@ -4520,221 +4519,140 @@ function genererRecuVignette(paiement) {
             <meta charset="UTF-8">
             <title>Vignette 60x40 - ${paiement.numero_cr || 'N/A'}</title>
             <style>
-                @media print {
-                    @page {
-                        size: 60mm 40mm;
-                        margin: 0;
-                    }
-                    body {
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .no-print {
-                        display: none !important;
-                    }
+                @page {
+                    size: 60mm 40mm;
+                    margin: 0;
                 }
-                
                 * {
                     margin: 0;
                     padding: 0;
                     box-sizing: border-box;
                 }
-                
-                body {
+                html, body {
                     width: 60mm;
                     height: 40mm;
+                    overflow: hidden;
                     font-family: Arial, sans-serif;
                     background: white;
                     color: black;
-                    padding: 2mm;
                 }
-                
                 .vignette {
-                    width: 100%;
-                    height: 100%;
-                    border: 1px solid #000;
+                    width: 60mm;
+                    height: 40mm;
+                    border: 0.5mm solid #000;
+                    padding: 1.5mm;
                     display: flex;
                     flex-direction: column;
-                    padding: 2mm;
+                    overflow: hidden;
                 }
-                
                 .header {
                     text-align: center;
-                    border-bottom: 1px solid #000;
+                    border-bottom: 0.3mm solid #000;
                     padding-bottom: 1mm;
                     margin-bottom: 1.5mm;
-                }
-                
-                .header h1 {
-                    font-size: 10pt;
-                    font-weight: bold;
-                    margin: 0;
-                    color: #1e40af;
-                }
-                
-                .content {
-                    display: flex;
-                    gap: 2mm;
-                    flex: 1;
-                    align-items: flex-start;
-                }
-                
-                .left-section {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                }
-                
-                .qr-section {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                }
-                
-                .qr-container {
-                    width: 22mm;
-                    height: 22mm;
-                    border: 1px solid #000;
-                    padding: 1mm;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: white;
-                }
-                
-                .qr-container img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: contain;
-                }
-                
-                .numero-cr {
                     font-size: 7pt;
                     font-weight: bold;
                     color: #1e40af;
-                    text-align: center;
-                    margin-top: 1mm;
-                    word-break: break-all;
+                    letter-spacing: 0.3mm;
+                    white-space: nowrap;
+                    overflow: hidden;
                 }
-                
-                .patient-info {
-                    font-size: 7pt;
-                    line-height: 1.3;
+                .body {
+                    display: flex;
+                    flex: 1;
+                    gap: 1.5mm;
+                    align-items: center;
+                    overflow: hidden;
                 }
-                
+                .left {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1mm;
+                    overflow: hidden;
+                }
                 .patient-nom {
+                    font-size: 7.5pt;
                     font-weight: bold;
-                    font-size: 8pt;
-                    margin-bottom: 1mm;
+                    white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    white-space: nowrap;
                 }
-                
                 .montant {
-                    font-size: 9pt;
+                    font-size: 8.5pt;
                     font-weight: bold;
                     color: #059669;
-                    margin: 1mm 0;
                 }
-                
-                .notes-section {
+                .meta {
+                    font-size: 5.5pt;
+                    color: #555;
+                    line-height: 1.3;
+                }
+                .right {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 0.5mm;
+                    flex-shrink: 0;
+                }
+                .qr-img {
+                    width: 22mm;
+                    height: 22mm;
+                    display: block;
+                }
+                .numero {
                     font-size: 5pt;
-                    line-height: 1.2;
-                    color: #333;
-                    border-top: 0.5px dashed #666;
-                    padding-top: 1mm;
-                    margin-top: auto;
-                    max-height: 8mm;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-                
-                .notes-title {
                     font-weight: bold;
-                    margin-bottom: 0.5mm;
+                    color: #1e40af;
+                    font-family: monospace;
+                    text-align: center;
+                    white-space: nowrap;
                 }
-                
-                /* Bouton d'impression - caché à l'impression */
                 .btn-print {
                     position: fixed;
-                    top: 10px;
-                    right: 10px;
+                    top: 8px;
+                    right: 8px;
                     background: #4f46e5;
                     color: white;
                     border: none;
-                    padding: 10px 20px;
+                    padding: 8px 16px;
                     cursor: pointer;
-                    font-size: 14px;
+                    font-size: 13px;
                     border-radius: 4px;
                     z-index: 1000;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 }
-                
-                .btn-print:hover {
-                    background: #4338ca;
+                @media print {
+                    .btn-print { display: none; }
+                    html, body {
+                        width: 60mm;
+                        height: 40mm;
+                    }
                 }
             </style>
         </head>
         <body>
-            <button onclick="window.print()" class="btn-print no-print">
-                🖨️ Imprimer
-            </button>
+            <button onclick="window.print()" class="btn-print">🖨️ Imprimer</button>
             
             <div class="vignette">
-                <!-- En-tête -->
-                <div class="header">
-                    <h1>ANAPATH ELYOUSR</h1>
-                </div>
-                
-                <!-- Contenu principal -->
-                <div class="content">
-                    <!-- Partie gauche : Infos patient -->
-                    <div class="left-section">
-                        <div class="patient-info">
-                            <div class="patient-nom">${paiement.patient_nom.substring(0, 25)}${paiement.patient_nom.length > 25 ? '...' : ''}</div>
-                            <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
-                            <div style="font-size: 6pt; color: #666;">${date}</div>
-                            <div style="font-size: 6pt; color: #666;">${paiement.type_paiement || '—'}</div>
+                <div class="header">ANAPATH ELYOUSR</div>
+                <div class="body">
+                    <div class="left">
+                        <div class="patient-nom">${paiement.patient_nom.substring(0, 22)}</div>
+                        <div class="montant">${parseFloat(paiement.montant).toFixed(2)} DA</div>
+                        <div class="meta">
+                            ${date}<br>
+                            ${paiement.type_paiement || '—'}
                         </div>
-                        
-                        <!-- Notes en bas -->
-                        ${paiement.notes ? `
-                            <div class="notes-section">
-                                <div class="notes-title">Notes:</div>
-                                <div>${paiement.notes.substring(0, 80)}${paiement.notes.length > 80 ? '...' : ''}</div>
-                            </div>
-                        ` : ''}
                     </div>
-                    
-                    <!-- Partie droite : QR Code + Numéro CR -->
-                    <div class="qr-section">
-                        <div class="qr-container">
-                            <img src="${qrUrl}" alt="QR Code" 
-                                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'font-size:8pt;text-align:center;\\'>QR<br>Code</div>';">
-                        </div>
-                        <div class="numero-cr">N° ${paiement.numero_cr || 'N/A'}</div>
+                    <div class="right">
+                        <img class="qr-img" 
+                             src="${qrUrl}" 
+                             alt="QR"
+                             onerror="this.style.display='none'">
+                        <div class="numero">N° ${paiement.numero_cr || 'N/A'}</div>
                     </div>
                 </div>
             </div>
-            
-            <script>
-                window.onload = function() {
-                    // Attendre le chargement du QR code avant d'imprimer automatiquement
-                    const img = document.querySelector('img');
-                    if (img) {
-                        img.onload = function() {
-                            setTimeout(() => window.print(), 500);
-                        };
-                        if (img.complete) {
-                            setTimeout(() => window.print(), 500);
-                        }
-                    } else {
-                        setTimeout(() => window.print(), 500);
-                    }
-                };
-            <\/script>
         </body>
         </html>
     `;
@@ -4742,7 +4660,7 @@ function genererRecuVignette(paiement) {
     printWindow.document.write(htmlContent);
     printWindow.document.close();
 }
-    // Fonction pour imprimer le rapport journalier
+        // Fonction pour imprimer le rapport journalier
 async function imprimerRapportJournalier() {
     const date = document.getElementById('rapportDate').value;
     
