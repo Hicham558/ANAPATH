@@ -3847,7 +3847,7 @@ function imprimerRecu(format) {
     } else if (format === 'ticket') {
         genererRecuTicket(paiementEnCours);
     } else if (format === 'vignette') {
-        genererRecuVignette(paiementEnCours); // Nouvelle fonction
+        (paiementEnCours); // Nouvelle fonction
     }
 
     // Fermer la modal après impression
@@ -4516,15 +4516,27 @@ function genererRecuVignette(paiement) {
 <meta charset="UTF-8">
 <title></title>
 <style>
-@page { size: 60mm 40mm; margin: 0; marks: none; }
-html, body { 
+@page { 
+    size: 60mm 40mm; 
+    margin: 0; 
+}
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+html { 
     width: 60mm; 
-    height: 40mm;
+    height: 40mm; 
+    overflow: hidden; 
+}
+body { 
+    width: 60mm; 
+    height: 40mm; 
     max-height: 40mm;
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
+    overflow: hidden; 
     font-family: Arial, sans-serif;
+    line-height: 1;
 }
 .v {
     position: absolute;
@@ -4533,10 +4545,11 @@ html, body {
     height: 40mm;
     border: 0.4mm solid #000;
     overflow: hidden;
-    display: grid;
-    grid-template-rows: 8mm 1fr;
     padding: 1mm;
-    gap: 0;
+    display: flex;
+    flex-direction: column;
+    page-break-after: avoid;
+    page-break-inside: avoid;
 }
 .h {
     font-size: 6.5pt;
@@ -4544,29 +4557,29 @@ html, body {
     color: #1e40af;
     text-align: center;
     border-bottom: 0.3mm solid #000;
+    padding-bottom: 0.8mm;
+    margin-bottom: 0.8mm;
+    white-space: nowrap;
+    height: 7mm;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    white-space: nowrap;
-    height: 7mm;
 }
 .b {
     display: flex;
-    height: 29mm;
+    height: 30mm;
     align-items: center;
     overflow: hidden;
-    padding-top: 1mm;
     gap: 1mm;
 }
 .l {
     flex: 1;
     overflow: hidden;
-    height: 28mm;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 1mm;
+    gap: 0.8mm;
 }
 .nom {
     font-size: 7pt;
@@ -4574,7 +4587,6 @@ html, body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 32mm;
 }
 .mt {
     font-size: 9pt;
@@ -4584,11 +4596,10 @@ html, body {
 .info {
     font-size: 5.5pt;
     color: #555;
-    line-height: 1.5;
+    line-height: 1.4;
 }
 .r {
     width: 23mm;
-    height: 28mm;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -4630,7 +4641,7 @@ var img = document.querySelector('img');
 function doPrint(){
     window.focus();
     window.print();
-    setTimeout(function(){ window.close(); },1500);
+    setTimeout(function(){ window.close(); }, 1500);
 }
 if(img){
     img.onload = doPrint;
